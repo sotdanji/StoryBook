@@ -1,0 +1,5952 @@
+// StoryBook Studio Frontend Application Logic (Multi-Project Edition)
+
+let currentStatus = null;
+let currentDrafts = null;
+let currentWorkIndex = 0;
+let projectList = [];
+let currentEditingEpisode = null; // 현재 편집 중인 회차 (null이면 신규 작성)
+
+// ✨ 사용자 친화적인 감성 플로팅 토스트 메시지
+function showToast(message, type = "success") {
+  let toastContainer = document.getElementById("appToastContainer");
+  if (!toastContainer) {
+    toastContainer = document.createElement("div");
+    toastContainer.id = "appToastContainer";
+    toastContainer.style.position = "fixed";
+    toastContainer.style.top = "24px";
+    toastContainer.style.right = "24px";
+    toastContainer.style.zIndex = "99999";
+    toastContainer.style.display = "flex";
+    toastContainer.style.flexDirection = "column";
+    toastContainer.style.gap = "8px";
+    toastContainer.style.pointerEvents = "none";
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement("div");
+  toast.style.padding = "12px 20px";
+  toast.style.borderRadius = "8px";
+  toast.style.fontSize = "14.5px";
+  toast.style.fontWeight = "600";
+  toast.style.color = "#ffffff";
+  toast.style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)";
+  toast.style.opacity = "0";
+  toast.style.transform = "translateY(-10px)";
+  toast.style.transition = "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+  toast.style.pointerEvents = "auto";
+  toast.style.maxWidth = "420px";
+  toast.style.lineHeight = "1.5";
+
+  if (type === "success") {
+    toast.style.background = "linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%)";
+    toast.style.border = "1px solid #40916c";
+  } else if (type === "error") {
+    toast.style.background = "linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)";
+    toast.style.border = "1px solid #ef4444";
+  } else {
+    toast.style.background = "linear-gradient(135deg, #854d0e 0%, #713f12 100%)";
+    toast.style.border = "1px solid #ca8a04";
+  }
+
+  toast.innerHTML = message;
+  toastContainer.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-10px)";
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+// ✨ 새 작품(새 화) 작성 모드로 폼 초기화
+function startNewPoem(skipConfirm = false) {
+  if (!skipConfirm) {
+    if (!confirm("새로운 작품을 작성하시겠습니까?\n작성 중인 내용이 정리되고 다음 회차(신규 화)로 준비됩니다.")) {
+      return;
+    }
+  }
+  currentEditingEpisode = null;
+  document.getElementById("inputCoreMemory").value = "";
+  document.getElementById("inputSensoryDetails").value = "";
+  document.getElementById("inputSpokenWords").value = "";
+  document.getElementById("inputFinalTitle").value = "";
+  if (document.getElementById("inputFinalAuthor")) document.getElementById("inputFinalAuthor").value = "";
+  document.getElementById("inputFinalPoem").value = "";
+  
+  const previewArea = document.getElementById("studioImagePreviewArea");
+  if (previewArea) previewArea.style.display = "none";
+  const genStatus = document.getElementById("studioGenStatus");
+  if (genStatus) genStatus.style.display = "none";
+  const upStatus = document.getElementById("studioUploadStatus");
+  if (upStatus) upStatus.style.display = "none";
+  const guideInput = document.getElementById("inputArtCustomGuide");
+  if (guideInput) guideInput.value = "";
+
+  if (typeof removeAudioFile === 'function') removeAudioFile();
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  if (lyricsInput) lyricsInput.value = "";
+
+  if (currentStatus && currentStatus.next_episode) {
+    document.getElementById("inputEpisode").value = currentStatus.next_episode;
+  }
+
+  // 드롭다운 및 배지 업데이트
+  const selBox = document.getElementById("selectWorkToEdit");
+  if (selBox) selBox.value = "new";
+  const epBadge = document.getElementById("labelCurrentEditingEpBadge");
+  if (epBadge) epBadge.textContent = "[신규 작품 집필]";
+  const btnDel = document.getElementById("btnDeleteCurrentWork");
+  if (btnDel) btnDel.style.display = "none";
+}
+
+// 📖 기존 저장된 시 편집창 불러오기 드롭다운 갱신
+function updateWorkToEditDropdown() {
+  const selBox = document.getElementById("selectWorkToEdit");
+  if (!selBox) return;
+
+  selBox.innerHTML = "";
+
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+
+  // 옵션 1: 신규 작품 집필
+  const optNew = document.createElement("option");
+  optNew.value = "new";
+  const nextEp = (currentStatus && currentStatus.next_episode) ? currentStatus.next_episode : "신규";
+  optNew.textContent = `✨ [새 작품 집필] (다음 ${nextEp} 작성)`;
+  selBox.appendChild(optNew);
+
+  // 옵션 2~N: 기존 저장된 회차별 시
+  works.forEach(w => {
+    const opt = document.createElement("option");
+    opt.value = w.episode_no;
+    const chapTag = w.chapter ? `[${w.chapter}] ` : '';
+    opt.textContent = `📖 ${chapTag}[${w.episode_no}] ${w.title}`;
+    selBox.appendChild(opt);
+  });
+
+  // 현재 편집 중인 회차가 있으면 드롭다운 및 배지 동기화
+  const epBadge = document.getElementById("labelCurrentEditingEpBadge");
+  const btnDel = document.getElementById("btnDeleteCurrentWork");
+
+  if (currentEditingEpisode) {
+    const exists = works.some(w => w.episode_no === currentEditingEpisode);
+    if (exists) {
+      selBox.value = currentEditingEpisode;
+      if (epBadge) epBadge.textContent = `[${currentEditingEpisode} 편집 중]`;
+      if (btnDel) btnDel.style.display = "inline-flex";
+    } else {
+      selBox.value = "new";
+      if (epBadge) epBadge.textContent = "[신규 작품 집필]";
+      if (btnDel) btnDel.style.display = "none";
+    }
+  } else {
+    selBox.value = "new";
+    if (epBadge) epBadge.textContent = "[신규 작품 집필]";
+    if (btnDel) btnDel.style.display = "none";
+  }
+}
+
+// 📖 회차 선택 드롭다운 변경 시 해당 시를 편집창으로 로드
+function onSelectWorkToEditChange(val) {
+  if (!val || val === "new") {
+    startNewPoem(true);
+  } else {
+    loadWorkIntoEditor(val);
+  }
+}
+
+// 📖 지정된 회차의 시를 편집창(제목/본문/기억/삽화/노래)으로 로드
+function loadWorkIntoEditor(episodeNo) {
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  const work = works.find(w => w.episode_no === episodeNo);
+  if (!work) return;
+
+  currentEditingEpisode = work.episode_no;
+  document.getElementById("inputEpisode").value = work.episode_no;
+
+  // 제목 및 시 본문
+  const inputTitle = document.getElementById("inputFinalTitle");
+  if (inputTitle) inputTitle.value = work.title || "";
+  const inputAuthor = document.getElementById("inputFinalAuthor");
+  if (inputAuthor) inputAuthor.value = work.author || "";
+  const inputPoem = document.getElementById("inputFinalPoem");
+  if (inputPoem) {
+    inputPoem.value = work.poem_body || "";
+    inputPoem.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // 기억 정보 로드 (비정상 메타데이터 태그 방어 필터링)
+  let cleanMemory = work.memory_anchor || "";
+  if (cleanMemory.startsWith("- **") || cleanMemory.includes("images/")) {
+    cleanMemory = "";
+  }
+  const memInput = document.getElementById("inputCoreMemory");
+  if (memInput) memInput.value = cleanMemory;
+  const factLock = document.getElementById("factLockText");
+  if (factLock) {
+    factLock.textContent = cleanMemory 
+      ? `기억의 중심: ${cleanMemory}` 
+      : `[${work.episode_no}] 「${work.title}」 원고를 편집창으로 불러왔습니다.`;
+  }
+
+  const guideInput = document.getElementById("inputArtCustomGuide");
+  if (guideInput) guideInput.value = "";
+
+  const promptDisplay = document.getElementById("imagePromptDisplay");
+  if (promptDisplay) {
+    promptDisplay.value = "";
+    promptDisplay.placeholder = `[${work.episode_no} 「${work.title}」] 삽화 프롬프트를 빚는 중이거나 단 1장 생성을 누르면 AI가 본문을 분석하여 자동 생성합니다...`;
+  }
+
+  // 배지 및 드롭다운 동기화, 삭제 버튼 노출
+  const epBadge = document.getElementById("labelCurrentEditingEpBadge");
+  if (epBadge) epBadge.textContent = `[${work.episode_no} 편집 중]`;
+  const btnDel = document.getElementById("btnDeleteCurrentWork");
+  if (btnDel) btnDel.style.display = "inline-flex";
+
+  const selBox = document.getElementById("selectWorkToEdit");
+  if (selBox) selBox.value = work.episode_no;
+
+  // 우측 스튜디오 이미지(삽화) 미리보기 로드
+  const previewArea = document.getElementById("studioImagePreviewArea");
+  const previewImg = document.getElementById("studioPreviewImg");
+  const previewFilename = document.getElementById("studioPreviewFilename");
+  if (work.image_file) {
+    const cleanImgPath = "/" + work.image_file.replace(/^(\.\/|\/)/, '');
+    if (previewArea) previewArea.style.display = "flex";
+    const tag = document.getElementById("studioPreviewTag");
+    if (previewImg) {
+      previewImg.onerror = () => {
+        previewImg.style.display = "none";
+        const fallback = previewImg.nextElementSibling;
+        if (fallback) fallback.style.display = "flex";
+        if (tag) {
+          tag.textContent = "⏳ 삽화 파일 없음 (생성 또는 사진 등록 필요)";
+          tag.style.color = "#c05621";
+        }
+      };
+      previewImg.onload = () => {
+        previewImg.style.display = "block";
+        const fallback = previewImg.nextElementSibling;
+        if (fallback) fallback.style.display = "none";
+        if (tag) {
+          tag.textContent = "✓ 삽화 적용 완료";
+          tag.style.color = "var(--accent-green)";
+        }
+      };
+      previewImg.src = `${cleanImgPath}?t=${Date.now()}`;
+    }
+    if (previewFilename) previewFilename.textContent = work.image_file.split('/').pop();
+  } else {
+    if (previewArea) previewArea.style.display = "none";
+    if (previewImg) previewImg.src = "";
+  }
+
+  // 노래 가사 및 오디오 음원 로드
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  if (lyricsInput) lyricsInput.value = work.lyrics || "";
+
+  if (work.audio_file) {
+    currentAudioFile = work.audio_file;
+    const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
+    const safeName = (proj && proj.name) ? proj.name.replace(/\s+/g, '_') : "노을빛_기억";
+    const audioUrl = (work.audio_file.startsWith("http") || work.audio_file.startsWith("/"))
+      ? work.audio_file
+      : `/projects/${safeName}/images/${work.audio_file}`;
+
+    const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
+    const audioPlayer = document.getElementById("studioAudioPlayer");
+    const audioNameElem = document.getElementById("studioPreviewAudioFilename");
+
+    if (audioNameElem) audioNameElem.textContent = work.audio_file;
+    if (audioPlayer) {
+      audioPlayer.src = audioUrl;
+      audioPlayer.load();
+    }
+    if (audioPreviewArea) audioPreviewArea.style.display = "block";
+  } else {
+    if (typeof removeAudioFile === 'function') removeAudioFile();
+  }
+
+  // 시각적 강조 피드백
+  if (inputTitle) {
+    inputTitle.style.transition = "background-color 0.3s ease";
+    inputTitle.style.backgroundColor = "#FFF9F0";
+    setTimeout(() => { inputTitle.style.backgroundColor = ""; }, 400);
+  }
+}
+
+// 📖 편집 대상 이전/다음 회차 이동 네비게이션
+function navigateEditWork(delta) {
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  if (works.length === 0) {
+    alert("편집할 수 있는 기존 작품이 아직 없습니다.");
+    return;
+  }
+
+  let curIdx = -1;
+  if (currentEditingEpisode) {
+    curIdx = works.findIndex(w => w.episode_no === currentEditingEpisode);
+  }
+
+  let nextIdx;
+  if (curIdx === -1) {
+    // 신규 작성 상태에서 이전(◀)을 누르면 마지막 작품으로, 다음(▶)을 누르면 첫 작품으로
+    nextIdx = (delta < 0) ? (works.length - 1) : 0;
+  } else {
+    nextIdx = curIdx + delta;
+    if (nextIdx < 0) {
+      alert("첫 번째 작품입니다.");
+      return;
+    }
+    if (nextIdx >= works.length) {
+      // 마지막 작품 다음이면 신규 작품 모드로 안내
+      if (confirm("마지막 작품입니다. 신규 작품 작성 모드로 전환하시겠습니까?")) {
+        startNewPoem(true);
+      }
+      return;
+    }
+  }
+
+  loadWorkIntoEditor(works[nextIdx].episode_no);
+}
+
+// 🗑️ 현재 편집 중인 시 원고에서 삭제 - 확인 전용 커스텀 모달 열기
+function openDeleteConfirmModal(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  if (!currentEditingEpisode) {
+    alert("현재 삭제할 기존 작품이 선택되어 있지 않습니다.\n(새 작품 집필 중에는 삭제할 수 없습니다.)");
+    return;
+  }
+
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  const titleElem = document.getElementById("deleteConfirmMsgTitle");
+  if (titleElem) {
+    titleElem.textContent = `[${currentEditingEpisode}] 「${title}」`;
+  }
+
+  const modal = document.getElementById("deleteConfirmModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+// 🗑️ 삭제 확인 모달 닫기
+function closeDeleteConfirmModal() {
+  const modal = document.getElementById("deleteConfirmModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+// 🗑️ 삭제 실행 (모달의 [정말로 삭제하기] 버튼 클릭 시)
+async function executeDeleteCurrentWork() {
+  if (!currentEditingEpisode) {
+    closeDeleteConfirmModal();
+    return;
+  }
+
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  const targetEp = currentEditingEpisode;
+  const btn = document.getElementById("btnExecuteDeleteWork");
+  const origHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳ 삭제 처리 중...</span>";
+  }
+
+  try {
+    const res = await fetch("/api/delete_work", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episode_no: targetEp })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      closeDeleteConfirmModal();
+      alert(`🗑️ [${targetEp}] 「${title}」 작품이 원고에서 성공적으로 삭제되었습니다.`);
+      startNewPoem(true);
+      await loadProjects();
+      await loadStatus();
+    } else {
+      alert("삭제 실패: " + (data.detail || data.error || "오류가 발생했습니다."));
+    }
+  } catch (err) {
+    alert("삭제 중 네트워크 오류 발생: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
+// 기존 deleteCurrentWork도 openDeleteConfirmModal을 호출하도록 유지
+function deleteCurrentWork(event) {
+  openDeleteConfirmModal(event);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindEvents();
+  initCustomTooltips();
+  initSidebar();
+  initTabs();
+  loadProjects();
+  loadStatus();
+  calculateSpecs();
+  initDropzones();
+  selectDraft("A");
+});
+
+// 0. 사이드바 및 모바일 반응형 제어
+function initSidebar() {
+  const toggleBtn = document.getElementById("btnSidebarToggle");
+  const closeBtn = document.getElementById("btnSidebarClose");
+  const backdrop = document.getElementById("sidebarBackdrop");
+  const sidebar = document.getElementById("appSidebar");
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      if (sidebar) sidebar.classList.add("open");
+      if (backdrop) backdrop.classList.add("active");
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeSidebarMobile);
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener("click", closeSidebarMobile);
+  }
+}
+
+function closeSidebarMobile() {
+  const sidebar = document.getElementById("appSidebar");
+  const backdrop = document.getElementById("sidebarBackdrop");
+  if (sidebar) sidebar.classList.remove("open");
+  if (backdrop) backdrop.classList.remove("active");
+}
+
+// 독자용 시화 갤러리 열기
+function openReaderGallery() {
+  const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
+  let targetUrl = "/projects/노을빛_기억/시화집_갤러리.html";
+  
+  if (proj && proj.name) {
+    const safeName = proj.name.replace(/\s+/g, '_');
+    targetUrl = `/projects/${safeName}/시화집_갤러리.html`;
+  }
+  window.open(targetUrl, '_blank');
+}
+
+// 1. 탭 전환 초기화
+function initTabs() {
+  const tabs = document.querySelectorAll(".nav-tab-btn");
+  const panels = document.querySelectorAll(".tab-content");
+
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      panels.forEach(p => p.classList.remove("active"));
+
+      tab.classList.add("active");
+      const targetId = tab.getAttribute("data-target");
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add("active");
+        if (targetId === "panelStudio") {
+          setTimeout(alignPoemEditorWithAudioDropzone, 50);
+        }
+      }
+
+      // 모바일 환경에서는 탭 선택 후 사이드바 자동 닫기
+      if (window.innerWidth <= 900) {
+        closeSidebarMobile();
+      }
+    });
+  });
+}
+
+// 2. 시집 프로젝트 목록 로드 및 드롭다운 연동
+async function loadProjects() {
+  try {
+    const res = await fetch("/api/projects");
+    const data = await res.json();
+    projectList = data.projects || [];
+    const active = data.active_project;
+
+    const select = document.getElementById("selectProjectDropdown");
+    select.innerHTML = "";
+
+    projectList.forEach(proj => {
+      const opt = document.createElement("option");
+      opt.value = proj.id;
+      // 캡처3 요청: 시집 제목만 표시 (뒤의 [시화집] (9/35편) 등 삭제)
+      opt.textContent = proj.name;
+      if (proj.is_active || (active && proj.id === active.id)) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    if (active) {
+      const exportProj = document.getElementById("exportProjectName");
+      if (exportProj) exportProj.textContent = active.name;
+    }
+  } catch (err) {
+    console.error("프로젝트 목록 로드 실패:", err);
+  }
+}
+
+// 3. 시집 전환 이벤트 처리
+async function onProjectSelectChange(projectId) {
+  if (!projectId) return;
+
+  try {
+    const res = await fetch("/api/projects/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      currentWorkIndex = 0;
+      await loadProjects();
+      await loadStatus();
+      await loadImagesInspection();
+    }
+  } catch (err) {
+    alert("시집 전환 중 오류가 발생했습니다: " + err);
+  }
+}
+
+// 도서 형태 라디오 선택 UI 인터랙션
+function onBookTypeOptionChange(input, modalType) {
+  const isNew = modalType === 'new';
+  const prefix = isNew ? 'optNewType' : 'optEditType';
+  const optIllustrated = document.getElementById(`${prefix}Illustrated`);
+  const optStandard = document.getElementById(`${prefix}Standard`);
+
+  if (input.value === 'illustrated') {
+    if (optIllustrated) optIllustrated.classList.add('selected');
+    if (optStandard) optStandard.classList.remove('selected');
+  } else {
+    if (optStandard) optStandard.classList.add('selected');
+    if (optIllustrated) optIllustrated.classList.remove('selected');
+  }
+}
+
+// 저자 구성 (시집 성격: 개인 vs 공동/가족) 라디오 선택 UI 인터랙션
+function onAuthorTypeOptionChange(input, modalType) {
+  const isNew = modalType === 'new';
+  const prefix = isNew ? 'optNewAuthor' : 'optEditAuthor';
+  const optSingle = document.getElementById(`${prefix}Single`);
+  const optCollab = document.getElementById(`${prefix}Collab`);
+  const lblAuthor = document.getElementById(isNew ? 'lblNewProjAuthor' : 'lblEditProjAuthor');
+  const inputAuthor = document.getElementById(isNew ? 'inputNewProjAuthor' : 'inputEditProjAuthor');
+
+  if (input.value === 'single') {
+    if (optSingle) optSingle.classList.add('selected');
+    if (optCollab) optCollab.classList.remove('selected');
+    if (lblAuthor) lblAuthor.textContent = "시인 / 지은이";
+    if (inputAuthor) inputAuthor.placeholder = "예: 홍길동 시인";
+  } else {
+    if (optCollab) optCollab.classList.add('selected');
+    if (optSingle) optSingle.classList.remove('selected');
+    if (lblAuthor) lblAuthor.textContent = "대표 엮은이 / 모임 명칭 (가족·공동)";
+    if (inputAuthor) inputAuthor.placeholder = "예: 온가족 엮음, 홍길동 엮음, 32회 문우회";
+  }
+}
+
+// 4. 새 시집 생성 모달 제어
+function openNewProjectModal() {
+  const modal = document.getElementById("newProjectModal");
+  modal.style.display = "flex";
+  
+  // 기본값: 서정 시화집 선택
+  const radio = document.querySelector('input[name="newProjBookType"][value="illustrated"]');
+  if (radio) {
+    radio.checked = true;
+    onBookTypeOptionChange(radio, 'new');
+  }
+
+  // 기본값: 개인 시집 선택
+  const authRadio = document.querySelector('input[name="newProjAuthorType"][value="single"]');
+  if (authRadio) {
+    authRadio.checked = true;
+    onAuthorTypeOptionChange(authRadio, 'new');
+  }
+
+  document.getElementById("inputNewProjName").focus();
+}
+
+function closeNewProjectModal() {
+  const modal = document.getElementById("newProjectModal");
+  modal.style.display = "none";
+  document.getElementById("formNewProject").reset();
+}
+
+// 4-1. 시집 정보 수정 모달 제어
+async function openEditProjectModal() {
+  if (!currentStatus || !currentStatus.project) {
+    await loadStatus();
+  }
+  if (!currentStatus || !currentStatus.project) {
+    alert("시집 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+    return;
+  }
+  const proj = currentStatus.project;
+
+  const idElem = document.getElementById("inputEditProjId");
+  if (idElem) idElem.value = proj.id;
+  const nameElem = document.getElementById("inputEditProjName");
+  if (nameElem) nameElem.value = proj.name || "";
+  const subElem = document.getElementById("inputEditProjSubtitle");
+  if (subElem) subElem.value = proj.subtitle || "";
+  const authElem = document.getElementById("inputEditProjAuthor");
+  if (authElem) authElem.value = proj.author || "";
+  const targetElem = document.getElementById("inputEditProjTarget");
+  if (targetElem) targetElem.value = proj.target_count || 35;
+  const descElem = document.getElementById("inputEditProjDesc");
+  if (descElem) descElem.value = proj.description || "";
+
+  // 도서 형태 반영
+  const currentType = proj.book_type || "illustrated";
+  const radio = document.querySelector(`input[name="editProjBookType"][value="${currentType}"]`);
+  if (radio) {
+    radio.checked = true;
+    onBookTypeOptionChange(radio, 'edit');
+  }
+
+  // 시집 성격(저자 구성) 반영
+  const currentAuthorType = proj.author_type || "single";
+  const authRadio = document.querySelector(`input[name="editProjAuthorType"][value="${currentAuthorType}"]`);
+  if (authRadio) {
+    authRadio.checked = true;
+    onAuthorTypeOptionChange(authRadio, 'edit');
+  }
+
+  const delBtn = document.getElementById("btnDeleteCurrentProject");
+  if (delBtn) {
+    if (projectList && projectList.length <= 1) {
+      delBtn.style.display = "none";
+    } else {
+      delBtn.style.display = "inline-block";
+    }
+  }
+
+  const modal = document.getElementById("editProjectModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+  if (nameElem) nameElem.focus();
+}
+
+function closeEditProjectModal() {
+  const modal = document.getElementById("editProjectModal");
+  modal.style.display = "none";
+}
+
+function onModalOverlayClick(e) {
+  if (e.target && e.target.id === "newProjectModal") {
+    closeNewProjectModal();
+  }
+  if (e.target && e.target.id === "editProjectModal") {
+    closeEditProjectModal();
+  }
+}
+
+async function onCreateNewProject(event) {
+  event.preventDefault();
+
+  const name = document.getElementById("inputNewProjName").value.trim();
+  const subtitle = document.getElementById("inputNewProjSubtitle").value.trim();
+  const author = document.getElementById("inputNewProjAuthor").value.trim();
+  const target = parseInt(document.getElementById("inputNewProjTarget").value, 10) || 35;
+  const desc = document.getElementById("inputNewProjDesc").value.trim();
+  const bookTypeElem = document.querySelector('input[name="newProjBookType"]:checked');
+  const bookType = bookTypeElem ? bookTypeElem.value : "illustrated";
+  const authorTypeElem = document.querySelector('input[name="newProjAuthorType"]:checked');
+  const authorType = authorTypeElem ? authorTypeElem.value : "single";
+
+  if (!name) {
+    alert("시집 제목을 입력해주세요.");
+    return;
+  }
+
+  const btn = document.getElementById("btnSubmitNewProject");
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = "<span>⏳ 새로운 시집을 준비하는 중...</span>";
+
+  try {
+    const res = await fetch("/api/projects/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name,
+        subtitle: subtitle,
+        author: author,
+        target_count: target,
+        description: desc,
+        book_type: bookType,
+        author_type: authorType
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert(`🎉 새로운 시집 「${name}」 프로젝트가 시작되었습니다!`);
+      closeNewProjectModal();
+      currentWorkIndex = 0;
+      await loadProjects();
+      await loadStatus();
+      await loadImagesInspection();
+    } else {
+      alert("시집 생성 실패: " + (data.detail || "오류가 발생했습니다."));
+    }
+  } catch (err) {
+    alert("시집 생성 중 오류 발생: " + err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+async function onUpdateProject(event) {
+  event.preventDefault();
+  const pid = document.getElementById("inputEditProjId").value;
+  const name = document.getElementById("inputEditProjName").value.trim();
+  const subtitle = document.getElementById("inputEditProjSubtitle").value.trim();
+  const author = document.getElementById("inputEditProjAuthor").value.trim();
+  const target = parseInt(document.getElementById("inputEditProjTarget").value, 10) || 35;
+  const desc = document.getElementById("inputEditProjDesc").value.trim();
+  const bookTypeElem = document.querySelector('input[name="editProjBookType"]:checked');
+  const bookType = bookTypeElem ? bookTypeElem.value : "illustrated";
+  const authorTypeElem = document.querySelector('input[name="editProjAuthorType"]:checked');
+  const authorType = authorTypeElem ? authorTypeElem.value : "single";
+
+  if (!name) {
+    alert("시집 제목을 입력해주세요.");
+    return;
+  }
+
+  const btn = document.getElementById("btnSubmitEditProject");
+  btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/projects/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: pid,
+        name: name,
+        subtitle: subtitle,
+        author: author,
+        target_count: target,
+        description: desc,
+        book_type: bookType,
+        author_type: authorType
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("✅ 시집 정보가 성공적으로 변경되었습니다.");
+      closeEditProjectModal();
+      await loadProjects();
+      await loadStatus();
+    } else {
+      alert("수정 실패: " + (data.detail || "오류가 발생했습니다."));
+    }
+  } catch (err) {
+    alert("수정 중 오류 발생: " + err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function onDeleteCurrentProject() {
+  const pid = document.getElementById("inputEditProjId").value;
+  const name = document.getElementById("inputEditProjName").value;
+
+  if (projectList && projectList.length <= 1) {
+    alert("서재에 최소 1권의 시집 프로젝트는 보관되어야 하므로 삭제할 수 없습니다.");
+    return;
+  }
+
+  if (!confirm(`⚠️ 정말로 시집 「${name}」 프로젝트를 삭제하시겠습니까?\n작성된 원고, CSV, 삽화 데이터가 모두 영구 삭제됩니다.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/projects/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: pid })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(`🗑️ 시집 「${name}」이 삭제되었습니다. 기본 시집으로 이동합니다.`);
+      closeEditProjectModal();
+      currentWorkIndex = 0;
+      await loadProjects();
+      await loadStatus();
+    } else {
+      alert("삭제 실패: " + (data.detail || "오류"));
+    }
+  } catch (err) {
+    alert("삭제 중 오류 발생: " + err);
+  }
+}
+
+
+// 5. 전체 상태 및 작품 목록 로드
+async function loadStatus() {
+  try {
+    const res = await fetch("/api/status");
+    currentStatus = await res.json();
+
+    const proj = currentStatus.project || {};
+
+    // 헤더 및 사이드바 배지 업데이트
+    document.getElementById("badgeCompletedCount").textContent = currentStatus.completed_count;
+    document.getElementById("badgeTargetCount").textContent = currentStatus.target_count;
+    document.getElementById("exportCompletedCount").textContent = currentStatus.completed_count;
+    
+    // 현재 편집 중인 회차가 있으면 유지, 없으면 다음 회차 표시
+    if (currentEditingEpisode) {
+      document.getElementById("inputEpisode").value = currentEditingEpisode;
+    } else {
+      document.getElementById("inputEpisode").value = currentStatus.next_episode;
+    }
+
+    // 사이드바 프로그레스 위젯 및 모바일 배지 업데이트
+    const progFill = document.getElementById("sidebarProgressFill");
+    if (progFill) progFill.style.width = `${currentStatus.progress_percent}%`;
+    const progPercent = document.getElementById("sidebarProgressPercent");
+    if (progPercent) progPercent.textContent = `${currentStatus.progress_percent}%`;
+
+    const mobComp = document.getElementById("mobileCompletedCount");
+    if (mobComp) mobComp.textContent = currentStatus.completed_count;
+    const mobTarget = document.getElementById("mobileTargetCount");
+    if (mobTarget) mobTarget.textContent = currentStatus.target_count;
+
+    // 캡처4 요청: 현재 시집 한 줄 인라인 배너 (시집 제목, 저자)
+    const bTitle = document.getElementById("bannerBookTitle");
+    if (bTitle) bTitle.textContent = proj.name || "시집 제목";
+    const bAuthor = document.getElementById("bannerBookAuthor");
+    if (bAuthor) bAuthor.textContent = proj.author ? `${proj.author} 지음` : "시인 지음";
+
+    // 프롬프트 가이드 라벨 업데이트
+    const labelPromptTitle = document.getElementById("labelPromptGuideTitle");
+    if (labelPromptTitle) {
+      labelPromptTitle.textContent = (proj.book_type === "standard")
+        ? "🎨 (선택) 삽화 프롬프트 - 일반 시집에서는 생략 가능"
+        : "🎨 삽화 생성 가이드 프롬프트 (300 DPI)";
+    }
+
+    // 가상 시화집 북 뷰어 드롭다운 채우기
+    const select = document.getElementById("selectWorkDropdown");
+    select.innerHTML = "";
+
+    if (currentStatus.works && currentStatus.works.length > 0) {
+      currentStatus.works.forEach((w, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        const chapLabel = w.chapter ? `[${w.chapter}] ` : "";
+        opt.textContent = `${chapLabel}[${w.episode_no}] ${w.title}`;
+        select.appendChild(opt);
+      });
+
+      if (currentWorkIndex >= currentStatus.works.length) {
+        currentWorkIndex = currentStatus.works.length - 1;
+      }
+      renderBookSpread(currentWorkIndex);
+    } else {
+      const opt = document.createElement("option");
+      opt.textContent = "작성된 작품이 없습니다";
+      select.appendChild(opt);
+      renderEmptyBookSpread();
+    }
+
+    // ZIP 백업 다운로드 링크 업데이트
+    const zipUrl = `/api/projects/export_zip?project_id=${proj.id || ''}`;
+    const btnBannerZip = document.getElementById("btnBannerExportZip");
+    if (btnBannerZip) btnBannerZip.href = zipUrl;
+    const btnCardZip = document.getElementById("btnExportZipCard");
+    if (btnCardZip) btnCardZip.href = zipUrl;
+
+    loadImagesInspection();
+    updateWorkToEditDropdown();
+  } catch (err) {
+    console.error("상태 로드 실패:", err);
+  }
+}
+
+
+// 6. 이벤트 바인딩
+function bindEvents() {
+  const btnSave = document.getElementById("btnSaveWork");
+  if (btnSave) {
+    btnSave.removeEventListener("click", onSaveWork);
+    btnSave.addEventListener("click", onSaveWork);
+  }
+  const btnGemini = document.getElementById("btnOpenGeminiKeyModal");
+  if (btnGemini) {
+    btnGemini.onclick = openGeminiKeyModal;
+  }
+}
+
+let isGeneratingDrafts = false; // 중복 클릭 및 동시 실행 방지 플래그
+
+// 7. 시안 생성 요청
+async function onGenerateDrafts(seed = null) {
+  if (isGeneratingDrafts) return; // 이미 진행 중이면 중복 실행 방지
+  isGeneratingDrafts = true;
+
+  // 신규 시안 생성이므로 새 회차 작성 모드로 리셋
+  currentEditingEpisode = null;
+  if (currentStatus && currentStatus.next_episode) {
+    document.getElementById("inputEpisode").value = currentStatus.next_episode;
+  }
+
+  const coreMemory = (document.getElementById("inputCoreMemory")?.value || "").trim();
+  const sensoryDetails = (document.getElementById("inputSensoryDetails")?.value || "").trim();
+  const spokenWords = (document.getElementById("inputSpokenWords")?.value || "").trim();
+  const deepAnswer = (document.getElementById("inputDeepAnswer")?.value || "").trim();
+
+  if (!coreMemory && !sensoryDetails && !spokenWords) {
+    alert("기억의 실마리를 위해 1, 2, 3번 중 어느 한 항목이라도 편하게 입력해주세요.");
+    document.getElementById("inputCoreMemory")?.focus();
+    isGeneratingDrafts = false;
+    return;
+  }
+
+  const btn = document.getElementById("btnGenerateDrafts");
+  const originalText = btn ? btn.innerHTML : "<span>✨ 2가지 시안 빚어내기</span>";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳ 두 가지 시안을 빚어내는 중...</span>";
+  }
+
+  try {
+    const res = await fetch("/api/generate_drafts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        core_memory: coreMemory,
+        sensory_details: sensoryDetails,
+        spoken_words: spokenWords,
+        deep_interview_answer: deepAnswer,
+        style_seed: seed || Math.floor(Math.random() * 100000)
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data || !data.draft_a || !data.draft_b) {
+      let errMsg = "";
+      if (data && data.detail) {
+        if (typeof data.detail === "string") {
+          errMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errMsg = data.detail.map(d => (d.msg ? `${d.loc ? d.loc.join('.') + ': ' : ''}${d.msg}` : JSON.stringify(d))).join(", ");
+        } else {
+          errMsg = JSON.stringify(data.detail);
+        }
+      } else {
+        errMsg = `서버 응답 오류 (상태코드: ${res.status})`;
+      }
+      throw new Error(errMsg);
+    }
+
+    currentDrafts = data;
+
+    // Fact Lock 카드 업데이트
+    const parts = [];
+    if (coreMemory) parts.push(`기억의 중심: ${coreMemory}`);
+    if (sensoryDetails) parts.push(`사물/행동: ${sensoryDetails}`);
+    if (spokenWords) parts.push(`실제 말: "${spokenWords}"`);
+    const lockSummary = parts.length > 0 ? parts.join(" | ") : "기억의 한 조각";
+    const factLockEl = document.getElementById("factLockText");
+    if (factLockEl) factLockEl.textContent = lockSummary;
+
+    // 모달 시안 데이터 바인딩
+    const mTitleA = document.getElementById("modalDraftTitleA");
+    const mBodyA = document.getElementById("modalDraftBodyA");
+    const mTitleB = document.getElementById("modalDraftTitleB");
+    const mBodyB = document.getElementById("modalDraftBodyB");
+    if (mTitleA && data.draft_a) mTitleA.textContent = data.draft_a.title;
+    if (mBodyA && data.draft_a) mBodyA.textContent = data.draft_a.body;
+    if (mTitleB && data.draft_b) mTitleB.textContent = data.draft_b.title;
+    if (mBodyB && data.draft_b) mBodyB.textContent = data.draft_b.body;
+
+    // 2가지 시안 팝업창 오픈 및 기본 A안 반영
+    try {
+      selectDraft("A");
+    } catch (e) {
+      console.warn("기본 시안 A 선택 중 경미한 이슈:", e);
+    }
+    openPoemDraftsModal();
+
+    // 삽화 프롬프트 안내
+    const promptDisplay = document.getElementById("imagePromptDisplay");
+    if (promptDisplay && data.image_prompt) {
+      if (promptDisplay.value !== undefined) {
+        promptDisplay.value = data.image_prompt;
+      } else {
+        promptDisplay.textContent = data.image_prompt;
+      }
+    }
+
+  } catch (err) {
+    console.error("시안 생성 오류:", err);
+    const msg = (err && err.message) ? err.message : String(err);
+    alert("시안 생성 중 안내: " + msg);
+  } finally {
+    isGeneratingDrafts = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+}
+
+// 7-0. 2가지 시안 모달 열기/닫기/선택
+function openPoemDraftsModal() {
+  if (currentDrafts) {
+    const mTitleA = document.getElementById("modalDraftTitleA");
+    const mBodyA = document.getElementById("modalDraftBodyA");
+    const mTitleB = document.getElementById("modalDraftTitleB");
+    const mBodyB = document.getElementById("modalDraftBodyB");
+    if (mTitleA && currentDrafts.draft_a) mTitleA.textContent = currentDrafts.draft_a.title;
+    if (mBodyA && currentDrafts.draft_a) mBodyA.textContent = currentDrafts.draft_a.body;
+    if (mTitleB && currentDrafts.draft_b) mTitleB.textContent = currentDrafts.draft_b.title;
+    if (mBodyB && currentDrafts.draft_b) mBodyB.textContent = currentDrafts.draft_b.body;
+  }
+  const modal = document.getElementById("poemDraftsModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closePoemDraftsModal() {
+  const modal = document.getElementById("poemDraftsModal");
+  if (modal) modal.style.display = "none";
+}
+
+function chooseDraftFromModal(type) {
+  selectDraft(type);
+  closePoemDraftsModal();
+
+  const inputPoem = document.getElementById("inputFinalPoem");
+  if (inputPoem) {
+    inputPoem.style.transition = "background-color 0.3s ease";
+    inputPoem.style.backgroundColor = "#FDF8F0";
+    setTimeout(() => { inputPoem.style.backgroundColor = ""; }, 400);
+    inputPoem.scrollIntoView({ behavior: "smooth", block: "center" });
+    inputPoem.focus();
+  }
+}
+
+// 7-1. 다른 느낌으로 다시 빚기 (다시 창작)
+async function reDraftDifferentStyle() {
+  const btnTop = document.getElementById("btnModalRedraftTop");
+  const btnBottom = document.getElementById("btnModalRedraftBottom");
+  const mBodyA = document.getElementById("modalDraftBodyA");
+  const mBodyB = document.getElementById("modalDraftBodyB");
+
+  const origTopHtml = btnTop ? btnTop.innerHTML : "<span>🔄 다시 짓기</span>";
+  const origBottomHtml = btnBottom ? btnBottom.innerHTML : "<span>🔄 다시 짓기</span>";
+
+  if (btnTop) {
+    btnTop.disabled = true;
+    btnTop.innerHTML = "<span>⏳ 다시 짓는 중...</span>";
+  }
+  if (btnBottom) {
+    btnBottom.disabled = true;
+    btnBottom.innerHTML = "<span>⏳ 다시 짓는 중...</span>";
+  }
+
+  if (mBodyA) mBodyA.style.opacity = "0.45";
+  if (mBodyB) mBodyB.style.opacity = "0.45";
+
+  try {
+    const newSeed = Math.floor(Math.random() * 900000) + 100000;
+    await onGenerateDrafts(newSeed);
+  } finally {
+    if (btnTop) {
+      btnTop.disabled = false;
+      btnTop.innerHTML = origTopHtml;
+    }
+    if (btnBottom) {
+      btnBottom.disabled = false;
+      btnBottom.innerHTML = origBottomHtml;
+    }
+    if (mBodyA) mBodyA.style.opacity = "1";
+    if (mBodyB) mBodyB.style.opacity = "1";
+  }
+}
+
+// 7-2. 원클릭 시 퇴고 다듬기 (더 담담하게, 3행 압축, 운율 정돈)
+async function refineCurrentPoem(mode) {
+  const inputPoem = document.getElementById("inputFinalPoem");
+  const currentBody = inputPoem.value.trim();
+  if (!currentBody) {
+    alert("먼저 시안을 선택하거나 시 본문을 입력해주세요.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/refine_poem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        poem_body: currentBody,
+        mode: mode
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.refined_body) {
+      inputPoem.value = data.refined_body;
+      const modeNames = {
+        "subdued": "🌿 담담하게 절제된 어조로 다듬었습니다.",
+        "shorten": "🍂 3행의 묵직한 압축시로 정제했습니다.",
+        "rhythm": "🎵 연 구성을 보존하고 낭송 호흡과 운율에 맞게 정돈했습니다."
+      };
+      // 가벼운 시각적 피드백
+      inputPoem.style.transition = "background-color 0.3s ease";
+      inputPoem.style.backgroundColor = "#FDF8F0";
+      setTimeout(() => { inputPoem.style.backgroundColor = ""; }, 400);
+    }
+  } catch (err) {
+    alert("시 다듬기 중 오류가 발생했습니다: " + err);
+  }
+}
+
+// 7-3. 외부 무료 AI(ChatGPT, Claude, 뤼튼 등)용 전문 서정시 프롬프트 복사
+async function copyExternalMegaPrompt() {
+  const coreMemory = document.getElementById("inputCoreMemory").value.trim();
+  const sensoryDetails = document.getElementById("inputSensoryDetails").value.trim();
+  const spokenWords = document.getElementById("inputSpokenWords").value.trim();
+
+  if (!coreMemory) {
+    alert("기억의 중심을 최소 1개 이상 입력해주세요.");
+    document.getElementById("inputCoreMemory").focus();
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/smart_prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        core_memory: coreMemory,
+        sensory_details: sensoryDetails,
+        spoken_words: spokenWords
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.prompt) {
+      await navigator.clipboard.writeText(data.prompt);
+      alert("📋 [무료 AI용 전문 서정시 프롬프트]가 클립보드에 복사되었습니다!\n\nChatGPT, Claude, 뤼튼 등의 무료 채팅창에 그대로 [Ctrl+V] 붙여넣기 하시면 최고의 서정시 2편을 얻으실 수 있습니다.");
+    }
+  } catch (err) {
+    alert("프롬프트 생성 중 오류가 발생했습니다: " + err);
+  }
+}
+
+// 8. 시안 선택 (A or B)
+function selectDraft(type) {
+  const cardModalA = document.getElementById("cardModalDraftA");
+  const cardModalB = document.getElementById("cardModalDraftB");
+  const inputTitle = document.getElementById("inputFinalTitle");
+  const inputPoem = document.getElementById("inputFinalPoem");
+
+  // currentDrafts 객체가 없는 경우 모달 화면에 표시된 내용으로부터 자동 구성
+  if (!currentDrafts) {
+    const titleA = document.getElementById("modalDraftTitleA") ? document.getElementById("modalDraftTitleA").textContent.trim() : "새벽 대청";
+    const bodyA = document.getElementById("modalDraftBodyA") ? document.getElementById("modalDraftBodyA").innerText.trim() : "";
+    const titleB = document.getElementById("modalDraftTitleB") ? document.getElementById("modalDraftTitleB").textContent.trim() : "어머니의 물레";
+    const bodyB = document.getElementById("modalDraftBodyB") ? document.getElementById("modalDraftBodyB").innerText.trim() : "";
+    currentDrafts = {
+      draft_a: { title: titleA, body: bodyA },
+      draft_b: { title: titleB, body: bodyB }
+    };
+  }
+
+  if (type === "A") {
+    if (cardModalA) {
+      cardModalA.style.borderColor = "#643E19";
+      cardModalA.style.background = "#FDFBF7";
+    }
+    if (cardModalB) {
+      cardModalB.style.borderColor = "#EBDCCB";
+      cardModalB.style.background = "#FFFDF9";
+    }
+    if (inputTitle) inputTitle.value = currentDrafts.draft_a.title || "";
+    if (inputPoem) {
+      inputPoem.value = currentDrafts.draft_a.body || "";
+      inputPoem.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  } else {
+    if (cardModalB) {
+      cardModalB.style.borderColor = "#8B4513";
+      cardModalB.style.background = "#FDFBF7";
+    }
+    if (cardModalA) {
+      cardModalA.style.borderColor = "#EBDCCB";
+      cardModalA.style.background = "#FFFDF9";
+    }
+    if (inputTitle) inputTitle.value = currentDrafts.draft_b.title || "";
+    if (inputPoem) {
+      inputPoem.value = currentDrafts.draft_b.body || "";
+      inputPoem.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
+  // 1그룹에서 시안을 선택했으므로 2그룹을 '신규 회차 작성 모드'로 확실히 전환
+  currentEditingEpisode = null;
+  const selBox = document.getElementById("selectWorkToEdit");
+  if (selBox) selBox.value = "new";
+
+  const nextEp = (currentStatus && currentStatus.next_episode) ? currentStatus.next_episode : "신규 화";
+  const epInput = document.getElementById("inputEpisode");
+  if (epInput && currentStatus && currentStatus.next_episode) {
+    epInput.value = currentStatus.next_episode;
+  }
+
+  const epBadge = document.getElementById("labelCurrentEditingEpBadge");
+  if (epBadge) {
+    epBadge.textContent = `[${nextEp} 신규 집필 중]`;
+    epBadge.style.color = "#2E6B34";
+    epBadge.style.background = "#EFF8EE";
+    epBadge.style.borderColor = "#BCE3B9";
+  }
+  const btnDelete = document.getElementById("btnDeleteCurrentWork");
+  if (btnDelete) btnDelete.style.display = "none";
+}
+
+let currentArtStyle = "watercolor"; // "watercolor" | "ink_wash" | "pastel" | "oil_painting"
+let currentArtStyleDial = "literal"; // "literal" (정경 묘사형, 기본값) | "atmospheric" (여백 암시형)
+
+// 화풍별 명칭 및 기본 예시 프롬프트 맵
+const artStyleMeta = {
+  watercolor: {
+    name: "서정 수채화",
+    color: "#2C5282",
+    prompts: {
+      atmospheric: "Korean minimalist lyric watercolor painting, subtle atmospheric impression, soft slanted sunlight, delicate watery bleed, soft vignette fading into pure white paper, peaceful poetic negative space, 300 dpi",
+      literal: "Korean lyric watercolor illustration, detailed traditional scene, delicate wet-on-wet washes, warm nostalgic lighting, soft vignette fading into pure paper margin, 300 dpi"
+    }
+  },
+  ink_wash: {
+    name: "먹빛 수묵담채",
+    color: "#2D3748",
+    prompts: {
+      atmospheric: "Traditional Korean ink wash painting, deep atmospheric impression, subtle faint pigment wash, rough mulberry hanji paper texture, soft vignette fading into paper, 300 dpi",
+      literal: "Traditional Korean sumuk ink and wash painting, rich evocative scene, expressive ink brush lines, gentle earthy natural pigments, rustic hanji paper, soft vignette fading into paper, 300 dpi"
+    }
+  },
+  pastel: {
+    name: "파스텔 동화",
+    color: "#975A16",
+    prompts: {
+      atmospheric: "Whimsical nostalgic storybook illustration, soft dreamy pastel textures, tender poetic impression, cozy ambient light, soft vignette fading into pure paper margin, 300 dpi",
+      literal: "Heartwarming storybook illustration, rich textured colored pencil and soft chalk pastel, warm golden glow, sweet nostalgic childhood fairy tale style, soft vignette fading into paper, 300 dpi"
+    }
+  },
+  sketch: {
+    name: "만화/스케치",
+    color: "#4A5568",
+    prompts: {
+      atmospheric: "Atmospheric manga sketch art, delicate pencil and ink linework, minimalist warm watercolor wash, airy poetic space, soft vignette fading into pure paper margin, 300 dpi",
+      literal: "Delicate lyrical manga sketch illustration, detailed pen and ink drawing with gentle warm watercolor wash, cozy slice-of-life aesthetic, soft vignette fading into paper, 300 dpi"
+    }
+  },
+  oil_painting: {
+    name: "서정 유화",
+    color: "#744210",
+    prompts: {
+      atmospheric: "Impressionist lyric oil painting, subtle atmospheric impression, expressive palette knife strokes, poetic spacious composition, soft vignette fading into canvas edge, 300 dpi",
+      literal: "Rich lyrical oil painting, detailed textured scene, expressive impasto brushstrokes, glowing golden hour light, soft vignette fading into canvas edge, 300 dpi"
+    }
+  }
+};
+
+// 🎨 삽화 화풍 라디오 변경 이벤트 핸들러
+function onArtStyleRadioChange() {
+  const selected = document.querySelector('input[name="artStyleRadio"]:checked');
+  if (selected) {
+    currentArtStyle = selected.value;
+  }
+
+  const meta = artStyleMeta[currentArtStyle] || artStyleMeta.watercolor;
+  const labelSummary = document.getElementById("labelArtStyleSummary");
+  if (labelSummary) {
+    labelSummary.textContent = `[현재: ${meta.name}]`;
+    labelSummary.style.color = meta.color;
+  }
+
+  // 본문이 이미 작성되어 있다면 자동으로 새 화풍에 맞춰 프롬프트 즉시 재작성
+  const poemBody = document.getElementById("inputFinalPoem")?.value?.trim();
+  if (poemBody) {
+    onGenerateImagePrompt(false);
+  } else {
+    // 본문이 아직 없을 경우 대표 예시 프롬프트를 해당 화풍으로 업데이트
+    const display = document.getElementById("imagePromptDisplay");
+    if (display) {
+      const mode = currentArtStyleDial === "atmospheric" ? "atmospheric" : "literal";
+      display.value = meta.prompts[mode] || meta.prompts.literal;
+      // 시각적 피드백 효과
+      display.style.backgroundColor = "#FAF7F2";
+      setTimeout(() => {
+        display.style.backgroundColor = "#FFFFFF";
+      }, 350);
+    }
+  }
+}
+
+// 🎛️ 삽화 감성 다이얼 토글 (정경 묘사형 vs 여백 암시형)
+function setArtStyleDial(mode) {
+  currentArtStyleDial = mode;
+  const btnAtm = document.getElementById("btnDialAtmospheric");
+  const btnLit = document.getElementById("btnDialLiteral");
+  const labelSummary = document.getElementById("labelArtDialSummary");
+
+  if (btnAtm && btnLit) {
+    if (mode === "literal") {
+      btnLit.classList.add("active");
+      btnAtm.classList.remove("active");
+      if (labelSummary) {
+        labelSummary.textContent = "[현재: 정경 묘사형 (溫情)]";
+        labelSummary.style.color = "#2E5C38";
+      }
+    } else {
+      btnAtm.classList.add("active");
+      btnLit.classList.remove("active");
+      if (labelSummary) {
+        labelSummary.textContent = "[현재: 여백 암시형 (餘白)]";
+        labelSummary.style.color = "#8B4513";
+      }
+    }
+  }
+
+  // 본문이 이미 작성되어 있다면 자동으로 새 감성 다이얼에 맞춰 프롬프트 재작성
+  const poemBody = document.getElementById("inputFinalPoem")?.value?.trim();
+  if (poemBody) {
+    onGenerateImagePrompt(false);
+  } else {
+    const meta = artStyleMeta[currentArtStyle] || artStyleMeta.watercolor;
+    const display = document.getElementById("imagePromptDisplay");
+    if (display) {
+      const dialMode = mode === "atmospheric" ? "atmospheric" : "literal";
+      display.value = meta.prompts[dialMode] || meta.prompts.literal;
+    }
+  }
+}
+
+// 💡 삽화 연출 퀵 보정 칩 클릭 핸들러
+function addArtGuideChip(text) {
+  const guideInput = document.getElementById("inputArtCustomGuide");
+  if (!guideInput) return;
+  const current = guideInput.value.trim();
+  if (!current) {
+    guideInput.value = text;
+  } else if (!current.includes(text)) {
+    guideInput.value = `${current}, ${text}`;
+  }
+  guideInput.focus();
+}
+
+// 8. 다듬어진 시로 삽화 프롬프트 작성 (선택된 화풍, 감성 다이얼, 사용자 연출 지시 연동)
+async function onGenerateImagePrompt(alertIfEmpty = true) {
+  const title = document.getElementById("inputFinalTitle").value.trim();
+  const poemBody = document.getElementById("inputFinalPoem").value.trim();
+  const coreMemory = document.getElementById("inputCoreMemory").value.trim();
+  const sensoryDetails = document.getElementById("inputSensoryDetails").value.trim();
+  const customGuide = document.getElementById("inputArtCustomGuide")?.value?.trim() || "";
+
+  if (!poemBody) {
+    if (alertIfEmpty) {
+      alert("시 본문을 먼저 작성하거나 다듬어주세요.");
+      document.getElementById("inputFinalPoem").focus();
+    }
+    return;
+  }
+
+  const btn = document.getElementById("btnCreateImagePrompt");
+  const origText = btn ? btn.innerHTML : "";
+  const meta = artStyleMeta[currentArtStyle] || artStyleMeta.watercolor;
+  const dialLabel = currentArtStyleDial === "atmospheric" ? "여백 암시형" : "정경 묘사형";
+
+  if (btn) {
+    btn.disabled = true;
+    const guideTag = customGuide ? ` · 연출보정 반영` : "";
+    btn.innerHTML = `<span>⏳ [${meta.name} · ${dialLabel}${guideTag}] 삽화 프롬프트 빚는 중...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/generate_image_prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title || "무제",
+        poem_body: poemBody,
+        core_memory: coreMemory,
+        sensory_details: sensoryDetails,
+        style_mode: currentArtStyleDial,
+        art_style: currentArtStyle,
+        custom_guide: customGuide
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`서버 응답 오류 (${res.status}): ${errText}`);
+    }
+    const data = await res.json();
+    if (data.success && data.prompt) {
+      if (data.korean_instruction) {
+        latestKoreanInstruction = data.korean_instruction;
+      }
+      const display = document.getElementById("imagePromptDisplay");
+      if (display) {
+        display.value = data.prompt;
+        // 시각적 피드백 효과 (화풍별 맞춤 하이라이트)
+        const highlightColors = {
+          watercolor: "#EBF8FF",
+          ink_wash: "#EDF2F7",
+          pastel: "#FEFCBF",
+          sketch: "#F0F4F8",
+          oil_painting: "#FEEBC8"
+        };
+        display.style.backgroundColor = highlightColors[currentArtStyle] || "#F5F3FF";
+        display.style.borderColor = "var(--accent-primary)";
+        setTimeout(() => {
+          display.style.backgroundColor = "#FFFFFF";
+          display.style.borderColor = "#DFD8CB";
+        }, 600);
+      }
+    }
+  } catch (err) {
+    if (alertIfEmpty) alert("프롬프트 생성 중 오류가 발생했습니다: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+let latestKoreanInstruction = "";
+
+// 9. 프롬프트 복사
+function copyPrompt() {
+  const elem = document.getElementById("imagePromptDisplay");
+  if (!elem) return;
+  const text = (elem.value !== undefined && elem.value !== "") ? elem.value : elem.textContent;
+  if (!text) {
+    alert("복사할 프롬프트가 없습니다.");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("📋 영문 삽화 프롬프트가 클립보드에 복사되었습니다!", "success");
+  });
+}
+
+// 9-2. 흰색 종이 10% 여백 및 투명 수채화 규칙이 완비된 전문 한글 지시문 복사
+async function copyKoreanArtInstruction() {
+  if (latestKoreanInstruction) {
+    try {
+      await navigator.clipboard.writeText(latestKoreanInstruction);
+      showToast("📋 [흰색 종이 10% 여백 & 수채화 지시문]이 복사되었습니다!<br>ChatGPT나 외부 AI에 그대로 붙여넣으세요.", "success");
+      return;
+    } catch (e) {}
+  }
+
+  // 아직 지시문이 준비되지 않은 경우 즉시 생성 후 복사
+  await onGenerateImagePrompt(false);
+  if (latestKoreanInstruction) {
+    navigator.clipboard.writeText(latestKoreanInstruction).then(() => {
+      showToast("📋 [흰색 종이 10% 여백 & 수채화 지시문]이 복사되었습니다!<br>ChatGPT나 외부 AI에 그대로 붙여넣으세요.", "success");
+    });
+  } else {
+    showToast("⚠️ 먼저 좌측에서 시를 선택하거나 [시 본문으로 삽화 프롬프트 작성]을 눌러주세요.", "error");
+  }
+}
+
+// 10. 원고 최종 저장 (시 본문 우선 저장 또는 전체 최종 저장)
+async function onSaveWork() {
+  const inputTitleEl = document.getElementById("inputFinalTitle");
+  const inputPoemEl = document.getElementById("inputFinalPoem");
+  const title = inputTitleEl ? inputTitleEl.value.trim() : "";
+  const poem = inputPoemEl ? inputPoemEl.value.trim() : "";
+  const memory = document.getElementById("inputCoreMemory") ? document.getElementById("inputCoreMemory").value.trim() : "";
+  let ep = currentEditingEpisode || (document.getElementById("inputEpisode") ? document.getElementById("inputEpisode").value : "제01화");
+
+  if (!title) {
+    showToast("⚠️ 시 제목을 입력해주세요.", "error");
+    if (inputTitleEl) {
+      inputTitleEl.focus();
+      inputTitleEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+
+  if (!poem) {
+    showToast("⚠️ 시 본문을 입력해주세요.", "error");
+    if (inputPoemEl) {
+      inputPoemEl.focus();
+      inputPoemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+
+  // 1. 이미 등록/저장된 시인지 확인 및 수정 여부 확인창 제어
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  const existingByEp = works.find(w => w.episode_no === ep);
+  const existingByTitle = works.find(w => w.title.trim() === title);
+
+  let isUpdate = false;
+  let targetEp = ep;
+  let origWork = null;
+
+  if (currentEditingEpisode) {
+    // Case 1: 회차 선택 또는 이전 저장을 통해 현재 특정 회차를 편집 중인 경우
+    isUpdate = true;
+    targetEp = currentEditingEpisode;
+    origWork = works.find(w => w.episode_no === targetEp);
+
+    // 다른 회차에 같은 제목이 있는지 중복 체크
+    const dupOtherWork = works.find(w => w.title.trim() === title && w.episode_no !== targetEp);
+    if (dupOtherWork) {
+      showToast(`⚠️ 다른 회차([${dupOtherWork.episode_no}])에 이미 같은 제목(「${title}」)의 시가 존재합니다.`, "error");
+      return;
+    }
+
+    const origTitle = origWork ? origWork.title : "";
+    let confirmMsg = "";
+    if (origTitle && origTitle !== title) {
+      confirmMsg = `📝 [${targetEp}] 원고의 제목과 본문 수정을 반영하시겠습니까?\n\n- 기존 제목: 「${origTitle}」\n- 새 제목: 「${title}」\n\n[확인]을 누르시면 변경된 제목과 본문으로 [${targetEp}] 원고가 갱신됩니다.`;
+    } else {
+      confirmMsg = `📝 [${targetEp}] 「${title}」 원고를 수정한 내용으로 덮어쓰시겠습니까?\n\n- [확인]: 기존 [${targetEp}] 원고에 수정본으로 저장\n- [취소]: 저장 취소`;
+    }
+    if (!confirm(confirmMsg)) return;
+
+  } else if (existingByEp) {
+    // Case 2: 신규 작성 모드이지만 입력된 회차 번호가 이미 기존 원고에 존재하는 경우
+    isUpdate = true;
+    targetEp = existingByEp.episode_no;
+    origWork = existingByEp;
+    const ok = confirm(`📝 [${targetEp}] 원고가 이미 존재합니다.\n\n해당 회차의 원고를 현재 내용(「${title}」)으로 수정(덮어쓰기)하시겠습니까?\n\n- [확인]: [${targetEp}] 원고를 수정하여 덮어쓰기\n- [취소]: 저장 취소`);
+    if (!ok) return;
+
+  } else if (existingByTitle) {
+    // Case 3: 신규 작성 모드인데 동일한 제목의 시가 다른 회차에 이미 등록되어 있는 경우
+    showToast(`⚠️ 이미 [${existingByTitle.episode_no}]에 같은 제목(「${title}」)의 시가 등록되어 있습니다.`, "error");
+    return;
+
+  } else {
+    // Case 4: 완전히 새로운 시를 처음 저장하는 경우
+    isUpdate = false;
+    targetEp = ep;
+  }
+
+  const cleanTitle = title.replace(/[\s\\/*?:"<>|]/g, '');
+  
+  // 이미지 파일 결정: 기존 작품에 이미 삽화가 있다면 보존하고, 신규 제안이 있을 때만 갱신
+  let imageFile = "";
+  if (currentDrafts && currentDrafts.suggested_image_file) {
+    imageFile = currentDrafts.suggested_image_file;
+  } else if (origWork && origWork.image_file) {
+    imageFile = origWork.image_file;
+  } else {
+    imageFile = `images/${targetEp.replace(/[^0-9]/g, '')}_${cleanTitle}.jpg`;
+  }
+
+  // 음원 파일 결정: 기존 작품의 음원 유지
+  const audioFile = currentAudioFile || (origWork ? origWork.audio_file : "") || "";
+
+  const dialLabel = currentArtStyleDial === "atmospheric" ? "여백의 미" : "정경 묘사";
+  const artStyleLabels = {
+    watercolor: "한국 정통 서정 수채화",
+    ink_wash: "전통 먹빛 수묵담채화",
+    pastel: "포근한 파스텔 동화풍",
+    sketch: "정감 있는 만화·스케치풍",
+    oil_painting: "서정적 유화·유채화"
+  };
+  const artDirection = `${artStyleLabels[currentArtStyle] || "한국 정통 서정 수채화"} (${dialLabel}, 300 DPI)`;
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const lyricsText = lyricsInput ? lyricsInput.value.trim() : (origWork ? origWork.lyrics : "");
+  const inputAuthor = document.getElementById("inputFinalAuthor");
+  const authorText = inputAuthor ? inputAuthor.value.trim() : (origWork ? (origWork.author || "") : "");
+
+  const btn = document.getElementById("btnSaveWork");
+  const btnLeft = document.getElementById("btnSaveWorkLeft");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ 저장 중...</span>';
+  }
+  if (btnLeft) {
+    btnLeft.disabled = true;
+    btnLeft.innerHTML = '<span>⏳ 저장 중...</span>';
+  }
+
+  try {
+    const res = await fetch("/api/save_work", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: targetEp,
+        title: title,
+        status: "완성 (승인 완료)",
+        memory_anchor: memory,
+        image_file: imageFile,
+        art_direction: artDirection,
+        poem_body: poem,
+        author: authorText || "",
+        audio_file: audioFile,
+        lyrics: lyricsText || ""
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`서버 응답 오류 (HTTP ${res.status})`);
+    }
+
+    const data = await res.json();
+    
+    // 처음 저장 vs 수정본 재저장 안내 토스트
+    const successMsg = isUpdate 
+      ? `✅ [${targetEp}] 「${title}」 수정본이 성공적으로 원고에 저장되었습니다!`
+      : `🎉 [${targetEp}] 「${title}」 새 원고가 성공적으로 등록되었습니다!`;
+    showToast(successMsg, "success");
+
+    // 현재 작업 중인 회차를 기억하여, 이후 재저장 시 같은 화로 유지 (다음 화로 무단 복제 방지)
+    currentEditingEpisode = targetEp;
+    if (document.getElementById("inputEpisode")) {
+      document.getElementById("inputEpisode").value = targetEp;
+    }
+
+    await loadProjects();
+    await loadStatus();
+
+    // loadStatus() 갱신 후에도 현재 편집 회차 유지
+    if (currentEditingEpisode && document.getElementById("inputEpisode")) {
+      document.getElementById("inputEpisode").value = currentEditingEpisode;
+    }
+
+  } catch (err) {
+    console.error("저장 중 오류:", err);
+    showToast("❌ 저장 중 오류 발생: " + err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>💾 시 · 그림 · 노래 전체 최종 저장하기</span>';
+    }
+    if (btnLeft) {
+      btnLeft.disabled = false;
+      btnLeft.innerHTML = '<span>📝 시 본문 우선 저장하기</span>';
+    }
+  }
+}
+
+// 11. 시화집 조판 편집 (출판 조판실 렌더링 & 넘침 감지)
+let currentSpreadPart = 1; // 1: 전반부 (p.2-3), 2: 후반부 (p.4-5)
+let customFontDelta = 0;   // 폰트 크기 미세 조율
+let customLineDelta = 0;   // 줄간격 미세 조율
+
+// =========================================================
+// [조판 설정] 슬롯 매트릭스 지능형 N분할 & 레이아웃 헬퍼
+// =========================================================
+function splitPoemByChunks(rawLines, count) {
+  if (count <= 1 || rawLines.length <= 6) {
+    return [rawLines];
+  }
+  const total = rawLines.length;
+
+  if (count === 2) {
+    const mid = Math.floor(total / 2);
+    let splitIdx = mid;
+    for (let offset = 0; offset < Math.max(mid, total - mid); offset++) {
+      if (mid - offset > 4 && rawLines[mid - offset].trim() === "") {
+        splitIdx = mid - offset;
+        break;
+      }
+      if (mid + offset < total - 4 && rawLines[mid + offset].trim() === "") {
+        splitIdx = mid + offset;
+        break;
+      }
+    }
+    const c1 = rawLines.slice(0, splitIdx);
+    let c2 = rawLines.slice(splitIdx);
+    if (c2.length > 0 && c2[0].trim() === "") c2 = c2.slice(1);
+    return [c1, c2];
+  }
+
+  if (count === 3) {
+    const oneThird = Math.floor(total / 3);
+    const twoThird = Math.floor((total * 2) / 3);
+
+    let split1 = oneThird;
+    for (let offset = 0; offset < Math.max(oneThird, total - oneThird); offset++) {
+      if (oneThird - offset >= 3 && rawLines[oneThird - offset].trim() === "") {
+        split1 = oneThird - offset;
+        break;
+      }
+      if (oneThird + offset < twoThird && rawLines[oneThird + offset].trim() === "") {
+        split1 = oneThird + offset;
+        break;
+      }
+    }
+
+    let split2 = twoThird;
+    for (let offset = 0; offset < Math.max(total - twoThird, twoThird - split1); offset++) {
+      if (twoThird - offset > split1 + 3 && rawLines[twoThird - offset].trim() === "") {
+        split2 = twoThird - offset;
+        break;
+      }
+      if (twoThird + offset < total - 3 && rawLines[twoThird + offset].trim() === "") {
+        split2 = twoThird + offset;
+        break;
+      }
+    }
+
+    const c1 = rawLines.slice(0, split1);
+    let c2 = rawLines.slice(split1, split2);
+    let c3 = rawLines.slice(split2);
+    if (c2.length > 0 && c2[0].trim() === "") c2 = c2.slice(1);
+    if (c3.length > 0 && c3[0].trim() === "") c3 = c3.slice(1);
+    return [c1, c2, c3];
+  }
+
+  if (count === 4) {
+    const q1 = Math.floor(total / 4);
+    const q2 = Math.floor(total / 2);
+    const q3 = Math.floor((total * 3) / 4);
+
+    let s1 = q1, s2 = q2, s3 = q3;
+    for (let off = 0; off < 8; off++) {
+      if (q1 - off >= 2 && rawLines[q1 - off].trim() === "") { s1 = q1 - off; break; }
+      if (q1 + off < q2 && rawLines[q1 + off].trim() === "") { s1 = q1 + off; break; }
+    }
+    for (let off = 0; off < 8; off++) {
+      if (q2 - off > s1 + 2 && rawLines[q2 - off].trim() === "") { s2 = q2 - off; break; }
+      if (q2 + off < q3 && rawLines[q2 + off].trim() === "") { s2 = q2 + off; break; }
+    }
+    for (let off = 0; off < 8; off++) {
+      if (q3 - off > s2 + 2 && rawLines[q3 - off].trim() === "") { s3 = q3 - off; break; }
+      if (q3 + off < total - 2 && rawLines[q3 + off].trim() === "") { s3 = q3 + off; break; }
+    }
+
+    const c1 = rawLines.slice(0, s1);
+    let c2 = rawLines.slice(s1, s2);
+    let c3 = rawLines.slice(s2, s3);
+    let c4 = rawLines.slice(s3);
+    if (c2.length > 0 && c2[0].trim() === "") c2 = c2.slice(1);
+    if (c3.length > 0 && c3[0].trim() === "") c3 = c3.slice(1);
+    if (c4.length > 0 && c4[0].trim() === "") c4 = c4.slice(1);
+    return [c1, c2, c3, c4];
+  }
+
+  return [rawLines];
+}
+
+function getNormalizedLayoutConfig(work) {
+  if (work && work.layout_config && Array.isArray(work.layout_config.slots)) {
+    const cfg = JSON.parse(JSON.stringify(work.layout_config));
+    while (cfg.slots.length < 4) {
+      cfg.slots.push((cfg.slots.length % 2 === 0) ? "image" : "text");
+    }
+    if (!cfg.image_settings) cfg.image_settings = {};
+    if (!cfg.image_settings.page_1) {
+      cfg.image_settings.page_1 = { mode: "image", file: work?.image_file || "" };
+    }
+    return cfg;
+  }
+  const isMulti = (work && work.layout_mode === "multi_page");
+  const p2Mode = (work && work.part2_mode) || "motif_symbol";
+  if (!isMulti) {
+    return {
+      page_count: 2,
+      slots: ["image", "text", "image", "text"],
+      image_settings: {
+        page_1: { mode: "image", file: work?.image_file || "" }
+      }
+    };
+  } else {
+    if (p2Mode === "poem_text") {
+      return {
+        page_count: 4,
+        slots: ["image", "text", "text", "text"],
+        image_settings: {
+          page_1: { mode: "image", file: work?.image_file || "" }
+        }
+      };
+    } else {
+      return {
+        page_count: 4,
+        slots: ["image", "text", "image", "text"],
+        image_settings: {
+          page_1: { mode: "image", file: work?.image_file || "" },
+          page_3: { mode: p2Mode, file: work?.image_file_2 || "", motif_text: "여백 속에 머무는 시의 숨결" }
+        }
+      };
+    }
+  }
+}
+
+function formatPoemLinesHtml(lines) {
+  return lines.map(ln => {
+    const trimmed = ln.trim();
+    if (!trimmed) {
+      return '<div class="poem-line poem-line-empty" style="height: 1.1em;"></div>';
+    }
+    if (trimmed.startsWith(">>") || trimmed.startsWith("》》")) {
+      const actualText = trimmed.replace(/^[>》\s]+/, '');
+      return `<div class="poem-line" style="text-align: right; white-space: pre-wrap;">${escapeHtml(actualText)}</div>`;
+    }
+    return `<div class="poem-line" style="white-space: pre-wrap;">${escapeHtml(ln)}</div>`;
+  }).join("");
+}
+
+// =========================================================
+// 📖 실물 펼침면 렌더링 엔진 (슬롯 매트릭스 동적 지원)
+// =========================================================
+function renderBookSpread(index) {
+  if (!currentStatus || !currentStatus.works || currentStatus.works.length === 0) {
+    return;
+  }
+  if (index < 0 || index >= currentStatus.works.length) return;
+
+  currentWorkIndex = index;
+  const work = currentStatus.works[index];
+  const cfg = getNormalizedLayoutConfig(work);
+  const pageCount = cfg.page_count || 2;
+
+  document.getElementById("selectWorkDropdown").value = index;
+
+  // 조판 모드 버튼 상태 동기화
+  const btnOpenLayoutConfig = document.getElementById("btnOpenLayoutConfig");
+  if (btnOpenLayoutConfig) {
+    btnOpenLayoutConfig.innerHTML = `<span>⚙ 조판 설정 (${pageCount}P)</span>`;
+  }
+  const multiSpreadNav = document.getElementById("multiSpreadNav");
+  if (multiSpreadNav) {
+    multiSpreadNav.style.display = (pageCount === 4) ? "inline-flex" : "none";
+  }
+
+  const rawLines = (work.poem_body || "").split("\n");
+
+  // 1) 글(시 본문) 슬롯 매핑 & N분할 계산
+  const textSlotMap = {}; // slotIndex -> chunkIndex
+  let textSlotCount = 0;
+  for (let i = 0; i < pageCount; i++) {
+    if (cfg.slots[i] === "text") {
+      textSlotMap[i] = textSlotCount;
+      textSlotCount++;
+    }
+  }
+
+  const poemChunks = splitPoemByChunks(rawLines, textSlotCount);
+
+  // 2) 스마트 폰트 크기 및 행간 산출
+  let maxChunkLines = 0;
+  poemChunks.forEach(chk => { if (chk.length > maxChunkLines) maxChunkLines = chk.length; });
+  let baseFontSize = 1.0;
+  let baseLineHeight = 1.9;
+
+  if (pageCount === 2 && textSlotCount === 1) {
+    if (maxChunkLines > 25) { baseFontSize = 0.80; baseLineHeight = 1.45; }
+    else if (maxChunkLines > 18) { baseFontSize = 0.86; baseLineHeight = 1.60; }
+    else if (maxChunkLines > 13) { baseFontSize = 0.92; baseLineHeight = 1.75; }
+    else { baseFontSize = 1.0; baseLineHeight = 1.95; }
+  } else {
+    // 2면 이상에 걸쳐 조판될 때는 넉넉한 서정적 호흡 유지
+    baseFontSize = 0.96;
+    baseLineHeight = 1.85;
+  }
+
+  const finalFontSize = Math.max(0.68, Math.min(1.3, baseFontSize + (customFontDelta * 0.04)));
+  const finalLineHeight = Math.max(1.2, Math.min(2.4, baseLineHeight + (customLineDelta * 0.08)));
+
+  // 3) 현재 펼침면에 대응하는 좌/우 슬롯 인덱스 계산
+  const leftSlotIdx = (currentSpreadPart === 1) ? 0 : 2;
+  const rightSlotIdx = (currentSpreadPart === 1) ? 1 : 3;
+
+  const leftType = cfg.slots[leftSlotIdx] || "image";
+  const rightType = cfg.slots[rightSlotIdx] || "text";
+
+  // 4) 좌측 페이지 렌더링
+  const imgElem = document.getElementById("viewerImage");
+  const placeholder = document.getElementById("viewerImagePlaceholder");
+  const part2Holder = document.getElementById("viewerPart2LeftHolder");
+  const imgElem2 = document.getElementById("viewerImage2");
+  const symbolArea = document.getElementById("viewerPart2SymbolArea");
+  const blankArea = document.getElementById("viewerPart2BlankArea");
+  const poemArea = document.getElementById("viewerPart2PoemArea");
+  const poemBodyPart2 = document.getElementById("viewerPart2PoemBody");
+
+  if (leftType === "text") {
+    // 좌측면에 시 본문 렌더링
+    imgElem.style.display = "none";
+    placeholder.style.display = "none";
+    if (part2Holder) {
+      part2Holder.style.display = "flex";
+      if (imgElem2) imgElem2.style.display = "none";
+      if (symbolArea) symbolArea.style.display = "none";
+      if (blankArea) blankArea.style.display = "none";
+      if (poemArea) {
+        poemArea.style.display = "flex";
+        const chunkIdx = textSlotMap[leftSlotIdx];
+        const lines = poemChunks[chunkIdx] || [];
+        if (poemBodyPart2) {
+          poemBodyPart2.innerHTML = formatPoemLinesHtml(lines);
+          poemBodyPart2.style.fontSize = `${finalFontSize.toFixed(2)}rem`;
+          poemBodyPart2.style.lineHeight = `${finalLineHeight.toFixed(2)}`;
+        }
+        // 상단 가이드
+        const guideTop = poemArea.querySelector(".part2-poem-guide");
+        if (guideTop) {
+          guideTop.textContent = (chunkIdx > 0) ? `(${leftSlotIdx}면에 이어짐 ➔ ${leftSlotIdx + 1}면 본문)` : `(${leftSlotIdx + 1}면 본문)`;
+        }
+      }
+    }
+  } else {
+    // 좌측면에 그림/시각 요소 렌더링
+    const imgSetting = (cfg.image_settings && cfg.image_settings[`page_${leftSlotIdx + 1}`]) || {};
+    const imgMode = imgSetting.mode || (leftSlotIdx === 0 ? "image" : (work.part2_mode || "motif_symbol"));
+    const imgFile = imgSetting.file || (leftSlotIdx === 0 ? work.image_file : work.image_file_2);
+
+    if (currentSpreadPart === 1 && leftSlotIdx === 0) {
+      if (part2Holder) part2Holder.style.display = "none";
+      if (imgMode === "image" && imgFile) {
+        const cleanImgPath = "/" + imgFile.replace(/^(\.\/|\/)/, '');
+        imgElem.src = `${cleanImgPath}?t=${Date.now()}`;
+        imgElem.style.display = "block";
+        placeholder.style.display = "none";
+        imgElem.onerror = () => {
+          imgElem.style.display = "none";
+          placeholder.style.display = "flex";
+          placeholder.innerHTML = `<span style="font-size: 2.5rem;">🎨</span><span>삽화 이미지를 준비 중입니다.</span>`;
+        };
+      } else {
+        imgElem.style.display = "none";
+        placeholder.style.display = "flex";
+        placeholder.innerHTML = `<span style="font-size: 2.5rem;">🎨</span><span>${leftSlotIdx + 1}면 삽화 준비 중</span>`;
+      }
+    } else {
+      imgElem.style.display = "none";
+      placeholder.style.display = "none";
+      if (part2Holder) {
+        part2Holder.style.display = "flex";
+        if (poemArea) poemArea.style.display = "none";
+        if (imgMode === "image" && imgFile) {
+          if (symbolArea) symbolArea.style.display = "none";
+          if (blankArea) blankArea.style.display = "none";
+          if (imgElem2) {
+            const cleanImg2 = "/" + imgFile.replace(/^(\.\/|\/)/, '');
+            imgElem2.src = `${cleanImg2}?t=${Date.now()}`;
+            imgElem2.style.display = "block";
+          }
+        } else if (imgMode === "pure_blank") {
+          if (imgElem2) imgElem2.style.display = "none";
+          if (symbolArea) symbolArea.style.display = "none";
+          if (blankArea) blankArea.style.display = "flex";
+        } else {
+          // motif_symbol
+          if (imgElem2) imgElem2.style.display = "none";
+          if (blankArea) blankArea.style.display = "none";
+          if (symbolArea) symbolArea.style.display = "flex";
+          const motifTextElem = document.getElementById("viewerPart2MotifText");
+          if (motifTextElem) motifTextElem.textContent = imgSetting.motif_text || "여백 속에 머무는 시의 숨결";
+        }
+      }
+    }
+  }
+
+  // 5) 우측 페이지 렌더링
+  const rightPoemHolder = document.getElementById("viewerRightPoemHolder");
+  const rightVisualHolder = document.getElementById("viewerRightVisualHolder");
+  const headerArea = document.querySelector(".poem-header-area");
+  const epText = work.chapter ? `[${work.chapter}] ${work.episode_no}` : work.episode_no;
+  const epElem = document.getElementById("viewerEpisode");
+  const titleElem = document.getElementById("viewerTitle");
+  const bodyElem = document.getElementById("viewerBody");
+
+  if (rightType === "text") {
+    if (rightPoemHolder) rightPoemHolder.style.display = "flex";
+    if (rightVisualHolder) rightVisualHolder.style.display = "none";
+
+    const chunkIdx = textSlotMap[rightSlotIdx];
+    const lines = poemChunks[chunkIdx] || [];
+    const isFirstTextSlot = (chunkIdx === 0);
+    const isLastTextSlot = (chunkIdx === textSlotCount - 1);
+
+    if (headerArea) {
+      headerArea.style.display = "block";
+      headerArea.style.visibility = isFirstTextSlot ? "visible" : "hidden";
+    }
+
+    if (epElem) epElem.textContent = isFirstTextSlot ? epText : `${epText} (이어짐)`;
+    if (titleElem) titleElem.textContent = isFirstTextSlot ? work.title : `${work.title} Ⅱ`;
+
+    if (bodyElem) {
+      bodyElem.innerHTML = formatPoemLinesHtml(lines);
+      if (!isLastTextSlot) {
+        bodyElem.innerHTML += `<div style="margin-top: 14px; text-align: right; font-size: 0.78rem; color: #9A7B66; font-style: italic;">(다음 ${rightSlotIdx + 2}면에 계속 ➔)</div>`;
+      }
+      bodyElem.style.fontSize = `${finalFontSize.toFixed(2)}rem`;
+      bodyElem.style.lineHeight = `${finalLineHeight.toFixed(2)}`;
+      bodyElem.style.overflow = "hidden";
+      bodyElem.style.scrollbarWidth = "none";
+    }
+
+    const footerNote = document.getElementById("viewerFooterNote");
+    if (footerNote) {
+      footerNote.textContent = isLastTextSlot ? `기억의 중심: ${work.memory_anchor}` : "";
+    }
+  } else {
+    // 우측면에 그림/시각 요소 렌더링
+    if (rightPoemHolder) rightPoemHolder.style.display = "none";
+    if (rightVisualHolder) {
+      rightVisualHolder.style.display = "flex";
+      const imgSetting = (cfg.image_settings && cfg.image_settings[`page_${rightSlotIdx + 1}`]) || {};
+      const imgMode = imgSetting.mode || "image";
+      const imgFile = imgSetting.file || work.image_file;
+      const rImg = document.getElementById("viewerRightImage");
+      const rSymbol = document.getElementById("viewerRightSymbolArea");
+      const rBlank = document.getElementById("viewerRightBlankArea");
+
+      if (imgMode === "image" && imgFile) {
+        if (rSymbol) rSymbol.style.display = "none";
+        if (rBlank) rBlank.style.display = "none";
+        if (rImg) {
+          const cleanImg = "/" + imgFile.replace(/^(\.\/|\/)/, '');
+          rImg.src = `${cleanImg}?t=${Date.now()}`;
+          rImg.style.display = "block";
+        }
+      } else if (imgMode === "pure_blank") {
+        if (rImg) rImg.style.display = "none";
+        if (rSymbol) rSymbol.style.display = "none";
+        if (rBlank) rBlank.style.display = "flex";
+      } else {
+        if (rImg) rImg.style.display = "none";
+        if (rBlank) rBlank.style.display = "none";
+        if (rSymbol) rSymbol.style.display = "flex";
+      }
+    }
+  }
+
+  // 이전/다음 버튼 활성/비활성 제어
+  document.getElementById("btnPrevWork").disabled = (index <= 0);
+  document.getElementById("btnNextWork").disabled = (index >= currentStatus.works.length - 1);
+
+  // 실시간 종이 인쇄 영역 넘침(Overflow) 검사
+  setTimeout(checkPageOverflow, 60);
+}
+
+// 실시간 본문 넘침 검사 및 상태 배지 갱신 (몇 줄 넘쳤는지 정밀 계산하여 상단 배지 & 하단 안전선에 동시 표시)
+function checkPageOverflow() {
+  const bodyElem = document.getElementById("viewerBody");
+  const container = document.getElementById("poemBodyContainer");
+  const badge = document.getElementById("layoutStatusBadge");
+  const statusText = document.getElementById("layoutStatusText");
+  const safetyLine = document.getElementById("printSafetyLine");
+
+  if (!bodyElem || !container || !badge || !statusText) return;
+
+  const maxSafeY = container.clientHeight - 28;
+  const isOverflow = bodyElem.scrollHeight > maxSafeY;
+
+  if (isOverflow) {
+    // 1) 안전선 아래로 넘친 행(줄) 수 정밀 카운트
+    const lineDivs = bodyElem.querySelectorAll(".poem-line");
+    let overflowLines = 0;
+    lineDivs.forEach(div => {
+      if (div.offsetTop + (div.offsetHeight * 0.4) > maxSafeY) {
+        overflowLines++;
+      }
+    });
+
+    // 폴백 계산 (div 높이 미측정 시 스크롤 높이 기반 계산)
+    if (overflowLines === 0) {
+      const overflowPx = bodyElem.scrollHeight - maxSafeY;
+      const computedLineH = parseFloat(window.getComputedStyle(bodyElem).lineHeight) || 22;
+      overflowLines = Math.max(1, Math.ceil(overflowPx / computedLineH));
+    }
+
+    badge.className = "layout-badge badge-overflow";
+    statusText.textContent = `⚠️ 본문 ${overflowLines}줄 넘침 (조판 조율 필요)`;
+    bodyElem.classList.add("is-overflowing");
+    if (safetyLine) {
+      safetyLine.classList.add("line-warning");
+      safetyLine.innerHTML = `<span>⚠️ 인쇄 안전선 (아래로 ${overflowLines}줄 초과 — 조판 조율 필요)</span>`;
+      safetyLine.title = `현재 페이지 아래로 약 ${overflowLines}줄이 넘쳐 있습니다. [1페이지 쏙 맞춤] 또는 [A-], [2페이지 연속 조판 (4P)]으로 조율해주세요.`;
+    }
+  } else {
+    badge.className = "layout-badge badge-ok";
+    const mode = (currentStatus?.works?.[currentWorkIndex]?.layout_mode) || "compact";
+    statusText.textContent = (mode === "multi_page") ? "✅ 2페이지 분절 안착" : "✅ 1페이지 안착 (조판 완벽)";
+    bodyElem.classList.remove("is-overflowing");
+    if (safetyLine) {
+      safetyLine.classList.remove("line-warning");
+      safetyLine.innerHTML = `<span>--- 인쇄 안전선 (Safe Printable Area) ---</span>`;
+      safetyLine.title = "실제 종이 인쇄 안전 한계선: 글자가 이 선 아래로 내려가지 않아 안전하게 인쇄됩니다.";
+    }
+  }
+}
+
+// 조판 모드 전환 ('compact' 1페이지 압축 vs 'multi_page' 2페이지 연속 조판)
+async function onToggleLayoutMode(newMode) {
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+  work.layout_mode = newMode;
+  currentSpreadPart = 1;
+
+  // 백엔드에 조판 설정 영구 저장
+  try {
+    await fetch("/api/save_work_layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: work.episode_no,
+        layout_mode: newMode,
+        part2_mode: work.part2_mode || "motif_symbol",
+        image_file_2: work.image_file_2 || ""
+      })
+    });
+  } catch (err) {
+    console.error("조판 모드 저장 실패:", err);
+  }
+
+  renderBookSpread(currentWorkIndex);
+
+  // 2페이지 연속 조판(4P)을 선택했을 때, 4페이지 좌측면 연출을 결정하는 모달 팝업 자동 오픈!
+  if (newMode === "multi_page") {
+    openLayoutConfigModal();
+  }
+}
+
+// =========================================================
+// ⚙ 통합 조판 설정 (2P/4P 매트릭스 슬롯 시스템) 모달 컨트롤러
+// =========================================================
+let currentLayoutModalState = null;
+
+function openLayoutConfigModal() {
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+  const modal = document.getElementById("modalLayoutConfig");
+  if (!modal) return;
+
+  const baseCfg = getNormalizedLayoutConfig(work);
+  // 깊은 복제
+  currentLayoutModalState = JSON.parse(JSON.stringify(baseCfg));
+  if (!currentLayoutModalState.image_settings) {
+    currentLayoutModalState.image_settings = {};
+  }
+  if (!currentLayoutModalState.image_settings.page_1) {
+    currentLayoutModalState.image_settings.page_1 = { mode: "image", file: work.image_file || "" };
+  }
+  if (!currentLayoutModalState.image_settings.page_3) {
+    currentLayoutModalState.image_settings.page_3 = { mode: work.part2_mode || "motif_symbol", file: work.image_file_2 || "", motif_text: "여백 속에 머무는 시의 숨결" };
+  }
+
+  // 1) 편집 형식 라디오 체크
+  const radiosCount = document.querySelectorAll('input[name="cfg_page_count"]');
+  radiosCount.forEach(r => {
+    r.checked = (parseInt(r.value) === currentLayoutModalState.page_count);
+  });
+
+  // 2) 매트릭스 라디오 체크
+  for (let p = 1; p <= 4; p++) {
+    const slotType = currentLayoutModalState.slots[p - 1] || ((p % 2 === 1) ? "image" : "text");
+    const r = document.querySelector(`input[name="slot_type_${p}"][value="${slotType}"]`);
+    if (r) r.checked = true;
+  }
+
+  updateLayoutMatrixVisibility();
+  updateLayoutConfigSummaryText();
+  renderImageSlotConfigsUI();
+
+  modal.style.display = "flex";
+}
+
+function closeLayoutConfigModal() {
+  const modal = document.getElementById("modalLayoutConfig");
+  if (modal) modal.style.display = "none";
+}
+
+function onLayoutPageCountChange(count) {
+  if (!currentLayoutModalState) return;
+  count = parseInt(count);
+  currentLayoutModalState.page_count = count;
+  updateLayoutMatrixVisibility();
+  updateLayoutConfigSummaryText();
+  renderImageSlotConfigsUI();
+}
+
+function onLayoutSlotTypeChange(pageNumber, type) {
+  if (!currentLayoutModalState) return;
+  currentLayoutModalState.slots[pageNumber - 1] = type;
+  updateLayoutConfigSummaryText();
+  renderImageSlotConfigsUI();
+}
+
+function updateLayoutMatrixVisibility() {
+  if (!currentLayoutModalState) return;
+  const is4P = (currentLayoutModalState.page_count === 4);
+  document.querySelectorAll(".col-4p-cell").forEach(el => {
+    el.style.display = is4P ? "" : "none";
+  });
+}
+
+function updateLayoutConfigSummaryText() {
+  if (!currentLayoutModalState) return;
+  const count = currentLayoutModalState.page_count;
+  const slots = currentLayoutModalState.slots.slice(0, count);
+  const textCount = slots.filter(s => s === "text").length;
+  const hintElem = document.getElementById("layoutConfigSummaryHint");
+  if (!hintElem) return;
+
+  const desc = slots.map((s, idx) => `[${idx + 1}면: ${s === 'text' ? '글' : '그림'}]`).join(" ➔ ");
+  let note = "";
+  if (count === 2) {
+    if (textCount === 1) note = "정통 1세트 시화집 (그림 1면 + 시 본문 1면)";
+    else if (textCount === 2) note = "삽화 없는 2면 양면 연속 시집 조판";
+    else note = "양면 시각 예술 조판";
+  } else {
+    if (textCount === 3) note = "★ 3페이지 연속 장시 조판 (1면 본삽화 + 2/3/4면 연속 본문)";
+    else if (textCount === 4) note = "★ 4페이지 대서사시 연속 조판";
+    else if (textCount === 2) note = "4페이지 연작 시화집 (시 2편/그림 2편 또는 여백미 조합)";
+    else note = "자유 맞춤형 4페이지 조판";
+  }
+  hintElem.textContent = `ℹ 현재 구성: ${desc} — ${note}`;
+}
+
+function renderImageSlotConfigsUI() {
+  if (!currentLayoutModalState) return;
+  const container = document.getElementById("containerImageSlotConfigs");
+  if (!container) return;
+
+  const count = currentLayoutModalState.page_count;
+  const imagePages = [];
+  for (let i = 0; i < count; i++) {
+    if (currentLayoutModalState.slots[i] === "image") {
+      imagePages.push(i + 1);
+    }
+  }
+
+  if (imagePages.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 12px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; font-size: 0.85rem; color: #64748B; text-align: center;">
+        ✍️ 모든 페이지가 '글'로 지정되었습니다. (그림 없이 시 본문만 조판됩니다)
+      </div>
+    `;
+    return;
+  }
+
+  const work = currentStatus.works[currentWorkIndex];
+  container.innerHTML = imagePages.map(pageNum => {
+    const pageKey = `page_${pageNum}`;
+    const setting = currentLayoutModalState.image_settings[pageKey] || {
+      mode: (pageNum === 1) ? "image" : (work.part2_mode || "motif_symbol"),
+      file: (pageNum === 1) ? (work.image_file || "") : (work.image_file_2 || ""),
+      motif_text: "여백 속에 머무는 시의 숨결"
+    };
+    currentLayoutModalState.image_settings[pageKey] = setting;
+
+    const isImage = (setting.mode === "image");
+    const isMotif = (setting.mode === "motif_symbol");
+    const isBlank = (setting.mode === "pure_blank");
+
+    return `
+      <div class="slot-image-card" style="background: #FFFDF9; border: 1px solid #E5D5C5; border-radius: 8px; padding: 12px 14px;">
+        <div style="font-weight: 700; font-size: 0.88rem; color: #5C3818; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+          <span>🎨 [${pageNum}면] 그림 상세 연출</span>
+          <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: normal;">(좌/우 펼침 위치: ${pageNum % 2 === 1 ? '좌측면' : '우측면'})</span>
+        </div>
+        <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.82rem;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="radio" name="img_mode_p${pageNum}" value="image" ${isImage ? 'checked' : ''} onchange="onSlotImageModeChange(${pageNum}, 'image')">
+            <span>🖼️ 삽화 이미지 사용</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="radio" name="img_mode_p${pageNum}" value="motif_symbol" ${isMotif ? 'checked' : ''} onchange="onSlotImageModeChange(${pageNum}, 'motif_symbol')">
+            <span>❦ 문학적 여백 심볼</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="radio" name="img_mode_p${pageNum}" value="pure_blank" ${isBlank ? 'checked' : ''} onchange="onSlotImageModeChange(${pageNum}, 'pure_blank')">
+            <span>🤍 완전한 순백 여백</span>
+          </label>
+        </div>
+        ${(pageNum >= 3) ? `
+          <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="btn-micro" onclick="executeGenPart2Image()" style="background: #2563EB; color: white; border: none; padding: 4px 10px; font-weight: 600;">
+              <span>⚡ ${pageNum}면 연작 삽화 무료 자동 생성</span>
+            </button>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">
+              ${setting.file ? `(현재 파일: ${setting.file.split('/').pop()})` : '(등록된 이미지 없음)'}
+            </span>
+          </div>
+        ` : `
+          <div style="margin-top: 6px; font-size: 0.78rem; color: var(--text-muted);">
+            ${setting.file ? `등록 파일: ${setting.file.split('/').pop()}` : '소장 그림 또는 AI로 생성된 기본 삽화가 표시됩니다.'}
+          </div>
+        `}
+      </div>
+    `;
+  }).join("");
+}
+
+function onSlotImageModeChange(pageNum, mode) {
+  if (!currentLayoutModalState) return;
+  const pageKey = `page_${pageNum}`;
+  if (!currentLayoutModalState.image_settings[pageKey]) {
+    currentLayoutModalState.image_settings[pageKey] = {};
+  }
+  currentLayoutModalState.image_settings[pageKey].mode = mode;
+}
+
+async function applyLayoutConfigSettings() {
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+  if (!currentLayoutModalState) return;
+
+  if (!Array.isArray(currentLayoutModalState.slots)) {
+    currentLayoutModalState.slots = ["image", "text", "image", "text"];
+  }
+  while (currentLayoutModalState.slots.length < 4) {
+    currentLayoutModalState.slots.push((currentLayoutModalState.slots.length % 2 === 0) ? "image" : "text");
+  }
+
+  try {
+    const res = await fetch("/api/save_work_layout_config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: work.episode_no,
+        layout_config: currentLayoutModalState
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      work.layout_config = currentLayoutModalState;
+      work.layout_mode = (currentLayoutModalState.page_count === 4) ? "multi_page" : "compact";
+      currentSpreadPart = 1;
+      showToast("✅ 조판 설정이 성공적으로 반영 및 저장되었습니다.");
+    }
+  } catch (err) {
+    console.error("조판 설정 저장 오류:", err);
+    showToast(`❌ 조판 설정 저장 실패: ${err.message}`, "error");
+  }
+
+  closeLayoutConfigModal();
+  renderBookSpread(currentWorkIndex);
+}
+
+// =========================================================
+// 4P 연속 조판 2부 좌측 페이지(4면) 연출 모달 컨트롤러 (호환 유지)
+// =========================================================
+let currentP4SelectedMode = "motif_symbol";
+
+function openMultiPageLeftModal() {
+  openLayoutConfigModal();
+}
+
+function closeMultiPageLeftModal() {
+  closeLayoutConfigModal();
+}
+
+function onP4OptionChange(mode) {
+  currentP4SelectedMode = mode;
+
+  // 모든 카드의 active 클래스 갱신
+  document.getElementById("cardOptImageGen")?.classList.toggle("active", mode === "image");
+  document.getElementById("cardOptUpload")?.classList.toggle("active", mode === "image_upload");
+  document.getElementById("cardOptMotif")?.classList.toggle("active", mode === "motif_symbol");
+  document.getElementById("cardOptBlank")?.classList.toggle("active", mode === "pure_blank");
+  document.getElementById("cardOptPoemText")?.classList.toggle("active", mode === "poem_text");
+
+  // 서브 액션 row 표시 제어
+  const rowGen = document.getElementById("p4ImageGenActionRow");
+  if (rowGen) rowGen.style.display = (mode === "image") ? "flex" : "none";
+
+  const rowUpload = document.getElementById("p4UploadActionRow");
+  if (rowUpload) rowUpload.style.display = (mode === "image_upload") ? "flex" : "none";
+
+  const rowMotif = document.getElementById("p4MotifActionRow");
+  if (rowMotif) rowMotif.style.display = (mode === "motif_symbol") ? "flex" : "none";
+}
+
+// 2부 연작 삽화 AI 자동 생성 실행 (시 후반부 정경 분석 연작 프롬프트 연동 & 미리보기 모달 팝업)
+async function executeGenPart2Image() {
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+  const btn = document.getElementById("btnGenPart2Image");
+  const statusElem = document.getElementById("p4ImageGenStatus");
+
+  if (btn) btn.disabled = true;
+  if (statusElem) statusElem.textContent = "⏳ 시 후반부 정경 분석 및 연작 수채화 생성 중... (약 3초)";
+
+  try {
+    const res = await fetch("/api/generate_part2_image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: work.episode_no,
+        prompt: "" // 백엔드에서 시 후반부(Part 2) 본문을 정밀 분석한 전용 연작 프롬프트로 자동 조립
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || data.error || "생성 실패");
+    }
+
+    if (statusElem) statusElem.textContent = `✓ 연작 삽화 생성 완료! 미리보기 창에서 확인하세요.`;
+
+    // 4P 설정 모달 닫기
+    closeMultiPageLeftModal();
+
+    // 2부 연작 전용 미리보기 모달 열기
+    openImagePreviewConfirmModal({
+      episode_no: work.episode_no,
+      title: work.title,
+      filename: data.filename,
+      image_url: data.image_url,
+      target_slot: "part2"
+    });
+
+  } catch (err) {
+    if (statusElem) statusElem.textContent = `❌ 생성 실패: ${err.message}`;
+    showToast(`❌ 2부 연작 삽화 생성 실패: ${err.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// 내 컴퓨터에서 2부 삽화 파일 업로드 선택 시
+async function onMultiPageFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+  const statusElem = document.getElementById("p4UploadStatus");
+  if (statusElem) statusElem.textContent = "⏳ 파일 업로드 및 300DPI 보정 중...";
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("episode_no", work.episode_no);
+  formData.append("target_slot", "part2");
+
+  try {
+    const res = await fetch("/api/upload_image", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      work.image_file_2 = `./images/${data.filename}`;
+      work.part2_mode = "image";
+      currentP4SelectedMode = "image";
+      if (statusElem) statusElem.textContent = `✅ 등록 완료! (${data.filename})`;
+      showToast(data.message || "2부 삽화가 등록되었습니다.");
+      renderBookSpread(currentWorkIndex);
+    } else {
+      if (statusElem) statusElem.textContent = `❌ 등록 실패: ${data.detail || '오류'}`;
+    }
+  } catch (err) {
+    if (statusElem) statusElem.textContent = `❌ 오류: ${err.message}`;
+  }
+}
+
+// 모달에서 [이 설정으로 조판 확정] 클릭 시 저장
+async function applyMultiPageLeftSettings() {
+  if (!currentStatus || !currentStatus.works || !currentStatus.works[currentWorkIndex]) return;
+  const work = currentStatus.works[currentWorkIndex];
+
+  let finalMode = currentP4SelectedMode;
+  if (finalMode === "image_upload") finalMode = "image";
+
+  work.part2_mode = finalMode;
+
+  try {
+    const res = await fetch("/api/save_work_layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: work.episode_no,
+        layout_mode: work.layout_mode || "multi_page",
+        part2_mode: finalMode,
+        image_file_2: work.image_file_2 || ""
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("4페이지 좌측면 연출 설정이 저장되었습니다.");
+    }
+  } catch (err) {
+    console.error("4P 설정 저장 오류:", err);
+  }
+
+  closeMultiPageLeftModal();
+  renderBookSpread(currentWorkIndex);
+}
+
+// 2페이지 연속 조판 시 1부(전반부) / 2부(후반부) 펼침면 전환
+function switchSpreadPart(part) {
+  currentSpreadPart = part;
+  const btn1 = document.getElementById("btnSpreadPart1");
+  const btn2 = document.getElementById("btnSpreadPart2");
+  if (btn1 && btn2) {
+    btn1.classList.toggle("active", part === 1);
+    btn2.classList.toggle("active", part === 2);
+  }
+  renderBookSpread(currentWorkIndex);
+}
+
+// 글자 크기 및 줄간격 미세 조율
+function adjustCustomTypography(type, delta) {
+  if (type === 'font') {
+    customFontDelta = Math.max(-4, Math.min(4, customFontDelta + delta));
+  } else if (type === 'line') {
+    customLineDelta = Math.max(-4, Math.min(4, customLineDelta + delta));
+  }
+  renderBookSpread(currentWorkIndex);
+}
+
+// 미세 조율 초기화
+function resetCustomTypography() {
+  customFontDelta = 0;
+  customLineDelta = 0;
+  renderBookSpread(currentWorkIndex);
+}
+
+
+function renderEmptyBookSpread() {
+  const isStandard = (currentStatus.project && currentStatus.project.book_type === "standard");
+  const spreadContainer = document.querySelector(".book-spread");
+  if (spreadContainer) {
+    if (isStandard) spreadContainer.classList.add("standard-mode");
+    else spreadContainer.classList.remove("standard-mode");
+  }
+
+  document.getElementById("viewerEpisode").textContent = "준비 중";
+  document.getElementById("viewerTitle").textContent = "첫 번째 작품을 창작해보세요";
+  document.getElementById("viewerBody").textContent = "좌측 [✍️ 시화 창작] 탭에서 기억을 들려주시면 아름다운 시가 이곳에 엮입니다.";
+  document.getElementById("viewerFooterNote").textContent = "새 시집을 위한 첫 기억을 기록해보세요.";
+  document.getElementById("viewerImage").style.display = "none";
+  const placeholder = document.getElementById("viewerImagePlaceholder");
+  placeholder.style.display = "flex";
+  if (isStandard) {
+    placeholder.innerHTML = `<span style="font-size: 2.2rem; margin-bottom: 6px;">📖</span><span style="font-weight: 600; color: #49637c;">일반 시집 (텍스트 조판)</span>`;
+  } else {
+    placeholder.innerHTML = `<span style="font-size: 2.5rem;">🎨</span><span>삽화 이미지를 준비 중입니다.</span>`;
+  }
+  document.getElementById("btnPrevWork").disabled = true;
+  document.getElementById("btnNextWork").disabled = true;
+}
+
+function navigateWork(delta) {
+  renderBookSpread(currentWorkIndex + delta);
+}
+
+function onSelectWorkChange(val) {
+  renderBookSpread(parseInt(val, 10));
+}
+
+// 12. 부크크 책등 계산기 실시간 연동
+async function calculateSpecs() {
+  const pages = document.getElementById("inputPages").value || 80;
+  try {
+    const res = await fetch(`/api/book_spec?pages=${pages}`);
+    const data = await res.json();
+
+    document.getElementById("specSpine").textContent = `${data.spine_thickness_mm} mm`;
+    document.getElementById("specCoverSize").textContent = `${data.cover_canvas_width_mm} × ${data.cover_canvas_height_mm} mm`;
+  } catch (err) {
+    console.error("규격 계산 실패:", err);
+  }
+}
+
+// 13. 이미지 규격 검사 리스트 로드
+async function loadImagesInspection() {
+  const container = document.getElementById("imagesInspectionContainer");
+  try {
+    const res = await fetch("/api/images");
+    const list = await res.json();
+
+    if (list.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">현재 시집에 등록된 이미지가 없습니다.</p>`;
+      return;
+    }
+
+    let html = `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+    list.forEach(item => {
+      const isOk = item.is_ready;
+      const statusColor = isOk ? "var(--accent-green)" : "#C84B31";
+      html += `
+        <div style="background: #FCFAF7; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+          <div>
+            <strong>${item.filename}</strong>
+            <span style="color: var(--text-muted); font-size: 0.82rem; margin-left: 8px;">${item.resolution} | ${item.dpi}</span>
+          </div>
+          <span style="color: ${statusColor}; font-weight: 600;">${item.status}</span>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<p style="color: red;">검사 실패: ${err}</p>`;
+  }
+}
+
+// =========================================================
+// 14. 2원화 감성 삽화 관리: 무료 원클릭 자동 생성 & 드래그 앤 드롭 업로드
+// =========================================================
+
+// 14-1. 드래그 앤 드롭 이벤트 초기화
+function initDropzones() {
+  // 1) 스튜디오 드롭존
+  const studioDropzone = document.getElementById("studioDropzone");
+  if (studioDropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      studioDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        studioDropzone.classList.add('drag-over');
+      }, false);
+    });
+
+    ['dragleave', 'dragend'].forEach(eventName => {
+      studioDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        studioDropzone.classList.remove('drag-over');
+      }, false);
+    });
+
+    studioDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      studioDropzone.classList.remove('drag-over');
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        uploadStudioImage(files[0]);
+      }
+    }, false);
+  }
+
+  // 2) 가상 북 뷰어 좌측 페이지 드롭존
+  const viewerDropzone = document.getElementById("viewerDropzone");
+  const viewerDropOverlay = document.getElementById("viewerDropOverlay");
+
+  if (viewerDropzone && viewerDropOverlay) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      viewerDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        viewerDropOverlay.style.display = 'flex';
+      }, false);
+    });
+
+    viewerDropOverlay.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      viewerDropOverlay.style.display = 'none';
+    }, false);
+
+    viewerDropOverlay.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      viewerDropOverlay.style.display = 'none';
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        uploadViewerImage(files[0]);
+      }
+    }, false);
+  }
+
+  // 3) 스튜디오 오디오 음원 드롭존
+  const audioDropzone = document.getElementById("studioAudioDropzone");
+  if (audioDropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      audioDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        audioDropzone.classList.add('drag-over');
+      }, false);
+    });
+
+    ['dragleave', 'dragend'].forEach(eventName => {
+      audioDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        audioDropzone.classList.remove('drag-over');
+      }, false);
+    });
+
+    audioDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      audioDropzone.classList.remove('drag-over');
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        uploadStudioAudio(files[0]);
+      }
+    }, false);
+  }
+}
+
+// 14-2. 스튜디오: 파일 선택창 트리거 & 체인지
+function triggerStudioFileInput() {
+  const input = document.getElementById("studioFileInput");
+  if (input) input.click();
+}
+
+function onStudioFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (file) {
+    uploadStudioImage(file);
+  }
+}
+
+// 14-3. 스튜디오: 방법 2 (나노바나나/Gemini 이미지 업로드 실행)
+async function uploadStudioImage(file) {
+  if (!file.type.startsWith("image/")) {
+    alert("이미지 파일(JPG, PNG, WebP 등)만 업로드할 수 있습니다.");
+    return;
+  }
+
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const statusBox = document.getElementById("studioUploadStatus");
+  statusBox.className = "upload-status-text loading";
+  statusBox.style.display = "block";
+  statusBox.innerHTML = `<span>⏳ [${ep}] 그림 파일 업로드 및 적용 중...</span>`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("episode_no", ep);
+
+  try {
+    const res = await fetch("/api/upload_image", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "업로드 실패");
+    }
+
+    statusBox.className = "upload-status-text success";
+    statusBox.innerHTML = `<span>✓ ${data.message}</span>`;
+
+    // 미리보기 바 갱신
+    const previewArea = document.getElementById("studioImagePreviewArea");
+    const previewImg = document.getElementById("studioPreviewImg");
+    const previewFilename = document.getElementById("studioPreviewFilename");
+    if (previewArea && previewImg && previewFilename) {
+      previewArea.style.display = "flex";
+      previewImg.src = data.image_url;
+      previewFilename.textContent = data.filename;
+    }
+
+    await loadStatus();
+    await loadImagesInspection();
+
+  } catch (err) {
+    statusBox.className = "upload-status-text error";
+    statusBox.innerHTML = `<span>⚠️ 오류: ${err.message}</span>`;
+  }
+}
+
+let currentCandidateData = null;
+
+let currentPreviewCandidate = null; // { episode_no, title, filename, image_url }
+
+// 14-4. 스튜디오: 방법 1 (무료 API 단일 삽화 생성 후 미리보기 모달 팝업)
+async function onStudioGenerateFreeImage() {
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const title = document.getElementById("inputFinalTitle").value || "";
+  const memory = document.getElementById("inputCoreMemory").value || "";
+  const promptElem = document.getElementById("imagePromptDisplay");
+  const prompt = promptElem ? (promptElem.value || promptElem.textContent || "").trim() : "";
+
+  const btn = document.getElementById("btnStudioGenerateFree");
+  const statusBox = document.getElementById("studioGenStatus");
+  const originalText = btn.innerHTML;
+  const meta = artStyleMeta[currentArtStyle] || artStyleMeta.watercolor;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ ${meta.name} 삽화 그리는 중... (약 3초)</span>`;
+  if (statusBox) {
+    statusBox.className = "gen-status-text loading";
+    statusBox.style.display = "block";
+    statusBox.innerHTML = `<span>🎨 무료 한도 절약을 위해 단 1장의 최적 ${meta.name} 삽화를 그리는 중입니다...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/generate_image_candidates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: ep,
+        title: title,
+        memory_anchor: memory,
+        prompt: prompt
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "삽화 생성 실패");
+    }
+
+    if (data.used_prompt && promptElem) {
+      promptElem.value = data.used_prompt;
+    }
+
+    if (statusBox) {
+      statusBox.className = "gen-status-text success";
+      statusBox.innerHTML = `<span>✓ 삽화가 생성되었습니다. 미리보기 창에서 확인하세요.</span>`;
+    }
+
+    // 미리보기 모달 팝업 열기 (사용자가 [삽입]을 선택할 때만 본문에 반영)
+    openImagePreviewConfirmModal({
+      episode_no: ep,
+      title: title,
+      filename: data.filename,
+      image_url: data.image_url
+    });
+
+  } catch (err) {
+    if (statusBox) {
+      statusBox.className = "gen-status-text error";
+      statusBox.innerHTML = `<span>⚠️ 생성 실패: ${err.message}</span>`;
+    }
+    showToast(`⚠️ 삽화 생성 실패: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+// 🎨 생성된 삽화 미리보기 모달 열기 (1부 본 삽화 vs 2부 연작 삽화 공통 지원)
+function openImagePreviewConfirmModal(item) {
+  currentPreviewCandidate = item;
+  const modal = document.getElementById("imagePreviewConfirmModal");
+  if (!modal) return;
+
+  const isPart2 = (item.target_slot === "part2");
+
+  const titleEl = document.getElementById("labelPreviewModalTitle");
+  if (titleEl) {
+    titleEl.textContent = isPart2
+      ? `[${item.episode_no}] 「${item.title || '새벽 대청'}」 2부 연작 삽화(4면) 미리보기`
+      : `[${item.episode_no}] 「${item.title || '새벽 대청'}」 1부 본 삽화(2면) 미리보기`;
+  }
+
+  const descEl = modal.querySelector(".modal-desc");
+  if (descEl) {
+    descEl.innerHTML = isPart2
+      ? `시의 후반부 정경을 바탕으로 그린 <strong>2부 연작 수채화</strong>입니다. 마음에 드시면 <strong>[2부 연작 삽화로 삽입]</strong>을 누르세요.`
+      : `새로 생성된 그림을 확인하세요. 마음에 드시면 <strong>[삽화로 삽입]</strong>을 누르고, 마음에 들지 않으면 <strong>[다시 생성]</strong> 또는 <strong>[취소]</strong>를 누르세요.`;
+  }
+
+  const imgEl = document.getElementById("imgPreviewConfirm");
+  if (imgEl) {
+    imgEl.src = item.image_url;
+  }
+
+  const overlay = document.getElementById("imgPreviewLoadingOverlay");
+  if (overlay) overlay.style.display = "none";
+
+  const btnInsert = document.getElementById("btnConfirmInsertImage");
+  if (btnInsert) {
+    btnInsert.disabled = false;
+    btnInsert.innerHTML = isPart2
+      ? `<span>✨ 2부 연작 삽화(4면)로 삽입</span>`
+      : `<span>✨ 본 삽화(2면)로 삽입</span>`;
+  }
+
+  modal.style.display = "flex";
+}
+
+// 모달 닫기 (취소: 기존 그림 유지)
+function closeImagePreviewConfirmModal() {
+  const modal = document.getElementById("imagePreviewConfirmModal");
+  if (modal) modal.style.display = "none";
+  currentPreviewCandidate = null;
+  clearArtReferenceImage();
+}
+
+// [✨ 삽화로 삽입] 클릭 시: 원고에 공식 반영 (1부 vs 2부 슬롯 자동 판별)
+async function onConfirmInsertImage() {
+  if (!currentPreviewCandidate) return;
+
+  const btn = document.getElementById("btnConfirmInsertImage");
+  const origText = btn ? btn.innerHTML : "";
+  const isPart2 = (currentPreviewCandidate.target_slot === "part2");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ ${isPart2 ? '2부 연작 삽화' : '본 삽화'} 반영 중...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/select_image_candidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: currentPreviewCandidate.episode_no,
+        candidate_filename: currentPreviewCandidate.filename,
+        candidate_name: isPart2 ? "2부 연작 시안" : "생성 시안",
+        target_slot: currentPreviewCandidate.target_slot || "part1"
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "삽화 반영 실패");
+    }
+
+    const slotLabel = isPart2 ? "2부 연작 삽화(4면)" : "1부 본 삽화(2면)";
+    showToast(`✅ [${currentPreviewCandidate.episode_no}] ${slotLabel}가 성공적으로 본문에 삽입되었습니다!`, "success");
+    closeImagePreviewConfirmModal();
+
+    // 상태 동기화 & 조판 화면 갱신
+    await loadStatus();
+    await loadImagesInspection();
+
+    if (currentStatus && currentStatus.works && typeof currentWorkIndex !== 'undefined') {
+      const curWork = currentStatus.works[currentWorkIndex];
+      if (curWork) {
+        if (isPart2) {
+          curWork.image_file_2 = `./images/${data.filename}`;
+          curWork.part2_mode = "image";
+        } else {
+          curWork.image_file = `./images/${data.filename}`;
+        }
+      }
+    }
+
+    // 스튜디오 미리보기 바 갱신 (1부인 경우)
+    if (!isPart2) {
+      const previewArea = document.getElementById("studioImagePreviewArea");
+      const previewImg = document.getElementById("studioPreviewImg");
+      const previewFilename = document.getElementById("studioPreviewFilename");
+      if (previewArea && previewImg && previewFilename) {
+        previewArea.style.display = "flex";
+        previewImg.src = data.image_url;
+        previewFilename.textContent = data.filename;
+      }
+    }
+
+    if (typeof renderBookSpread === 'function' && typeof currentWorkIndex !== 'undefined') {
+      renderBookSpread(currentWorkIndex);
+    }
+
+  } catch (err) {
+    alert("삽화 반영 중 오류: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+// ========================================================
+// 📷 [신규] 삽화 참조 사진 / 그림 첨부 및 비전 분석 처리
+// ========================================================
+let currentArtReferenceBase64 = null;
+
+function handleArtReferenceBlob(blob, filename = "참조사진.jpg") {
+  if (!blob || !blob.type.startsWith("image/")) {
+    alert("이미지 파일만 첨부할 수 있습니다.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentArtReferenceBase64 = e.target.result;
+    const box = document.getElementById("artReferencePreviewBox");
+    const thumb = document.getElementById("imgArtReferenceThumb");
+    const nameEl = document.getElementById("artReferenceFileName");
+    const optBox = document.getElementById("artReferenceOptionsBox");
+
+    if (thumb) thumb.src = currentArtReferenceBase64;
+    if (nameEl) nameEl.textContent = filename;
+    if (box) box.style.display = "flex";
+    if (optBox) optBox.style.display = "flex";
+
+    showToast("📷 참조 사진이 첨부되었습니다! [🔄 다시 생성]을 누르면 사진 구도를 반영합니다.", "info");
+  };
+  reader.readAsDataURL(blob);
+}
+
+function handleArtReferenceFileSelected(input) {
+  if (input && input.files && input.files[0]) {
+    const file = input.files[0];
+    handleArtReferenceBlob(file, file.name);
+  }
+}
+
+function clearArtReferenceImage() {
+  currentArtReferenceBase64 = null;
+  const fileInput = document.getElementById("inputArtReferenceFile");
+  if (fileInput) fileInput.value = "";
+  const box = document.getElementById("artReferencePreviewBox");
+  if (box) box.style.display = "none";
+  const optBox = document.getElementById("artReferenceOptionsBox");
+  if (optBox) optBox.style.display = "none";
+  const thumb = document.getElementById("imgArtReferenceThumb");
+  if (thumb) thumb.src = "";
+  const radioVision = document.getElementById("radioRefAiVision");
+  if (radioVision) radioVision.checked = true;
+}
+
+// 드래그 앤 드롭 지원
+document.addEventListener("DOMContentLoaded", function() {
+  const dropZone = document.getElementById("artReferenceDropZone");
+  if (!dropZone) return;
+
+  dropZone.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    dropZone.style.borderColor = "#643E19";
+    dropZone.style.background = "#F7EFE9";
+  });
+  dropZone.addEventListener("dragleave", function(e) {
+    e.preventDefault();
+    dropZone.style.borderColor = "#C8B9A6";
+    dropZone.style.background = "#FFFFFF";
+  });
+  dropZone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    dropZone.style.borderColor = "#C8B9A6";
+    dropZone.style.background = "#FFFFFF";
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      handleArtReferenceBlob(file, file.name);
+    }
+  });
+});
+
+// 클립보드 이미지 붙여넣기 (Ctrl+V) 지원: 미리보기 모달이 열려 있을 때 이미지 붙여넣기 시 즉시 참조 사진으로 장착!
+window.addEventListener("paste", function(e) {
+  const modal = document.getElementById("imagePreviewConfirmModal");
+  if (!modal || modal.style.display === "none") return;
+
+  if (e.clipboardData && e.clipboardData.items) {
+    for (let i = 0; i < e.clipboardData.items.length; i++) {
+      const item = e.clipboardData.items[i];
+      if (item.type.indexOf("image") !== -1) {
+        const blob = item.getAsFile();
+        if (blob) {
+          handleArtReferenceBlob(blob, `클립보드_캡처_${new Date().toLocaleTimeString().replace(/:/g, '')}.jpg`);
+          e.preventDefault();
+          break;
+        }
+      }
+    }
+  }
+});
+
+// [🔄 다시 생성] 클릭 시: 모달 내부에서 즉시 새로운 시드로 재생성 (참조 사진/직접 사용 옵션 완벽 지원)
+async function onRegeneratePreviewImage() {
+  if (!currentPreviewCandidate) return;
+
+  const ep = currentPreviewCandidate.episode_no;
+  const title = currentPreviewCandidate.title;
+  const isPart2 = (currentPreviewCandidate.target_slot === "part2");
+  const memory = document.getElementById("inputCoreMemory") ? document.getElementById("inputCoreMemory").value : "";
+  const promptElem = document.getElementById("imagePromptDisplay");
+  const prompt = promptElem ? (promptElem.value || promptElem.textContent || "").trim() : "";
+  const customGuide = document.getElementById("inputArtCustomGuide") ? document.getElementById("inputArtCustomGuide").value.trim() : "";
+
+  // [신규] 참조 사진 및 직접 사용 여부 판별
+  const radioDirect = document.getElementById("radioRefDirectPhoto");
+  const isDirectUsePhoto = Boolean(radioDirect && radioDirect.checked && currentArtReferenceBase64);
+
+  const overlay = document.getElementById("imgPreviewLoadingOverlay");
+  const btnRegen = document.getElementById("btnRegeneratePreviewImage");
+  const btnInsert = document.getElementById("btnConfirmInsertImage");
+
+  if (overlay) {
+    const spinnerText = overlay.querySelector("span");
+    if (spinnerText) {
+      spinnerText.textContent = isDirectUsePhoto
+        ? "소장 사진을 300 DPI 출판용 순백 여백으로 보정 중..."
+        : (currentArtReferenceBase64 ? "참조 사진의 구도를 비전 분석하여 수채화 그리는 중..." : "새로운 감성 삽화 그리는 중... (약 3초)");
+    }
+    overlay.style.display = "flex";
+  }
+  if (btnRegen) btnRegen.disabled = true;
+  if (btnInsert) btnInsert.disabled = true;
+
+  try {
+    const endpoint = isPart2 ? "/api/generate_part2_image" : "/api/generate_image_candidates";
+    const bodyPayload = isPart2
+      ? {
+          episode_no: ep,
+          prompt: "",
+          custom_guide: customGuide,
+          reference_image: currentArtReferenceBase64,
+          direct_use_photo: isDirectUsePhoto
+        }
+      : {
+          episode_no: ep,
+          title: title,
+          memory_anchor: memory,
+          prompt: prompt,
+          custom_guide: customGuide,
+          reference_image: currentArtReferenceBase64,
+          direct_use_photo: isDirectUsePhoto
+        };
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyPayload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "재생성 실패");
+    }
+
+    currentPreviewCandidate.filename = data.filename;
+    currentPreviewCandidate.image_url = data.image_url;
+
+    const imgEl = document.getElementById("imgPreviewConfirm");
+    if (imgEl) {
+      imgEl.src = data.image_url;
+    }
+
+    if (data.used_prompt && promptElem) {
+      promptElem.value = data.used_prompt;
+    }
+
+    let toastMsg = "🎨 새로운 삽화가 다시 생성되었습니다!";
+    if (isDirectUsePhoto) {
+      toastMsg = "📷 소장 사진이 300 DPI 순백 여백 규격으로 보정되어 시안에 등록되었습니다!";
+    } else if (currentArtReferenceBase64) {
+      toastMsg = "🎨 첨부하신 사진의 실제 구도와 피사체를 분석하여 새 수채화 삽화를 그렸습니다!";
+    } else if (customGuide) {
+      toastMsg = `🎨 [${customGuide}] 연출이 반영된 새 삽화가 다시 생성되었습니다!`;
+    }
+    showToast(toastMsg, "success");
+
+  } catch (err) {
+    alert("삽화 재생성 실패: " + err.message);
+  } finally {
+    if (overlay) overlay.style.display = "none";
+    if (btnRegen) btnRegen.disabled = false;
+    if (btnInsert) btnInsert.disabled = false;
+  }
+}
+
+// 🎨 삽화 2안 모달 열기
+function openImageCandidatesModal(data) {
+  currentCandidateData = data;
+  const modal = document.getElementById("imageCandidatesModal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("labelCandModalTitle");
+  if (titleEl) {
+    titleEl.textContent = `[${data.episode_no}] 삽화 시안 선택 (2가지 시안 중 마음에 드는 그림 선택)`;
+  }
+
+  const imgA = document.getElementById("candImgA");
+  const imgB = document.getElementById("candImgB");
+  if (imgA && data.candidate_a) imgA.src = data.candidate_a.image_url;
+  if (imgB && data.candidate_b) imgB.src = data.candidate_b.image_url;
+
+  // 선택 버튼 리셋
+  const btnA = document.getElementById("btnSelectCandA");
+  const btnB = document.getElementById("btnSelectCandB");
+  if (btnA) {
+    btnA.disabled = false;
+    btnA.innerHTML = "<span>✨ [1안] 이 그림으로 최종 반영하기</span>";
+  }
+  if (btnB) {
+    btnB.disabled = false;
+    btnB.innerHTML = "<span>✨ [2안] 이 그림으로 최종 반영하기</span>";
+  }
+
+  modal.style.display = "flex";
+}
+
+// 닫기
+function closeImageCandidatesModal() {
+  const modal = document.getElementById("imageCandidatesModal");
+  if (modal) modal.style.display = "none";
+}
+
+// 1안 또는 2안 선택 확정
+async function onSelectCandidate(candId) {
+  if (!currentCandidateData) return;
+  const cand = candId === 'A' ? currentCandidateData.candidate_a : currentCandidateData.candidate_b;
+  if (!cand) return;
+
+  const targetBtn = candId === 'A' 
+    ? document.getElementById("btnSelectCandA") 
+    : document.getElementById("btnSelectCandB");
+  const origBtnText = targetBtn ? targetBtn.innerHTML : "";
+
+  if (targetBtn) {
+    targetBtn.disabled = true;
+    targetBtn.innerHTML = `<span>⏳ [${candId === 'A' ? '1안' : '2안'}] 삽화 확정 반영 중...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/select_image_candidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: currentCandidateData.episode_no,
+        candidate_filename: cand.filename,
+        candidate_name: candId === 'A' ? "1안" : "2안"
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "선택 반영 실패");
+    }
+
+    showToast(`✅ [${candId === 'A' ? '1안' : '2안'}] 그림이 최종 삽화로 성공적으로 채택되었습니다!`, "success");
+
+    // 모달 닫기
+    closeImageCandidatesModal();
+
+    // 스튜디오 미리보기 바 갱신
+    const previewArea = document.getElementById("studioImagePreviewArea");
+    const previewImg = document.getElementById("studioPreviewImg");
+    const previewFilename = document.getElementById("studioPreviewFilename");
+    if (previewArea && previewImg && previewFilename) {
+      previewArea.style.display = "flex";
+      previewImg.src = data.image_url;
+      previewFilename.textContent = data.filename;
+    }
+
+    // 상태 동기화 & 뷰어 갱신
+    await loadStatus();
+    await loadImagesInspection();
+    if (typeof renderBookSpread === 'function' && typeof currentWorkIndex !== 'undefined') {
+      renderBookSpread(currentWorkIndex);
+    }
+
+  } catch (err) {
+    alert("시안 반영 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    if (targetBtn) {
+      targetBtn.disabled = false;
+      targetBtn.innerHTML = origBtnText;
+    }
+  }
+}
+
+// 모달 안에서 새 2안 다시 생성
+async function onRegenerateCandidates() {
+  closeImageCandidatesModal();
+  await onStudioGenerateFreeImage();
+}
+
+// 14-5. 뷰어: 파일 선택창 트리거 & 체인지
+function triggerViewerFileInput() {
+  const input = document.getElementById("viewerFileInput");
+  if (input) input.click();
+}
+
+function onViewerFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (file) {
+    uploadViewerImage(file);
+  }
+}
+
+// 14-6. 뷰어: 현재 보고 있는 페이지에 이미지 업로드 및 실시간 교체
+async function uploadViewerImage(file) {
+  if (!file.type.startsWith("image/")) {
+    alert("이미지 파일만 업로드할 수 있습니다.");
+    return;
+  }
+
+  if (!currentStatus || !currentStatus.works || currentStatus.works.length === 0) {
+    alert("작품이 존재하지 않습니다.");
+    return;
+  }
+
+  const work = currentStatus.works[currentWorkIndex];
+  if (!work) return;
+
+  const loadingOverlay = document.getElementById("viewerLoadingOverlay");
+  const loadingText = document.getElementById("viewerLoadingText");
+  if (loadingOverlay && loadingText) {
+    loadingText.textContent = `[${work.episode_no}] 그림 파일 업로드 및 교체 중...`;
+    loadingOverlay.style.display = "flex";
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("episode_no", work.episode_no);
+
+  try {
+    const res = await fetch("/api/upload_image", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "업로드 실패");
+    }
+
+    await loadStatus();
+    renderBookSpread(currentWorkIndex);
+
+  } catch (err) {
+    alert("이미지 등록 실패: " + err.message);
+  } finally {
+    if (loadingOverlay) loadingOverlay.style.display = "none";
+  }
+}
+
+// 14-7. 뷰어: 현재 보고 있는 페이지의 2가지 삽화 시안 동시 생성 & 모달 선택
+async function onViewerGenerateFreeImage() {
+  if (!currentStatus || !currentStatus.works || currentStatus.works.length === 0) {
+    alert("작품이 존재하지 않습니다.");
+    return;
+  }
+
+  const work = currentStatus.works[currentWorkIndex];
+  if (!work) return;
+
+  const loadingOverlay = document.getElementById("viewerLoadingOverlay");
+  const loadingText = document.getElementById("viewerLoadingText");
+  if (loadingOverlay && loadingText) {
+    loadingText.textContent = `[${work.episode_no}] 「${work.title}」 2가지 삽화 시안 빚어내는 중... (약 7~10초)`;
+    loadingOverlay.style.display = "flex";
+  }
+
+  try {
+    const res = await fetch("/api/generate_image_candidates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: work.episode_no,
+        title: work.title,
+        memory_anchor: work.memory_anchor || "",
+        prompt: ""
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "시안 생성 실패");
+    }
+
+    openImageCandidatesModal(data);
+
+  } catch (err) {
+    alert("삽화 시안 생성 실패: " + err.message);
+  } finally {
+    if (loadingOverlay) loadingOverlay.style.display = "none";
+  }
+}
+
+// =========================================================
+// 15. 완성 원고 통째 일괄 불러오기 (Bulk Import)
+// =========================================================
+
+let parsedBulkItems = [];
+
+function openBulkImportModal() {
+  const modal = document.getElementById("bulkImportModal");
+  if (modal) modal.style.display = "flex";
+  document.getElementById("bulkTextInput").focus();
+}
+
+function closeBulkImportModal() {
+  const modal = document.getElementById("bulkImportModal");
+  if (modal) modal.style.display = "none";
+  document.getElementById("formBulkImport").reset();
+  document.getElementById("bulkPreviewSection").style.display = "none";
+  document.getElementById("bulkPreviewList").innerHTML = "";
+  const submitBtn = document.getElementById("btnSubmitBulkImport");
+  submitBtn.disabled = true;
+  submitBtn.style.opacity = "0.5";
+  parsedBulkItems = [];
+}
+
+function triggerBulkFileInput() {
+  const input = document.getElementById("bulkFileInput");
+  if (input) input.click();
+}
+
+function onBulkFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    document.getElementById("bulkTextInput").value = text;
+    analyzeBulkText();
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function onBulkTextInputChange() {
+  const text = document.getElementById("bulkTextInput").value.trim();
+  const submitBtn = document.getElementById("btnSubmitBulkImport");
+  if (!text) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = "0.5";
+  }
+}
+
+async function analyzeBulkText() {
+  const text = document.getElementById("bulkTextInput").value.trim();
+  if (!text) {
+    alert("분석할 원고 텍스트를 입력하거나 텍스트 파일을 선택해주세요.");
+    document.getElementById("bulkTextInput").focus();
+    return;
+  }
+
+  const btn = document.getElementById("btnAnalyzeBulk");
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ 원고 분석 중...</span>`;
+
+  try {
+    const res = await fetch("/api/preview_bulk_manuscript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raw_text: text })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "원고 분석 실패");
+    }
+
+    parsedBulkItems = data.items || [];
+    renderBulkPreview(parsedBulkItems);
+
+    const submitBtn = document.getElementById("btnSubmitBulkImport");
+    if (parsedBulkItems.length > 0) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = "1";
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = "0.5";
+      alert("감지된 시가 없습니다. 빈 줄(2개 이상) 또는 번호(1., 2.)로 시를 구분해주세요.");
+    }
+
+  } catch (err) {
+    alert("원고 분석 오류: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+function renderBulkPreview(items) {
+  const section = document.getElementById("bulkPreviewSection");
+  const countBadge = document.getElementById("bulkPreviewCountBadge");
+  const list = document.getElementById("bulkPreviewList");
+
+  countBadge.textContent = `총 ${items.length}편 감지됨`;
+  list.innerHTML = "";
+
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "bulk-preview-item";
+    div.innerHTML = `
+      <span class="item-ep">${item.episode_no}</span>
+      <span class="item-title">${item.title}</span>
+      <span class="item-snippet">${item.memory_anchor || item.poem_body.substring(0, 30)}...</span>
+    `;
+    list.appendChild(div);
+  });
+
+  section.style.display = "block";
+}
+
+async function onSubmitBulkImport(event) {
+  event.preventDefault();
+  const text = document.getElementById("bulkTextInput").value.trim();
+  if (!text) {
+    alert("원고 내용이 없습니다.");
+    return;
+  }
+
+  const mode = document.querySelector('input[name="bulkImportMode"]:checked')?.value || "overwrite";
+  const autoPrompts = document.getElementById("chkAutoPrompts")?.checked ?? true;
+
+  const btn = document.getElementById("btnSubmitBulkImport");
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ 원고 일괄 저장 및 조판 중...</span>`;
+
+  try {
+    const res = await fetch("/api/import_bulk_manuscript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        raw_text: text,
+        mode: mode,
+        auto_prompts: autoPrompts
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "등록 실패");
+    }
+
+    closeBulkImportModal();
+    await loadProjects();
+    await loadStatus();
+
+    // 뷰어 탭으로 자동 이동
+    const bookTab = document.querySelector('[data-target="panelBook"]');
+    if (bookTab) bookTab.click();
+
+    // 스마트 일괄 생성 제안 팝업
+    const isIllustrated = (!currentStatus.project || currentStatus.project.book_type === "illustrated");
+    if (isIllustrated) {
+      setTimeout(() => {
+        const wantBatchGen = confirm(
+          `🎉 [${data.imported_count}편]의 시 원고가 성공적으로 등록되었습니다!\n\n` +
+          `지금 바로 전편(총 ${data.count}편)에 어울리는 한국형 서정 수채화 삽화를 일괄 자동 생성하시겠습니까?\n` +
+          `(키 없이 100% 무료 FLUX 엔진으로 순차 자동 생성됩니다)`
+        );
+        if (wantBatchGen) {
+          openBatchGenModal();
+          startBatchGen();
+        }
+      }, 300);
+    } else {
+      alert(`🎉 [${data.imported_count}편]의 시 원고가 성공적으로 등록되었습니다! 뷰어에서 확인하세요.`);
+    }
+
+  } catch (err) {
+    alert("일괄 등록 오류: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span>🚀 이 원고로 전체 등록하기</span>`;
+  }
+}
+
+// =========================================================
+// 16. 전편 서정 수채화 삽화 일괄 자동 생성 (Batch Image Generation)
+// =========================================================
+
+let isBatchGenRunning = false;
+let batchCancelRequested = false;
+
+function openBatchGenModal() {
+  const modal = document.getElementById("batchGenModal");
+  if (modal) modal.style.display = "flex";
+
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  const total = works.length;
+
+  document.getElementById("batchProgressBar").style.width = "0%";
+  document.getElementById("batchProgressPercentText").textContent = "0%";
+  document.getElementById("batchProgressCountText").textContent = `0 / ${total}편 완료`;
+  document.getElementById("batchProgressCurrentTitle").textContent = "시작 버튼을 누르면 자동 생성이 시작됩니다.";
+  document.getElementById("batchThumbnailGrid").innerHTML = "";
+
+  const startBtn = document.getElementById("btnStartBatchGen");
+  startBtn.disabled = false;
+  startBtn.innerHTML = `<span>🎨 전편 삽화 일괄 생성 시작 (${total}편)</span>`;
+}
+
+function closeBatchGenModal() {
+  if (isBatchGenRunning) {
+    const confirmStop = confirm("현재 삽화 생성이 진행 중입니다. 정말 중단하시겠습니까?");
+    if (!confirmStop) return;
+    batchCancelRequested = true;
+  }
+  const modal = document.getElementById("batchGenModal");
+  if (modal) modal.style.display = "none";
+}
+
+function onBatchGenOverlayClick(event) {
+  if (!isBatchGenRunning) {
+    closeBatchGenModal();
+  }
+}
+
+function cancelBatchGen() {
+  if (isBatchGenRunning) {
+    batchCancelRequested = true;
+    document.getElementById("batchProgressCurrentTitle").textContent = "중단 요청 중... 잠시만 기다려주세요.";
+  } else {
+    closeBatchGenModal();
+  }
+}
+
+async function startBatchGen() {
+  if (!currentStatus || !currentStatus.works || currentStatus.works.length === 0) {
+    alert("등록된 시 작품이 없습니다. 먼저 원고를 등록해주세요.");
+    return;
+  }
+
+  const works = currentStatus.works;
+  const total = works.length;
+  const startBtn = document.getElementById("btnStartBatchGen");
+  const cancelBtn = document.getElementById("btnCancelBatchGen");
+  const progressBar = document.getElementById("batchProgressBar");
+  const percentText = document.getElementById("batchProgressPercentText");
+  const countText = document.getElementById("batchProgressCountText");
+  const currentTitle = document.getElementById("batchProgressCurrentTitle");
+  const grid = document.getElementById("batchThumbnailGrid");
+
+  isBatchGenRunning = true;
+  batchCancelRequested = false;
+  startBtn.disabled = true;
+  cancelBtn.textContent = "작업 중단";
+
+  let successCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    if (batchCancelRequested) {
+      currentTitle.textContent = "사용자에 의해 일괄 생성이 중단되었습니다.";
+      break;
+    }
+
+    const work = works[i];
+    const progressPercent = Math.round((i / total) * 100);
+
+    progressBar.style.width = `${progressPercent}%`;
+    percentText.textContent = `${progressPercent}%`;
+    countText.textContent = `${i} / ${total}편 완료`;
+    currentTitle.textContent = `[${work.episode_no}] 「${work.title}」 수채화 빚어내는 중...`;
+
+    try {
+      const res = await fetch("/api/generate_image_free", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          episode_no: work.episode_no,
+          title: work.title,
+          memory_anchor: work.memory_anchor || "",
+          prompt: work.image_prompt || ""
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        successCount++;
+        // 썸네일 그리드에 카드 추가
+        const card = document.createElement("div");
+        card.className = "batch-thumb-card";
+        card.innerHTML = `
+          <img src="${data.image_url}" alt="${work.title}" class="batch-thumb-img">
+          <span class="batch-thumb-title">[${work.episode_no}] ${work.title}</span>
+        `;
+        grid.prepend(card);
+      }
+    } catch (err) {
+      console.warn(`[${work.episode_no}] 생성 건너뜀:`, err);
+    }
+  }
+
+  isBatchGenRunning = false;
+  startBtn.disabled = false;
+  cancelBtn.textContent = "닫기";
+
+  if (!batchCancelRequested) {
+    progressBar.style.width = "100%";
+    percentText.textContent = "100%";
+    countText.textContent = `${total} / ${total}편 완료`;
+    currentTitle.textContent = `🎉 전편(${successCount}편)의 수채화 삽화가 모두 완성되었습니다!`;
+  }
+
+  // 상태 리로드 및 뷰어 갱신
+  await loadStatus();
+  renderBookSpread(currentWorkIndex);
+}
+
+// =========================================================
+// 17. 300 DPI 출판 규격 전체 일괄 자동 보정 실행
+// =========================================================
+async function onEnhanceAllImages300Dpi() {
+  const btn = document.getElementById("btnEnhance300Dpi");
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ 300 DPI 보정 중...</span>`;
+
+  try {
+    const res = await fetch("/api/images/enhance_300dpi", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "보정 실패");
+    }
+
+    alert(`🎉 ${data.message}`);
+    await loadImagesInspection();
+    await loadStatus();
+  } catch (err) {
+    alert("300 DPI 보정 오류: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+// =========================================================
+// 18. 서정 노래 / 음원 제작 (선택 옵션) 로직
+// =========================================================
+let currentAudioFile = "";
+let currentLyrics = "";
+let currentMusicGenre = "minyo";
+let currentMusicData = null;
+
+function toggleMusicOption(enabled) {
+  const panel = document.getElementById("musicContentPanel");
+  if (!panel) return;
+  panel.style.display = enabled ? "block" : "none";
+}
+
+function onMusicGenreChange() {
+  const selected = document.querySelector('input[name="musicGenre"]:checked');
+  if (selected) {
+    currentMusicGenre = selected.value;
+  }
+}
+
+async function onGenerateLyrics() {
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  const poem = document.getElementById("inputFinalPoem").value.trim();
+  if (!poem) {
+    alert("먼저 시 본문을 작성하거나 다듬어주세요.");
+    document.getElementById("inputFinalPoem").focus();
+    return;
+  }
+
+  const btn = document.getElementById("btnGenerateLyrics");
+  const origText = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳ 시 본문을 4·4조 운율로 편곡 중...</span>";
+  }
+
+  try {
+    const res = await fetch("/api/generate_lyrics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title,
+        poem_body: poem,
+        genre: currentMusicGenre
+      })
+    });
+    const resData = await res.json();
+    if (resData.success && resData.data) {
+      currentMusicData = resData.data;
+      currentLyrics = resData.data.lyrics;
+      const lyricsInput = document.getElementById("musicLyricsInput");
+      if (lyricsInput) {
+        lyricsInput.value = currentLyrics;
+        lyricsInput.style.backgroundColor = "#FFF9F0";
+        setTimeout(() => { lyricsInput.style.backgroundColor = "#FFFFFF"; }, 400);
+      }
+      alert(`🎵 [${resData.data.genre_name}] 노랫말이 완성되었습니다!\n\n아래의 [Colab (YuE2) 원클릭 작곡] 또는 [무료 음악 AI]를 선택하여 음악을 만들어보세요.`);
+    } else {
+      alert("노랫말 생성 실패: " + (resData.error || "알 수 없는 오류"));
+    }
+  } catch (err) {
+    alert("노랫말 생성 중 오류가 발생했습니다: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+function copyLyricsText() {
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const text = lyricsInput ? lyricsInput.value.trim() : "";
+  if (!text) {
+    alert("복사할 노랫말이 없습니다. 먼저 '노랫말 운율화하기'를 실행해주세요.");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    alert("📜 노래 가사(Verse/Chorus)가 클립보드에 복사되었습니다!");
+  });
+}
+
+function openColabYuE2Guide() {
+  const btnColab = document.getElementById("btnSelectColabYuE2");
+  const btnFree = document.getElementById("btnSelectFreeMusicAI");
+  if (btnColab) btnColab.classList.add("active-music-btn");
+  if (btnFree) btnFree.classList.remove("active-music-btn");
+  const modal = document.getElementById("colabYuE2Modal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeColabYuE2Modal() {
+  const modal = document.getElementById("colabYuE2Modal");
+  if (modal) modal.style.display = "none";
+}
+
+function openFreeMusicAIGuide() {
+  const btnColab = document.getElementById("btnSelectColabYuE2");
+  const btnFree = document.getElementById("btnSelectFreeMusicAI");
+  if (btnFree) btnFree.classList.add("active-music-btn");
+  if (btnColab) btnColab.classList.remove("active-music-btn");
+  const modal = document.getElementById("freeMusicModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeFreeMusicModal() {
+  const modal = document.getElementById("freeMusicModal");
+  if (modal) modal.style.display = "none";
+}
+
+function getMusicGenrePrompt(genre) {
+  const g = genre || currentMusicGenre || "minyo";
+  if (currentMusicData && currentMusicData.music_prompt && currentMusicData.genre === g) {
+    return currentMusicData.music_prompt;
+  }
+  const promptMap = {
+    minyo: "Korean traditional lyrical folk song, acoustic gayageum and bamboo daegeum flute, subtle haegum, emotional warm vocal, sorrowful yet uplifting Korean minyo style, traditional janggu percussion, warm acoustic sound, 75 bpm",
+    folk: "Korean warm acoustic folk song, delicate nylon acoustic guitar fingerpicking, soft upright piano, intimate emotional vocals, warm 1970s 1980s nostalgic storytelling, peaceful lyrical atmosphere, 78 bpm, warm analog sound",
+    gagok: "Korean classical art song, elegant gagok style, expressive concert grand piano, warm cello counter-melody, graceful lyrical classical vocal, poetic and dramatic resonance, majestic and tender emotion, 72 bpm",
+    dongyo: "Korean lyrical children song, nostalgic dongyo, pure innocent vocal, bright glockenspiel bells, gentle acoustic piano, soft acoustic guitar, warm heartwarming childhood melody, peaceful and tender, 82 bpm",
+    ballad: "Korean emotional acoustic ballad, delicate piano melody, tender string quartet, heartfelt warm vocal, nostalgic and cinematic soundscape, 70 bpm"
+  };
+  return promptMap[g] || promptMap.minyo;
+}
+
+function copyFullMusicPrompt() {
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  
+  const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
+  const fullPrompt = `[Title]\n${title}\n\n[Style / Tags]\n${genrePrompt}\n\n[Lyrics]\n${lyrics || "(시 본문을 노랫말로 운율화해주세요)"}`;
+
+  navigator.clipboard.writeText(fullPrompt).then(() => {
+    alert("📋 [노랫말 & 음악 AI 스타일 프롬프트]가 모두 클립보드에 복사되었습니다!\n\nColab(YuE2) 또는 Suno/Udio에 그대로 붙여넣어 작곡하세요.");
+  });
+}
+
+function triggerStudioAudioFileInput() {
+  const input = document.getElementById("studioAudioFileInput");
+  if (input) input.click();
+}
+
+function onStudioAudioFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (file) {
+    uploadStudioAudio(file);
+  }
+}
+
+async function uploadStudioAudio(file) {
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const statusBox = document.getElementById("studioAudioUploadStatus");
+  if (statusBox) {
+    statusBox.className = "upload-status-text loading";
+    statusBox.style.display = "block";
+    statusBox.innerHTML = `<span>⏳ [${ep}] 노래 음원 업로드 중...</span>`;
+  }
+
+  const formData = new FormData();
+  formData.append("audio_file", file);
+  formData.append("episode_no", ep);
+
+  try {
+    const res = await fetch("/api/upload_audio", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentAudioFile = data.audio_file;
+      if (statusBox) {
+        statusBox.className = "upload-status-text success";
+        statusBox.innerHTML = `<span>✓ 노래 음원이 성공적으로 등록되었습니다! (${data.filename})</span>`;
+      }
+      // 미리듣기 오디오 플레이어 노출
+      const previewArea = document.getElementById("studioAudioPreviewArea");
+      const player = document.getElementById("studioAudioPlayer");
+      const nameElem = document.getElementById("studioPreviewAudioFilename");
+      if (nameElem) nameElem.textContent = data.filename;
+      if (player) {
+        player.src = data.web_url;
+        player.load();
+      }
+      if (previewArea) previewArea.style.display = "block";
+    } else {
+      if (statusBox) {
+        statusBox.className = "upload-status-text error";
+        statusBox.innerHTML = `<span>❌ 업로드 실패: ${data.error || '오류'}</span>`;
+      }
+    }
+  } catch (err) {
+    if (statusBox) {
+      statusBox.className = "upload-status-text error";
+      statusBox.innerHTML = `<span>❌ 네트워크 오류: ${err}</span>`;
+    }
+  }
+}
+
+function removeAudioFile() {
+  currentAudioFile = "";
+  const previewArea = document.getElementById("studioAudioPreviewArea");
+  if (previewArea) previewArea.style.display = "none";
+  const player = document.getElementById("studioAudioPlayer");
+  if (player) {
+    player.pause();
+    player.src = "";
+  }
+  const statusBox = document.getElementById("studioAudioUploadStatus");
+  if (statusBox) statusBox.style.display = "none";
+}
+
+// =========================================================
+// 19. Colab YuE2 맞춤형 노트북 동적 다운로드 및 [3단계] 코드 복사
+// =========================================================
+async function downloadModularNotebook() {
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
+
+  const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
+
+  try {
+    const res = await fetch("/api/export_colab_notebook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: ep,
+        title: title,
+        genre_prompt: genrePrompt,
+        lyrics: lyrics
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.notebook) {
+      const blob = new Blob([JSON.stringify(data.notebook, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename || "노래음원_YuE2_원클릭.ipynb";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert(`🎉 [${ep}] 「${title}」 맞춤형 Colab 노트북이 다운로드되었습니다!\n\n파일명: ${data.filename}\n\nGoogle Colab에서 업로드하여 [런타임 모두 실행]을 누르시면 곧바로 작곡이 시작됩니다.`);
+    } else {
+      alert("노트북 생성 실패: " + (data.error || "오류"));
+    }
+  } catch (err) {
+    alert("노트북 다운로드 중 오류 발생: " + err);
+  }
+}
+
+function copyStep3Code() {
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
+  const cleanEp = ep.replace(/[^0-9]/g, '').padStart(2, '0') || "01";
+  const cleanTitle = title.replace(/[\s\\/*?:"<>|]/g, '_') || "노래";
+  const outFilename = `${cleanEp}_${cleanTitle}.mp3`;
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
+
+  const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
+
+  const step3Code = `# @title [3단계] 노랫말 및 사운드 프롬프트 구성 (스토리북 스튜디오 연동)
+import os
+
+SONG_EPISODE = "${ep}"
+SONG_TITLE = "${title}"
+TARGET_FILENAME = "${outFilename}"
+
+GENRE_PROMPT = """${genrePrompt}"""
+
+LYRICS_CONTENT = """${lyrics}"""
+
+os.makedirs("/content/input", exist_ok=True)
+with open("/content/input/genre.txt", "w", encoding="utf-8") as f:
+    f.write(GENRE_PROMPT.strip())
+with open("/content/input/lyrics.txt", "w", encoding="utf-8") as f:
+    f.write(LYRICS_CONTENT.strip())
+
+print(f"✅ 3단계: [{SONG_EPISODE}] {SONG_TITLE} 가사 및 프롬프트 준비 완료! (/content/input/)")`;
+
+  navigator.clipboard.writeText(step3Code).then(() => {
+    alert("📋 [3단계 파이썬 코드]가 클립보드에 복사되었습니다!\n\n노래음원_YuE2_원클릭.ipynb의 [3단계] 셀에 그대로 [Ctrl+V] 붙여넣기 하시면 됩니다.");
+  });
+}
+
+// =========================================================
+// 19-2. Colab SDXL 맞춤형 삽화 노트북 동적 다운로드 및 [3단계] 코드 복사
+// =========================================================
+let colabImageTargetEpisode = null;
+let colabImageTargetTitle = null;
+
+function onOpenGoogleFlowLink(e) {
+  const promptElem = document.getElementById("imagePromptDisplay");
+  let promptStr = promptElem ? (promptElem.value || promptElem.textContent || "").trim() : "";
+  if (!promptStr) {
+    const title = document.getElementById("inputFinalTitle")?.value?.trim() || "무제";
+    promptStr = `Korean lyric watercolor illustration, ${title}, soft warm lighting, poetic negative space, delicate ink wash, 300 dpi, masterpiece`;
+  }
+
+  // 프롬프트 클립보드 자동 복사
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(promptStr);
+  }
+
+  // 차단 없는 토스트 안내
+  showToast("📋 현재 시의 300 DPI 프롬프트가 복사되었습니다! 새 창 Flow 입력창에 [Ctrl+V] 하세요.", "success");
+}
+
+function openGoogleFlowGuide() {
+  onOpenGoogleFlowLink();
+  window.open("https://flow.google.com/", "_blank");
+}
+
+function openColabImageGuide() {
+  colabImageTargetEpisode = null;
+  colabImageTargetTitle = null;
+  const modal = document.getElementById("colabImageModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function openColabImageGuideFromViewer() {
+  const select = document.getElementById("selectWorkDropdown");
+  const selectedEp = select ? select.value : "";
+  const work = (typeof currentBookWorks !== "undefined" && Array.isArray(currentBookWorks))
+    ? currentBookWorks.find(w => w.episode_no === selectedEp)
+    : null;
+  if (work) {
+    colabImageTargetEpisode = work.episode_no;
+    colabImageTargetTitle = work.title;
+  }
+  const modal = document.getElementById("colabImageModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeColabImageModal() {
+  const modal = document.getElementById("colabImageModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function downloadModularImageNotebook() {
+  let ep = colabImageTargetEpisode || document.getElementById("inputEpisode")?.value || "제01화";
+  let title = colabImageTargetTitle || document.getElementById("inputFinalTitle")?.value?.trim() || "무제";
+  
+  // 프롬프트 취득
+  let promptStr = "";
+  const promptElem = document.getElementById("imagePromptDisplay");
+  if (promptElem) {
+    promptStr = (promptElem.value || promptElem.textContent || "").trim();
+  }
+  if (!promptStr) {
+    const memory = document.getElementById("inputCoreMemory")?.value || "";
+    promptStr = memory ? `${title}, ${memory}` : `${title}의 정경`;
+  }
+
+  const artStyle = typeof currentArtStyle !== "undefined" ? currentArtStyle : "watercolor";
+
+  try {
+    const res = await fetch("/api/export_colab_image_notebook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: ep,
+        title: title,
+        prompt: promptStr,
+        art_style: artStyle,
+        width: 768,
+        height: 1024
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.notebook) {
+      const blob = new Blob([JSON.stringify(data.notebook, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename || "삽화_Colab_원클릭.ipynb";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert(`🎉 [${ep}] 「${title}」 맞춤형 Colab 삽화 노트북이 다운로드되었습니다!\n\n파일명: ${data.filename}\n\nGoogle Colab에서 업로드하여 [런타임 모두 실행]을 누르시면 T4 GPU에서 5초 만에 2가지 시안이 완성됩니다.`);
+    } else {
+      alert("노트북 생성 실패: " + (data.error || "오류"));
+    }
+  } catch (err) {
+    alert("노트북 다운로드 중 오류 발생: " + err);
+  }
+}
+
+function copyStep3ImageCode() {
+  let ep = colabImageTargetEpisode || document.getElementById("inputEpisode")?.value || "제01화";
+  let title = colabImageTargetTitle || document.getElementById("inputFinalTitle")?.value?.trim() || "무제";
+  const cleanEp = ep.replace(/[^0-9]/g, '').padStart(2, '0') || "01";
+  const cleanTitle = title.replace(/[\s\\/*?:"<>|]/g, '_') || "삽화";
+  const fileA = `${cleanEp}_${cleanTitle}_시안A.jpg`;
+  const fileB = `${cleanEp}_${cleanTitle}_시안B.jpg`;
+
+  let promptStr = "";
+  const promptElem = document.getElementById("imagePromptDisplay");
+  if (promptElem) {
+    promptStr = (promptElem.value || promptElem.textContent || "").trim();
+  }
+  if (!promptStr) {
+    promptStr = `${title}의 정경`;
+  }
+
+  const step3Code = `# @title [3단계] 삽화 메타데이터 및 프롬프트 설정 (동적 조립 모듈)
+EPISODE_NO = "${ep}"
+WORK_TITLE = "${title}"
+FILE_A = "${fileA}"
+FILE_B = "${fileB}"
+IMAGE_WIDTH = 768
+IMAGE_HEIGHT = 1024
+STEPS = 4
+
+PROMPT_A = """${promptStr}, tranquil poetic negative space, minimalist composition, korean lyric watercolor painting, delicate brush strokes, soft watercolor wash, poetic negative space, gentle morning light, nostalgic mood, masterpiece, highly detailed, 300 dpi illustration"""
+PROMPT_B = """${promptStr}, warm nostalgic ambiance, intimate poetic harmony, rich atmospheric details, korean lyric watercolor painting, delicate brush strokes, soft watercolor wash, poetic negative space, gentle morning light, nostalgic mood, masterpiece, highly detailed, 300 dpi illustration"""
+NEGATIVE_PROMPT = """ugly, deformed, disfigured, poor anatomy, bad hands, blurry, low quality, oversaturated, text, watermark, signature, modern electronics, photo frame"""
+
+print(f"✅ 3단계: [{EPISODE_NO}] {WORK_TITLE} 삽화 프롬프트 준비 완료!")`;
+
+  navigator.clipboard.writeText(step3Code).then(() => {
+    alert("📋 [3단계 파이썬 코드]가 클립보드에 복사되었습니다!\n\nColab 삽화 노트북의 [3단계] 셀에 그대로 [Ctrl+V] 붙여넣기 하시면 됩니다.");
+  });
+}
+
+// =========================================================
+// 19. 고품질 스마트 커스텀 풍선 도움말 (Smart Custom Tooltip)
+// - 너비: 가로로 길어지지 않게 약 절반(max-width 270px)으로 압축
+// - 폰트: 15px(0.95rem)로 시원하고 또렷하게 확대
+// - [제목] 배지와 설명 단락 분리 및 스마트 화면 경계 보정
+// =========================================================
+function initCustomTooltips() {
+  let tooltip = document.getElementById("appCustomTooltip");
+  if (!tooltip) {
+    tooltip = document.createElement("div");
+    tooltip.id = "appCustomTooltip";
+    tooltip.className = "app-custom-tooltip";
+    document.body.appendChild(tooltip);
+  }
+
+  let activeTarget = null;
+
+  function findTooltipTarget(el) {
+    while (el && el !== document.body && el !== document.documentElement) {
+      if (el.getAttribute && (el.hasAttribute("title") || el.hasAttribute("data-tooltip"))) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function escapeTooltipHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showTooltip(target, clientX, clientY) {
+    if (target.hasAttribute("title")) {
+      const titleText = target.getAttribute("title").trim();
+      if (titleText) {
+        target.setAttribute("data-tooltip", titleText);
+      }
+      target.removeAttribute("title");
+    }
+
+    const text = target.getAttribute("data-tooltip");
+    if (!text) {
+      hideTooltip();
+      return;
+    }
+
+    activeTarget = target;
+
+    // [제목] 헤더 배지와 본문 설명 분리 렌더링
+    const badgeMatch = text.match(/^(\[[^\]]+\])\s*([\s\S]*)$/);
+    if (badgeMatch) {
+      const badge = badgeMatch[1];
+      const desc = badgeMatch[2];
+      tooltip.innerHTML = `<span class="tooltip-header-badge">${escapeTooltipHtml(badge)}</span><span class="tooltip-desc">${escapeTooltipHtml(desc)}</span>`;
+    } else {
+      tooltip.innerHTML = `<span class="tooltip-desc">${escapeTooltipHtml(text)}</span>`;
+    }
+
+    tooltip.classList.add("visible");
+    updateTooltipPos(clientX, clientY);
+  }
+
+  function hideTooltip() {
+    activeTarget = null;
+    if (tooltip) {
+      tooltip.classList.remove("visible");
+    }
+  }
+
+  function updateTooltipPos(clientX, clientY) {
+    if (!tooltip) return;
+    const padding = 14;
+    let left = clientX + 16;
+    let top = clientY + 18;
+
+    const rect = tooltip.getBoundingClientRect();
+    const tooltipWidth = rect.width || 240;
+    const tooltipHeight = rect.height || 80;
+
+    // 화면 오른쪽 경계 벗어남 방지
+    if (left + tooltipWidth > window.innerWidth - padding) {
+      left = clientX - tooltipWidth - 14;
+    }
+    if (left < padding) {
+      left = padding;
+    }
+
+    // 화면 아래쪽 경계 벗어남 방지
+    if (top + tooltipHeight > window.innerHeight - padding) {
+      top = clientY - tooltipHeight - 14;
+    }
+    if (top < padding) {
+      top = padding;
+    }
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  // mousemove 기반 스마트 감지: 마우스 위치에 따라 대상 요소 자동 인식 및 툴팁 표시
+  document.addEventListener("mousemove", (e) => {
+    const target = findTooltipTarget(e.target);
+    if (!target) {
+      if (activeTarget) {
+        hideTooltip();
+      }
+      return;
+    }
+
+    if (target !== activeTarget) {
+      showTooltip(target, e.clientX, e.clientY);
+    } else {
+      updateTooltipPos(e.clientX, e.clientY);
+    }
+  });
+
+  window.addEventListener("scroll", hideTooltip, { passive: true });
+}
+
+// ========================================================
+// 🎙️ 음성 인터뷰 (Web Speech API STT) & 시 낭송 (TTS)
+// ========================================================
+let currentRecognition = null;
+let activeTargetId = null;
+let activeBtnId = null;
+
+function toggleVoiceDictation(targetInputId, btnId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("현재 브라우저는 음성 인식(STT) 기능을 지원하지 않습니다.\nGoogle Chrome 또는 Microsoft Edge 브라우저를 이용해 주시기 바랍니다.");
+    return;
+  }
+
+  const btn = document.getElementById(btnId);
+  const target = document.getElementById(targetInputId);
+  if (!target) return;
+
+  // 이미 실행 중이고 동일한 버튼을 누른 경우 -> 중지
+  if (currentRecognition && activeBtnId === btnId) {
+    currentRecognition.stop();
+    return;
+  }
+
+  // 다른 버튼이 실행 중이었던 경우 -> 기존 인식 중지
+  if (currentRecognition) {
+    currentRecognition.stop();
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    currentRecognition = recognition;
+    activeTargetId = targetInputId;
+    activeBtnId = btnId;
+
+    let baseText = target.value;
+    let finalChunk = '';
+
+    if (btn) {
+      btn.classList.add('mic-recording');
+      btn.innerHTML = `<span class="mic-icon recording-pulse">🔴</span> <span class="mic-label">듣고 있어요... (중지)</span>`;
+    }
+
+    recognition.onresult = (event) => {
+      let interimChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalChunk += event.results[i][0].transcript + ' ';
+        } else {
+          interimChunk += event.results[i][0].transcript;
+        }
+      }
+
+      const spoken = (finalChunk + interimChunk).trim();
+      if (baseText) {
+        const needsSpace = !(baseText.endsWith('\n') || baseText.endsWith(' '));
+        target.value = baseText + (needsSpace ? ' ' : '') + spoken;
+      } else {
+        target.value = spoken;
+      }
+      target.dispatchEvent(new Event('input'));
+    };
+
+    recognition.onerror = (event) => {
+      console.warn("음성 인식 이벤트:", event.error);
+      if (event.error === 'not-allowed') {
+        alert("마이크 사용 권한이 허용되지 않았습니다.\n브라우저 주소창 좌측의 자물쇠/사이트 설정 아이콘을 눌러 마이크 권한을 '허용'해 주세요.");
+      }
+    };
+
+    recognition.onend = () => {
+      if (btn) {
+        btn.classList.remove('mic-recording');
+        if (targetInputId === 'inputFinalPoem') {
+          btn.innerHTML = `<span class="mic-icon">🎙️</span> <span class="mic-label">음성 구술</span>`;
+        } else {
+          btn.innerHTML = `<span class="mic-icon">🎙️</span> <span class="mic-label">말로 구술하기</span>`;
+        }
+      }
+      currentRecognition = null;
+      activeTargetId = null;
+      activeBtnId = null;
+    };
+
+    recognition.start();
+
+  } catch (err) {
+    console.error("음성 인식 시작 실패:", err);
+    alert("마이크를 시작할 수 없습니다: " + err.message);
+  }
+}
+
+// 🎧 시 낭송 듣기 (Gemini 3.8 Flash TTS 고음질 서정 낭독 연동)
+let currentGeminiReciteAudio = null;
+
+async function toggleSpeakPoem() {
+  const btn = document.getElementById("btnSpeakPoem");
+  const poemText = document.getElementById("inputFinalPoem") ? document.getElementById("inputFinalPoem").value.trim() : "";
+  const title = document.getElementById("inputFinalTitle") ? document.getElementById("inputFinalTitle").value.trim() : "무제";
+  const ep = document.getElementById("inputEpisode") ? document.getElementById("inputEpisode").value.trim() : "제01화";
+
+  // 1. 이미 재생 중인 경우 즉시 중지
+  if (currentGeminiReciteAudio && !currentGeminiReciteAudio.paused) {
+    currentGeminiReciteAudio.pause();
+    currentGeminiReciteAudio.currentTime = 0;
+    if (btn) btn.innerHTML = `🎧 시 낭송 듣기`;
+    return;
+  }
+  if (window.speechSynthesis && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    if (btn) btn.innerHTML = `🎧 시 낭송 듣기`;
+    return;
+  }
+
+  if (!poemText) {
+    alert("낭송할 시 본문이 비어 있습니다. 먼저 시를 다듬어 주세요.");
+    return;
+  }
+
+  // 2. Gemini 3.8 Flash TTS 호출 시도
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ 서정 낭송 빚는 중...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/speak_poem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title,
+        poem_body: poemText,
+        episode_no: ep
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success && (data.data_uri || data.audio_url)) {
+      currentGeminiReciteAudio = new Audio(data.data_uri || data.audio_url);
+      
+      currentGeminiReciteAudio.onplay = () => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `⏹️ 낭송 중지`;
+        }
+      };
+
+      currentGeminiReciteAudio.onended = () => {
+        if (btn) btn.innerHTML = `🎧 시 낭송 듣기`;
+      };
+
+      currentGeminiReciteAudio.onerror = () => {
+        if (btn) btn.innerHTML = `🎧 시 낭송 듣기`;
+      };
+
+      await currentGeminiReciteAudio.play();
+      showToast("✨ Gemini 3.8 성우의 고음질 서정 낭송이 재생됩니다. (공식 음원으로도 저장되었습니다)", "success");
+
+      // 우측 하단 음악 플레이어에도 자동 연동
+      const audioPlayer = document.getElementById("studioAudioPlayer");
+      const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
+      const audioFilename = document.getElementById("studioPreviewAudioFilename");
+      if (audioPlayer && data.audio_url) {
+        audioPlayer.src = data.audio_url;
+        if (audioFilename) audioFilename.textContent = data.filename;
+        if (audioPreviewArea) audioPreviewArea.style.display = "block";
+      }
+      return;
+    }
+  } catch (err) {
+    console.warn("Gemini TTS 호출 실패, 로컬 브라우저 TTS로 폴백:", err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+
+  // 3. 폴백: 로컬 Web Speech API 브라우저 TTS
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(poemText);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 0.88;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const koVoice = voices.find(v => v.lang.startsWith('ko'));
+    if (koVoice) utterance.voice = koVoice;
+
+    utterance.onstart = () => { if (btn) btn.innerHTML = `⏹️ 낭송 중지`; };
+    utterance.onend = () => { if (btn) btn.innerHTML = `🎧 시 낭송 듣기`; };
+    utterance.onerror = () => { if (btn) btn.innerHTML = `🎧 시 낭송 듣기`; };
+
+    window.speechSynthesis.speak(utterance);
+  } else {
+    alert("음성을 재생할 수 없습니다.");
+  }
+}
+
+// ========================================================
+// 21. 시집 목차 & 순서 편집기 (TOC & Order Editor)
+// ========================================================
+let tocEditItems = [];
+let tocChapters = [
+  "제1부: 흙과 솜꽃",
+  "제2부: 밤을 잣는 손",
+  "제3부: 바람과 불의 길",
+  "제4부: 덜커덩, 세월을 짜다",
+  "제5부: 살을 덮는 온기"
+];
+
+// 목차 편집 모달 열기
+function openTocEditorModal() {
+  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  if (works.length === 0) {
+    alert("현재 등록된 시 작품이 없습니다.\n먼저 시를 작성해 주세요.");
+    return;
+  }
+
+  // 챕터 목록 수집 (기존 프리셋 + 저장된 챕터 병합)
+  const existingChapters = new Set(tocChapters);
+  works.forEach(w => {
+    if (w.chapter && w.chapter.trim()) {
+      existingChapters.add(w.chapter.trim());
+    }
+  });
+  tocChapters = Array.from(existingChapters);
+
+  // 편집용 복사본 생성
+  tocEditItems = works.map((w, idx) => ({
+    episode_no: w.episode_no,
+    title: w.title,
+    chapter: w.chapter || ""
+  }));
+
+  renderTocEditorList();
+
+  const modal = document.getElementById("tocEditorModal");
+  if (modal) modal.style.display = "flex";
+}
+
+// 목차 편집 모달 닫기
+function closeTocEditorModal() {
+  const modal = document.getElementById("tocEditorModal");
+  if (modal) modal.style.display = "none";
+}
+
+// 목차 리스트 UI 렌더링
+function renderTocEditorList() {
+  const container = document.getElementById("tocItemsListContainer");
+  const countSummary = document.getElementById("tocItemCountSummary");
+  if (!container) return;
+
+  if (countSummary) {
+    countSummary.textContent = `총 ${tocEditItems.length}편 수록 중`;
+  }
+
+  container.innerHTML = "";
+
+  tocEditItems.forEach((item, idx) => {
+    const card = document.createElement("div");
+    card.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      background: #FFFFFF;
+      border: 1px solid #EBD5C2;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    `;
+
+    // 좌측: 순번 + 회차 배지 + 시 제목
+    const leftDiv = document.createElement("div");
+    leftDiv.style.cssText = "display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;";
+    leftDiv.innerHTML = `
+      <span style="font-size: 0.76rem; font-weight: 700; color: #8B5A2B; background: #FFF4E8; padding: 2px 7px; border-radius: 12px; border: 1px solid #EBD0B5; min-width: 32px; text-align: center;">#${idx + 1}</span>
+      <span style="font-size: 0.8rem; color: #665F57; font-weight: 600;">[${item.episode_no}]</span>
+      <span style="font-size: 0.92rem; font-weight: 700; color: #2C2520; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.title)}</span>
+    `;
+
+    // 중앙: 부/챕터 선택 셀렉트박스
+    const midDiv = document.createElement("div");
+    midDiv.style.cssText = "display: flex; align-items: center; gap: 6px;";
+    
+    const select = document.createElement("select");
+    select.className = "form-input";
+    select.style.cssText = "padding: 4px 8px; font-size: 0.82rem; height: 32px; width: 185px; color: #643E19; font-weight: 600; background: #FFFDF9; border-color: #EBD5C2;";
+    
+    const defOpt = document.createElement("option");
+    defOpt.value = "";
+    defOpt.textContent = "— 부(주제) 미지정 —";
+    select.appendChild(defOpt);
+
+    tocChapters.forEach(chap => {
+      const opt = document.createElement("option");
+      opt.value = chap;
+      opt.textContent = `📁 ${chap}`;
+      if (item.chapter === chap) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    select.onchange = (e) => {
+      tocEditItems[idx].chapter = e.target.value;
+    };
+    midDiv.appendChild(select);
+
+    // 우측: 순서 이동 버튼 (위/아래)
+    const rightDiv = document.createElement("div");
+    rightDiv.style.cssText = "display: flex; gap: 4px;";
+
+    const btnUp = document.createElement("button");
+    btnUp.type = "button";
+    btnUp.className = "btn-copy";
+    btnUp.style.cssText = "padding: 3px 8px; font-size: 0.78rem;";
+    btnUp.textContent = "▲ 위로";
+    btnUp.disabled = (idx === 0);
+    btnUp.title = "[위로 이동] 이 작품을 한 칸 위로 순서를 올립니다.";
+    btnUp.onclick = () => moveTocItem(idx, -1);
+
+    const btnDown = document.createElement("button");
+    btnDown.type = "button";
+    btnDown.className = "btn-copy";
+    btnDown.style.cssText = "padding: 3px 8px; font-size: 0.78rem;";
+    btnDown.textContent = "▼ 아래로";
+    btnDown.disabled = (idx === tocEditItems.length - 1);
+    btnDown.title = "[아래로 이동] 이 작품을 한 칸 아래로 순서를 내립니다.";
+    btnDown.onclick = () => moveTocItem(idx, 1);
+
+    rightDiv.appendChild(btnUp);
+    rightDiv.appendChild(btnDown);
+
+    card.appendChild(leftDiv);
+    card.appendChild(midDiv);
+    card.appendChild(rightDiv);
+    container.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// 순서 이동 (스왑)
+function moveTocItem(index, delta) {
+  const targetIndex = index + delta;
+  if (targetIndex < 0 || targetIndex >= tocEditItems.length) return;
+
+  const temp = tocEditItems[index];
+  tocEditItems[index] = tocEditItems[targetIndex];
+  tocEditItems[targetIndex] = temp;
+
+  renderTocEditorList();
+}
+
+// 새 부(챕터) 추가
+function addNewTocChapter() {
+  const name = prompt("새로운 부/챕터 이름을 입력해주세요.\n(예: 제6부: 달빛 머문 뜨락 또는 특별부: 못다 한 이야기)");
+  if (name && name.trim()) {
+    const trimmed = name.trim();
+    if (!tocChapters.includes(trimmed)) {
+      tocChapters.push(trimmed);
+      renderTocEditorList();
+      alert(`📁 새로운 부 「${trimmed}」이(가) 목록에 추가되었습니다.\n각 시의 소속 부 드롭다운에서 선택할 수 있습니다.`);
+    } else {
+      alert("이미 동일한 부/챕터가 존재합니다.");
+    }
+  }
+}
+
+// 5부작 연작 프리셋 원클릭 적용
+function applyDefaultChaptersPreset() {
+  const default5 = [
+    "제1부: 흙과 솜꽃",
+    "제2부: 밤을 잣는 손",
+    "제3부: 바람과 불의 길",
+    "제4부: 덜커덩, 세월을 짜다",
+    "제5부: 살을 덮는 온기"
+  ];
+
+  default5.forEach(c => {
+    if (!tocChapters.includes(c)) tocChapters.push(c);
+  });
+
+  const total = tocEditItems.length;
+  if (total === 0) return;
+
+  const ok = confirm(
+    "🌸 「목화와 어머니」 5부작 연작 체계 프리셋을 불러옵니다.\n\n" +
+    "현재 등록된 시들(총 " + total + "편)을 5개 부로 순서에 맞추어 균등하게 자동 배분하시겠습니까?\n\n" +
+    "- [확인]: 5개 부로 자동 분배\n" +
+    "- [취소]: 부/챕터 목록만 추가하고 개별 수동 선택"
+  );
+
+  if (ok) {
+    const perChapter = Math.ceil(total / 5);
+    tocEditItems.forEach((item, idx) => {
+      const chapIdx = Math.min(Math.floor(idx / perChapter), 4);
+      item.chapter = default5[chapIdx];
+    });
+  }
+
+  renderTocEditorList();
+}
+
+// 목차 및 순서 백엔드 최종 저장
+async function saveTocAndOrder() {
+  if (tocEditItems.length === 0) return;
+
+  const btn = document.getElementById("btnSaveTocOrder");
+  const origHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳ 목차와 순서 정리 중...</span>";
+  }
+
+  const chkRenumber = document.getElementById("chkAutoRenumberToc");
+  const autoRenumber = chkRenumber ? chkRenumber.checked : true;
+
+  try {
+    const res = await fetch("/api/reorder_works", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: tocEditItems.map(it => ({
+          episode_no: it.episode_no,
+          chapter: it.chapter || ""
+        })),
+        auto_renumber: autoRenumber
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      closeTocEditorModal();
+      alert(`🎉 ${data.message}\n\n가상 북 뷰어와 출판 원고에 새로운 목차와 순서가 반영되었습니다.`);
+      currentEditingEpisode = null;
+      await loadProjects();
+      await loadStatus();
+    } else {
+      alert("목차 저장 실패: " + (data.detail || data.error || "오류가 발생했습니다."));
+    }
+  } catch (err) {
+    alert("목차 저장 중 네트워크 오류 발생: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
+
+// ============================================================
+// 15. 시인의 집필실: 퇴고 판본(Revision) 이력 & 나란히 비교(Diff)
+// ============================================================
+let currentWorkRevisions = [];
+let selectedRevision = null;
+
+async function openRevisionsModal() {
+  const epSelect = document.getElementById("selectWorkToEdit");
+  let epNo = epSelect ? epSelect.value : "";
+  if (!epNo) {
+    const epInput = document.getElementById("inputEpisode");
+    epNo = epInput ? epInput.value : "제01화";
+  }
+
+  const modal = document.getElementById("revisionsModal");
+  if (modal) modal.style.display = "flex";
+
+  const listContainer = document.getElementById("revsListContainer");
+  const diffContainer = document.getElementById("revsDiffContentContainer");
+  const countBadge = document.getElementById("revsCountBadge");
+  const btnRestore = document.getElementById("btnRestoreRevision");
+  if (btnRestore) btnRestore.disabled = true;
+
+  if (listContainer) listContainer.innerHTML = "<div style='color: var(--text-muted); padding: 10px; font-size: 0.8rem;'>판본 목록을 불러오는 중...</div>";
+  if (diffContainer) diffContainer.innerHTML = "<div style='color: var(--text-muted); text-align: center; padding: 40px;'>좌측에서 비교할 판본을 선택해 주세요.</div>";
+
+  try {
+    const res = await fetch(`/api/revisions/${encodeURIComponent(epNo)}`);
+    const data = await res.json();
+    if (res.ok && data.success) {
+      currentWorkRevisions = data.revisions || [];
+      if (countBadge) countBadge.textContent = `${currentWorkRevisions.length}개`;
+      renderRevisionsList();
+
+      if (currentWorkRevisions.length > 0) {
+        selectRevisionItem(currentWorkRevisions.length - 1);
+      } else {
+        if (listContainer) listContainer.innerHTML = "<div style='color: var(--text-muted); padding: 14px 6px; font-size: 0.82rem;'>아직 저장된 판본이 없습니다.<br>원고를 저장하면 자동으로 초고가 보관됩니다.</div>";
+        if (diffContainer) diffContainer.innerHTML = "<div style='color: var(--text-muted); text-align: center; padding: 40px;'>저장된 이전 판본이 없습니다.</div>";
+      }
+    }
+  } catch (err) {
+    if (listContainer) listContainer.innerHTML = `<div style='color: #c84b31; padding: 10px; font-size: 0.8rem;'>오류: ${err.message}</div>`;
+  }
+}
+
+function closeRevisionsModal() {
+  const modal = document.getElementById("revisionsModal");
+  if (modal) modal.style.display = "none";
+}
+
+function renderRevisionsList() {
+  const listContainer = document.getElementById("revsListContainer");
+  if (!listContainer) return;
+  listContainer.innerHTML = "";
+
+  currentWorkRevisions.slice().reverse().forEach((rev, idx) => {
+    const realIndex = currentWorkRevisions.length - 1 - idx;
+    const isSelected = selectedRevision && selectedRevision.rev_id === rev.rev_id;
+
+    const item = document.createElement("div");
+    item.style.padding = "8px 10px";
+    item.style.borderRadius = "6px";
+    item.style.border = isSelected ? "1px solid #643e19" : "1px solid var(--border-subtle)";
+    item.style.background = isSelected ? "#FDF5ED" : "#FFFFFF";
+    item.style.cursor = "pointer";
+    item.style.transition = "all 0.15s ease";
+
+    item.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+        <span style="font-weight: 700; font-size: 0.85rem; color: #2C2520;">${rev.version_name}</span>
+        <span style="font-size: 0.72rem; color: #8C827A;">${rev.line_count || 0}행</span>
+      </div>
+      <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 2px;">${rev.title || '무제'}</div>
+      <div style="font-size: 0.68rem; color: #A69D95;">${rev.timestamp || ''}</div>
+    `;
+
+    item.onclick = () => selectRevisionItem(realIndex);
+    listContainer.appendChild(item);
+  });
+}
+
+async function selectRevisionItem(index) {
+  selectedRevision = currentWorkRevisions[index];
+  renderRevisionsList();
+
+  const titleEl = document.getElementById("revSelectedTitle");
+  if (titleEl && selectedRevision) {
+    titleEl.textContent = `${selectedRevision.version_name} (${selectedRevision.timestamp})`;
+  }
+
+  const btnRestore = document.getElementById("btnRestoreRevision");
+  if (btnRestore) btnRestore.disabled = !selectedRevision;
+
+  const currentPoem = (document.getElementById("inputFinalPoem")?.value || "").trim();
+  const pastPoem = (selectedRevision?.poem_body || "").trim();
+
+  const diffContainer = document.getElementById("revsDiffContentContainer");
+  if (diffContainer) diffContainer.innerHTML = "<div style='color: var(--text-muted); text-align: center; padding: 30px;'>판본 차이점을 분석하는 중...</div>";
+
+  try {
+    const res = await fetch("/api/compare_revisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        body_a: pastPoem,
+        body_b: currentPoem,
+        name_a: selectedRevision ? selectedRevision.version_name : "이전 판본",
+        name_b: "현재 편집창 본문"
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      renderDiffView(data.diff);
+    }
+  } catch (err) {
+    if (diffContainer) diffContainer.innerHTML = `<div style='color: #c84b31;'>비교 실패: ${err.message}</div>`;
+  }
+}
+
+function renderDiffView(diffData) {
+  const container = document.getElementById("revsDiffContentContainer");
+  if (!container) return;
+
+  if (!diffData || !diffData.diff_blocks) {
+    container.innerHTML = "<div>비교 데이터가 없습니다.</div>";
+    return;
+  }
+
+  let html = "<div style='display: flex; flex-direction: column; gap: 4px;'>";
+
+  diffData.diff_blocks.forEach(block => {
+    if (block.tag === "equal") {
+      block.lines_b.forEach(line => {
+        html += `<div style="padding: 2px 6px; color: #4A4036;">${escapeHtml(line) || '&nbsp;'}</div>`;
+      });
+    } else if (block.tag === "replace") {
+      block.lines_a.forEach(line => {
+        html += `<div style="padding: 2px 6px; background: #FFF0F0; color: #A83232; text-decoration: line-through; border-left: 3px solid #D9534F;">${escapeHtml(line) || '&nbsp;'} <span style="font-size: 0.72rem; color: #888;">(이전 판본)</span></div>`;
+      });
+      block.lines_b.forEach(line => {
+        html += `<div style="padding: 2px 6px; background: #F0FFF0; color: #2E7D32; font-weight: 500; border-left: 3px solid #5CB85C;">${escapeHtml(line) || '&nbsp;'} <span style="font-size: 0.72rem; color: #2E7D32;">(현재 수정본)</span></div>`;
+      });
+    } else if (block.tag === "delete") {
+      block.lines_a.forEach(line => {
+        html += `<div style="padding: 2px 6px; background: #FFF0F0; color: #A83232; text-decoration: line-through; border-left: 3px solid #D9534F;">${escapeHtml(line) || '&nbsp;'} <span style="font-size: 0.72rem; color: #888;">(현재에서 삭제됨)</span></div>`;
+      });
+    } else if (block.tag === "insert") {
+      block.lines_b.forEach(line => {
+        html += `<div style="padding: 2px 6px; background: #F0FFF0; color: #2E7D32; font-weight: 500; border-left: 3px solid #5CB85C;">${escapeHtml(line) || '&nbsp;'} <span style="font-size: 0.72rem; color: #2E7D32;">(새로 추가됨)</span></div>`;
+      });
+    }
+  });
+
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+function restoreSelectedRevision() {
+  if (!selectedRevision) return;
+
+  const confirmMsg = `정말로 [${selectedRevision.version_name}] 판본으로 현재 편집창의 제목과 본문을 되돌리시겠습니까?\n\n(현재 편집 중인 내용은 복원 직전 판본으로 자동 스냅샷 보관됩니다.)`;
+  if (!confirm(confirmMsg)) return;
+
+  const titleInput = document.getElementById("inputFinalTitle");
+  const poemInput = document.getElementById("inputFinalPoem");
+
+  if (titleInput && selectedRevision.title) titleInput.value = selectedRevision.title;
+  if (poemInput && selectedRevision.poem_body) poemInput.value = selectedRevision.poem_body;
+
+  closeRevisionsModal();
+  alert(`✨ [${selectedRevision.version_name}] 판본으로 성공적으로 복원되었습니다!\n\n편집창에서 내용을 확인하신 후 [시 본문 우선 저장하기]를 눌러주세요.`);
+}
+
+
+// ============================================================
+// 16. 시인의 영혼: 내 목소리 육성 낭송 녹음실 (Voice Studio)
+// ============================================================
+let voiceMediaRecorder = null;
+let voiceAudioChunks = [];
+let voiceRecordedBlob = null;
+let voiceRecTimerInterval = null;
+let voiceRecSeconds = 0;
+
+function openVoiceRecModal() {
+  const epSelect = document.getElementById("selectWorkToEdit");
+  let epNo = epSelect ? epSelect.value : "";
+  if (!epNo) {
+    const epInput = document.getElementById("inputEpisode");
+    epNo = epInput ? epInput.value : "제01화";
+  }
+  const title = document.getElementById("inputFinalTitle")?.value || "무제";
+
+  const badge = document.getElementById("voiceRecTargetBadge");
+  if (badge) badge.textContent = `[${epNo}] ${title}`;
+
+  resetVoiceRecState();
+
+  const modal = document.getElementById("voiceRecModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeVoiceRecModal() {
+  if (voiceMediaRecorder && voiceMediaRecorder.state === "recording") {
+    voiceMediaRecorder.stop();
+  }
+  resetVoiceRecState();
+  const modal = document.getElementById("voiceRecModal");
+  if (modal) modal.style.display = "none";
+}
+
+function resetVoiceRecState() {
+  if (voiceRecTimerInterval) {
+    clearInterval(voiceRecTimerInterval);
+    voiceRecTimerInterval = null;
+  }
+  voiceRecSeconds = 0;
+  voiceAudioChunks = [];
+  voiceRecordedBlob = null;
+
+  const timerEl = document.getElementById("voiceRecTimerDisplay");
+  if (timerEl) timerEl.textContent = "00:00";
+
+  const statusEl = document.getElementById("voiceRecStatusText");
+  if (statusEl) statusEl.textContent = "'낭송 녹음 시작' 버튼을 누른 뒤 시를 낭독해 주세요.";
+
+  const indicator = document.getElementById("voiceRecPulsingIndicator");
+  if (indicator) {
+    indicator.style.background = "#FFFFFF";
+    indicator.style.borderColor = "#EBD5C2";
+    indicator.style.boxShadow = "none";
+  }
+
+  const btnStart = document.getElementById("btnVoiceRecStart");
+  const btnStop = document.getElementById("btnVoiceRecStop");
+  const btnSave = document.getElementById("btnVoiceRecSave");
+  const previewArea = document.getElementById("voiceRecPreviewArea");
+
+  if (btnStart) btnStart.disabled = false;
+  if (btnStop) btnStop.disabled = true;
+  if (btnSave) btnSave.disabled = true;
+  if (previewArea) previewArea.style.display = "none";
+
+  const audioPlayer = document.getElementById("voiceRecAudioPlayer");
+  if (audioPlayer) {
+    audioPlayer.pause();
+    audioPlayer.src = "";
+  }
+}
+
+async function startVoiceRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceAudioChunks = [];
+    voiceRecordedBlob = null;
+
+    voiceMediaRecorder = new MediaRecorder(stream);
+    voiceMediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) voiceAudioChunks.push(e.data);
+    };
+
+    voiceMediaRecorder.onstop = () => {
+      voiceRecordedBlob = new Blob(voiceAudioChunks, { type: "audio/webm" });
+      const audioUrl = URL.createObjectURL(voiceRecordedBlob);
+      const audioPlayer = document.getElementById("voiceRecAudioPlayer");
+      if (audioPlayer) audioPlayer.src = audioUrl;
+
+      const previewArea = document.getElementById("voiceRecPreviewArea");
+      if (previewArea) previewArea.style.display = "block";
+
+      const btnSave = document.getElementById("btnVoiceRecSave");
+      if (btnSave) btnSave.disabled = false;
+
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    voiceMediaRecorder.start();
+
+    const btnStart = document.getElementById("btnVoiceRecStart");
+    const btnStop = document.getElementById("btnVoiceRecStop");
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+
+    const statusEl = document.getElementById("voiceRecStatusText");
+    if (statusEl) statusEl.textContent = "🔴 녹음 중... 시인의 따뜻한 육성으로 시를 낭독해 주세요.";
+
+    const indicator = document.getElementById("voiceRecPulsingIndicator");
+    if (indicator) {
+      indicator.style.background = "#FFF0EE";
+      indicator.style.borderColor = "#C84B31";
+      indicator.style.boxShadow = "0 0 16px rgba(200, 75, 49, 0.4)";
+    }
+
+    voiceRecSeconds = 0;
+    voiceRecTimerInterval = setInterval(() => {
+      voiceRecSeconds++;
+      const mins = String(Math.floor(voiceRecSeconds / 60)).padStart(2, '0');
+      const secs = String(voiceRecSeconds % 60).padStart(2, '0');
+      const timerEl = document.getElementById("voiceRecTimerDisplay");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+  } catch (err) {
+    alert("마이크 접근 권한이 필요합니다: " + err.message);
+  }
+}
+
+function stopVoiceRecording() {
+  if (voiceMediaRecorder && voiceMediaRecorder.state === "recording") {
+    voiceMediaRecorder.stop();
+  }
+  if (voiceRecTimerInterval) {
+    clearInterval(voiceRecTimerInterval);
+    voiceRecTimerInterval = null;
+  }
+
+  const btnStart = document.getElementById("btnVoiceRecStart");
+  const btnStop = document.getElementById("btnVoiceRecStop");
+  if (btnStart) btnStart.disabled = false;
+  if (btnStop) btnStop.disabled = true;
+
+  const statusEl = document.getElementById("voiceRecStatusText");
+  if (statusEl) statusEl.textContent = "✓ 낭송 녹음이 완료되었습니다. 아래에서 들어보실 수 있습니다.";
+
+  const indicator = document.getElementById("voiceRecPulsingIndicator");
+  if (indicator) {
+    indicator.style.background = "#EEF4EB";
+    indicator.style.borderColor = "#436940";
+    indicator.style.boxShadow = "none";
+  }
+}
+
+async function saveVoiceRecordingToWork() {
+  if (!voiceRecordedBlob) {
+    alert("녹음된 음원 데이터가 없습니다.");
+    return;
+  }
+
+  const epSelect = document.getElementById("selectWorkToEdit");
+  let epNo = epSelect ? epSelect.value : "";
+  if (!epNo) {
+    const epInput = document.getElementById("inputEpisode");
+    epNo = epInput ? epInput.value : "제01화";
+  }
+  const title = document.getElementById("inputFinalTitle")?.value || "무제";
+
+  const btnSave = document.getElementById("btnVoiceRecSave");
+  const origText = btnSave ? btnSave.innerHTML : "";
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.innerHTML = "<span>⏳ 시집에 육성 보관 중...</span>";
+  }
+
+  const formData = new FormData();
+  formData.append("episode_no", epNo);
+  formData.append("title", title);
+  formData.append("audio_file", voiceRecordedBlob, `${epNo}_낭송.webm`);
+
+  try {
+    const res = await fetch("/api/save_voice_recording", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      alert(`🎉 ${data.message}\n\n가상 북 뷰어와 스튜디오에 시인의 육성이 공식 낭송 음원으로 등록되었습니다.`);
+      closeVoiceRecModal();
+
+      const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
+      const audioFilenameEl = document.getElementById("studioPreviewAudioFilename");
+      if (audioPreviewArea && audioFilenameEl) {
+        audioPreviewArea.style.display = "block";
+        audioFilenameEl.textContent = data.filename;
+      }
+      currentAudioFile = data.audio_file;
+
+      await loadStatus();
+    } else {
+      alert("육성 저장 실패: " + (data.detail || data.error || "오류가 발생했습니다."));
+    }
+  } catch (err) {
+    alert("육성 업로드 네트워크 오류: " + err);
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.innerHTML = origText;
+    }
+  }
+}
+
+
+// (17번 섹션의 중복 정의 함수는 19번 섹션 구현으로 통합되어 제거됨)
+
+
+// ============================================================
+// 18. 시인의 집필실: 시어(詩語) 감각 사전 & 방언/토속어
+// ============================================================
+let thesaurusSelectedWordRange = null;
+
+async function openThesaurusModal() {
+  const textarea = document.getElementById("inputFinalPoem");
+  let queryWord = "";
+
+  if (textarea && textarea.selectionStart !== textarea.selectionEnd) {
+    queryWord = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd).trim();
+    thesaurusSelectedWordRange = {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd
+    };
+  } else {
+    thesaurusSelectedWordRange = null;
+  }
+
+  const modal = document.getElementById("thesaurusModal");
+  if (modal) modal.style.display = "flex";
+
+  const searchInput = document.getElementById("thesaurusSearchInput");
+  if (searchInput) {
+    searchInput.value = queryWord || "어머니";
+  }
+
+  await loadThesaurusThemes();
+  await searchThesaurusWord(queryWord || "어머니");
+}
+
+function closeThesaurusModal() {
+  const modal = document.getElementById("thesaurusModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function loadThesaurusThemes() {
+  const container = document.getElementById("thesaurusTagsContainer");
+  if (!container) return;
+
+  try {
+    const res = await fetch("/api/thesaurus/all");
+    const data = await res.json();
+    if (res.ok && data.success) {
+      container.innerHTML = "";
+      data.categories.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-copy";
+        btn.style.padding = "4px 10px";
+        btn.style.fontSize = "0.78rem";
+        btn.style.color = "#4A3B80";
+        btn.style.borderColor = "#DCD6F7";
+        btn.style.background = "#F9F8FF";
+        btn.innerHTML = `<strong>#${item.key}</strong> <span style="color: #8C827A; font-size: 0.72rem;">(${item.category_preview})</span>`;
+        btn.onclick = () => {
+          const searchInput = document.getElementById("thesaurusSearchInput");
+          if (searchInput) searchInput.value = item.key;
+          searchThesaurusWord(item.key);
+        };
+        container.appendChild(btn);
+      });
+    }
+  } catch (err) {
+    console.error("Thesaurus themes load error:", err);
+  }
+}
+
+async function searchThesaurusWord(customQuery = null) {
+  const searchInput = document.getElementById("thesaurusSearchInput");
+  const word = (customQuery !== null ? customQuery : (searchInput ? searchInput.value : "")).trim();
+  const resultArea = document.getElementById("thesaurusResultArea");
+  if (!resultArea) return;
+
+  if (!word) {
+    resultArea.innerHTML = "<div style='color: var(--text-muted); padding: 20px; text-align: center;'>검색할 시어를 입력해 주세요.</div>";
+    return;
+  }
+
+  resultArea.innerHTML = "<div style='color: var(--text-muted); padding: 20px; text-align: center;'>시어의 결을 탐색하는 중...</div>";
+
+  try {
+    const res = await fetch(`/api/thesaurus/lookup?word=${encodeURIComponent(word)}`);
+    const data = await res.json();
+
+    if (res.ok && data.success && data.found) {
+      renderThesaurusResult(data.matched_key, data.data);
+    } else {
+      resultArea.innerHTML = `
+        <div style="background: #FFF9F5; border: 1px dashed #EBD0B5; border-radius: 8px; padding: 20px; text-align: center;">
+          <div style="font-weight: 700; color: #643E19; margin-bottom: 6px;">'${escapeHtml(word)}'에 대한 직관 사전 결과가 없습니다.</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">아래의 정통 서정 시어 테마(#어머니, #목화, #비, #바람, #새벽, #그리움 등)를 클릭해 보세요.</p>
+        </div>
+      `;
+    }
+  } catch (err) {
+    resultArea.innerHTML = `<div style='color: #c84b31;'>검색 오류: ${err.message}</div>`;
+  }
+}
+
+function renderThesaurusResult(key, dbItem) {
+  const resultArea = document.getElementById("thesaurusResultArea");
+  if (!resultArea || !dbItem) return;
+
+  let html = `
+    <div style="background: #FDFBFF; border: 1px solid #E8E2F7; border-radius: 8px; padding: 14px 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #EFEAFD; padding-bottom: 8px;">
+        <span style="font-size: 1.05rem; font-weight: 700; color: #4A3B80; font-family: var(--font-serif);">
+          『${escapeHtml(key)}』의 정서적 온도와 시어 팔레트
+        </span>
+        <span style="font-size: 0.74rem; color: #7B719B;">클릭 시 본문에 즉시 적용</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+  `;
+
+  for (const [catName, words] of Object.entries(dbItem.categories || {})) {
+    html += `
+      <div>
+        <div style="font-size: 0.82rem; font-weight: 700; color: #5B4E8C; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+          <span>🔹</span> <span>${escapeHtml(catName)}</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+    `;
+
+    words.forEach(w => {
+      const cleanWord = w.split('(')[0].trim();
+      html += `
+        <button type="button" class="btn-copy" onclick="applyThesaurusWord('${escapeHtml(cleanWord)}')" style="padding: 5px 12px; font-size: 0.84rem; background: #FFFFFF; border-color: #D6CEF0; color: #2C2520; transition: all 0.15s;" title="[클릭] 이 시어로 본문 교체하기">
+          <strong>${escapeHtml(cleanWord)}</strong>
+          ${w.includes('(') ? `<span style="font-size: 0.7rem; color: #8C827A;">(${escapeHtml(w.split('(')[1])}</span>` : ''}
+        </button>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+      </div>
+    </div>
+  `;
+
+  resultArea.innerHTML = html;
+}
+
+function applyThesaurusWord(newWord) {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const targetRange = thesaurusSelectedWordRange || activePaletteRange;
+  if (targetRange && targetRange.start !== targetRange.end) {
+    const value = textarea.value;
+    textarea.value = value.substring(0, targetRange.start) + newWord + value.substring(targetRange.end);
+    textarea.selectionStart = targetRange.start;
+    textarea.selectionEnd = targetRange.start + newWord.length;
+  } else {
+    const pos = textarea.selectionStart || textarea.value.length;
+    textarea.value = textarea.value.substring(0, pos) + " " + newWord + textarea.value.substring(pos);
+    textarea.selectionStart = textarea.selectionEnd = pos + newWord.length + 1;
+  }
+
+  closeThesaurusModal();
+  closePoeticPalette();
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+
+  try {
+    navigator.clipboard.writeText(newWord);
+  } catch (_) {}
+
+  showCustomFloatingAlert(`✨ 시어 『${newWord}』가 본문에 아름답게 적용되었습니다!`);
+}
+
+// ============================================================
+// 19. 시인의 집필실: [기둥 3] 공간의 시학 (행간·들여쓰기 타이포그래피 바)
+// ============================================================
+
+// 19-1. 들여쓰기 (선택된 행들 또는 현재 행의 시작에 공백 n칸 삽입)
+function formatPoemIndent(spaces = 2) {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const indentStr = " ".repeat(spaces);
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+
+  const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+  let lineEnd = val.indexOf("\n", end);
+  if (lineEnd === -1) lineEnd = val.length;
+
+  const targetText = val.substring(lineStart, lineEnd);
+  const lines = targetText.split("\n");
+  const indentedLines = lines.map(line => indentStr + line);
+  const newText = indentedLines.join("\n");
+
+  textarea.value = val.substring(0, lineStart) + newText + val.substring(lineEnd);
+  
+  textarea.selectionStart = start + spaces;
+  textarea.selectionEnd = end + (spaces * lines.length);
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// 19-2. 내어쓰기 (선택된 행들 또는 현재 행의 앞 공백 최대 n칸 삭제)
+function formatPoemOutdent(spaces = 2) {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+
+  const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+  let lineEnd = val.indexOf("\n", end);
+  if (lineEnd === -1) lineEnd = val.length;
+
+  const targetText = val.substring(lineStart, lineEnd);
+  const lines = targetText.split("\n");
+  let totalRemoved = 0;
+  let firstLineRemoved = 0;
+
+  const outdentedLines = lines.map((line, idx) => {
+    let removed = 0;
+    while (removed < spaces && line.startsWith(" ")) {
+      line = line.substring(1);
+      removed++;
+    }
+    if (idx === 0) firstLineRemoved = removed;
+    totalRemoved += removed;
+    return line;
+  });
+
+  const newText = outdentedLines.join("\n");
+  textarea.value = val.substring(0, lineStart) + newText + val.substring(lineEnd);
+
+  textarea.selectionStart = Math.max(lineStart, start - firstLineRemoved);
+  textarea.selectionEnd = Math.max(lineStart, end - totalRemoved);
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// 19-3. 깊은 여백 (연과 연 사이 깊은 침묵: 빈 줄 2칸 삽입)
+function insertPoemDeepSpace() {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+
+  const deepSpace = "\n\n";
+  textarea.value = val.substring(0, start) + deepSpace + val.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + deepSpace.length;
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// 19-4. 오른쪽 치우침 (>> 표식 토글)
+function formatPoemAlignRight() {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+
+  const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+  let lineEnd = val.indexOf("\n", end);
+  if (lineEnd === -1) lineEnd = val.length;
+
+  const targetText = val.substring(lineStart, lineEnd);
+  const lines = targetText.split("\n");
+
+  const toggledLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(">>") || trimmed.startsWith("》》")) {
+      return line.replace(/^(\s*)(>>\s*|》》\s*)/, '$1');
+    } else {
+      return ">> " + line.trim();
+    }
+  });
+
+  const newText = toggledLines.join("\n");
+  textarea.value = val.substring(0, lineStart) + newText + val.substring(lineEnd);
+  textarea.selectionStart = lineStart;
+  textarea.selectionEnd = lineStart + newText.length;
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// 19-5. 에디터 Tab / Shift+Tab 단축키 등록
+function setupPoemEditorKeybindings() {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  textarea.addEventListener("keydown", function(e) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        formatPoemOutdent(2);
+      } else {
+        formatPoemIndent(2);
+      }
+    }
+  });
+}
+
+// ============================================================
+// 20. 시인의 집필실: [기둥 1] 인라인 미니 플로팅 시어 팔레트
+// ============================================================
+let activePaletteWord = "";
+let activePaletteRange = null;
+
+function setupPoeticFloatingPalette() {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const handleSelection = () => {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    if (start === end) return;
+
+    const selectedText = textarea.value.substring(start, end).trim();
+    // 2자 이상 15자 이하의 단어 선택 시 미니 플로팅 팔레트 트리거
+    if (selectedText.length >= 2 && selectedText.length <= 15) {
+      activePaletteWord = selectedText;
+      activePaletteRange = { start, end };
+      thesaurusSelectedWordRange = { start, end };
+      openPoeticFloatingPalette(selectedText);
+    }
+  };
+
+  textarea.addEventListener("mouseup", () => {
+    setTimeout(handleSelection, 20);
+  });
+
+  textarea.addEventListener("keyup", (e) => {
+    if (e.shiftKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+      handleSelection();
+    }
+  });
+
+  // ESC 누르면 닫기
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closePoeticPalette();
+    }
+  });
+
+  // 팔레트 바깥 클릭 시 닫기
+  document.addEventListener("mousedown", (e) => {
+    const palette = document.getElementById("poeticFloatingPalette");
+    if (!palette || palette.style.display === "none") return;
+    if (!palette.contains(e.target) && e.target !== textarea) {
+      closePoeticPalette();
+    }
+  });
+}
+
+async function openPoeticFloatingPalette(word) {
+  const palette = document.getElementById("poeticFloatingPalette");
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!palette || !textarea) return;
+
+  const titleElem = document.getElementById("floatingWordTitle");
+  if (titleElem) titleElem.textContent = `『${escapeHtml(word)}』의 시어 결`;
+
+  const chipsContainer = document.getElementById("floatingChipsContainer");
+  if (chipsContainer) {
+    chipsContainer.innerHTML = '<div class="palette-loading" style="font-size: 0.8rem; color: #8C827A; padding: 6px;">시어의 결을 벼리는 중...</div>';
+  }
+
+  // 팔레트 위치 지정 (textarea 상단 또는 커서 주변 안전 위치)
+  const rect = textarea.getBoundingClientRect();
+  palette.style.display = "block";
+  palette.style.position = "absolute";
+
+  const topPos = window.scrollY + rect.top + 36;
+  const leftPos = Math.min(window.scrollX + rect.left + 24, window.innerWidth - 340);
+  palette.style.top = `${topPos}px`;
+  palette.style.left = `${Math.max(10, leftPos)}px`;
+
+  // 1차: 사전 검색
+  try {
+    const res = await fetch(`/api/thesaurus/lookup?word=${encodeURIComponent(word)}`);
+    const data = await res.json();
+
+    if (res.ok && data.success && data.found && data.data) {
+      renderPaletteChipsFromDb(data.data);
+    } else {
+      // 사전에 없을 때 실시간 AI 감각 추천 자동 호출
+      await requestAiPoeticPalette(word);
+    }
+  } catch (err) {
+    if (chipsContainer) {
+      chipsContainer.innerHTML = `<div style="font-size: 0.78rem; color: #8C827A; padding: 4px;">사전 대기 중. <a href="#" onclick="requestAiPoeticPalette(); return false;" style="color: #4A3B80; font-weight: 700;">[AI 추천받기]</a></div>`;
+    }
+  }
+}
+
+function renderPaletteChipsFromDb(dbItem) {
+  const chipsContainer = document.getElementById("floatingChipsContainer");
+  if (!chipsContainer || !dbItem) return;
+
+  chipsContainer.innerHTML = "";
+  const categories = dbItem.categories || {};
+  let count = 0;
+
+  for (const [catName, words] of Object.entries(categories)) {
+    for (const w of words) {
+      if (count >= 8) break;
+      const cleanWord = w.split("(")[0].trim();
+      const desc = w.includes("(") ? w.split("(")[1].replace(")", "") : catName;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "poetic-chip-btn";
+      btn.title = `[클릭] '${cleanWord}'(으)로 본문 교체하기`;
+      btn.innerHTML = `<strong>${escapeHtml(cleanWord)}</strong> <span class="poetic-chip-desc">(${escapeHtml(desc)})</span>`;
+      btn.onclick = () => replaceSelectedWord(cleanWord);
+      chipsContainer.appendChild(btn);
+      count++;
+    }
+    if (count >= 8) break;
+  }
+}
+
+async function requestAiPoeticPalette(customWord = null) {
+  const word = customWord || activePaletteWord;
+  if (!word) return;
+
+  const chipsContainer = document.getElementById("floatingChipsContainer");
+  if (chipsContainer) {
+    chipsContainer.innerHTML = '<div class="palette-loading" style="font-size: 0.8rem; color: #5B4E8C; padding: 6px;">💫 AI가 서정적 시어의 결을 빚는 중...</div>';
+  }
+
+  const textarea = document.getElementById("inputFinalPoem");
+  const poemContext = textarea ? textarea.value.substring(0, 300) : "";
+
+  try {
+    const res = await fetch(`/api/thesaurus/suggest?word=${encodeURIComponent(word)}&context=${encodeURIComponent(poemContext)}`);
+    const data = await res.json();
+
+    if (res.ok && data.success && data.suggestions && data.suggestions.length > 0) {
+      chipsContainer.innerHTML = "";
+      data.suggestions.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "poetic-chip-btn";
+        btn.title = `[클릭] '${item.word}'(으)로 본문 교체하기`;
+        btn.innerHTML = `<strong>${escapeHtml(item.word)}</strong> <span class="poetic-chip-desc">(${escapeHtml(item.desc || item.category)})</span>`;
+        btn.onclick = () => replaceSelectedWord(item.word);
+        chipsContainer.appendChild(btn);
+      });
+    } else {
+      if (chipsContainer) {
+        chipsContainer.innerHTML = '<div style="font-size: 0.78rem; color: #8C827A; padding: 6px;">추천된 시어가 없습니다. 감각 사전을 열어보세요.</div>';
+      }
+    }
+  } catch (err) {
+    if (chipsContainer) {
+      chipsContainer.innerHTML = `<div style="font-size: 0.78rem; color: #C84B31; padding: 6px;">추천 오류: ${err.message}</div>`;
+    }
+  }
+}
+
+function replaceSelectedWord(newWord) {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+
+  const targetRange = activePaletteRange || thesaurusSelectedWordRange;
+  if (targetRange && targetRange.start !== targetRange.end) {
+    const val = textarea.value;
+    textarea.value = val.substring(0, targetRange.start) + newWord + val.substring(targetRange.end);
+    textarea.selectionStart = targetRange.start;
+    textarea.selectionEnd = targetRange.start + newWord.length;
+  } else {
+    const pos = textarea.selectionStart || textarea.value.length;
+    const val = textarea.value;
+    textarea.value = val.substring(0, pos) + newWord + val.substring(pos);
+    textarea.selectionStart = textarea.selectionEnd = pos + newWord.length;
+  }
+
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  closePoeticPalette();
+
+  showCustomFloatingAlert(`✨ 시어 『${newWord}』가 본문에 아름답게 교체되었습니다!`);
+}
+
+function closePoeticPalette() {
+  const palette = document.getElementById("poeticFloatingPalette");
+  if (palette) palette.style.display = "none";
+}
+
+function expandToThesaurusModal() {
+  closePoeticPalette();
+  openThesaurusModal();
+}
+
+function showCustomFloatingAlert(msg) {
+  const alertBox = document.createElement("div");
+  alertBox.style.position = "fixed";
+  alertBox.style.bottom = "24px";
+  alertBox.style.right = "24px";
+  alertBox.style.zIndex = "9999";
+  alertBox.style.background = "#4A3B80";
+  alertBox.style.color = "#FFFFFF";
+  alertBox.style.padding = "10px 18px";
+  alertBox.style.borderRadius = "8px";
+  alertBox.style.boxShadow = "0 6px 18px rgba(74, 59, 128, 0.35)";
+  alertBox.style.fontSize = "0.88rem";
+  alertBox.style.fontFamily = "var(--font-serif)";
+  alertBox.textContent = msg;
+  document.body.appendChild(alertBox);
+
+  setTimeout(() => {
+    alertBox.style.opacity = "0";
+    alertBox.style.transition = "opacity 0.4s ease";
+    setTimeout(() => alertBox.remove(), 400);
+  }, 2200);
+}
+
+// 초기화 바인딩
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    bindEvents();
+    setupPoemEditorKeybindings();
+    setupPoeticFloatingPalette();
+    setTimeout(alignPoemEditorWithAudioDropzone, 200);
+    checkGeminiKeyStatus();
+  });
+} else {
+  bindEvents();
+  setupPoemEditorKeybindings();
+  setupPoeticFloatingPalette();
+  setTimeout(alignPoemEditorWithAudioDropzone, 200);
+  checkGeminiKeyStatus();
+}
+
+// =========================================================
+// 20. 시 본문 입력창 하단 선과 우측 음원 드롭존 하단 선 수평 정렬
+// =========================================================
+function alignPoemEditorWithAudioDropzone() {
+  const poemEditor = document.getElementById("inputFinalPoem");
+  if (!poemEditor) return;
+  // CSS Flexbox가 전체 세로 공간을 100% 채우도록 인라인 height 제거
+  poemEditor.style.removeProperty("height");
+}
+
+// =========================================================
+// 21. Google Gemini API 키 및 최신 AI 모델 관리 & 상태 확인
+// =========================================================
+async function checkGeminiKeyStatus() {
+  const btn = document.getElementById("btnOpenGeminiKeyModal");
+  const statusText = document.getElementById("geminiKeyCurrentStatusText");
+  const modelSelect = document.getElementById("selectGeminiModel");
+  try {
+    const [keyRes, modelRes] = await Promise.all([
+      fetch("/api/settings/gemini_key"),
+      fetch("/api/settings/gemini_model")
+    ]);
+    const keyData = await keyRes.json();
+    const modelData = await modelRes.json();
+
+    const currentModel = (modelData && modelData.current_model) ? modelData.current_model : "gemini-3.8-flash";
+
+    if (modelSelect) {
+      modelSelect.value = currentModel;
+      modelSelect.onchange = async () => {
+        const chosen = modelSelect.value;
+        try {
+          const res = await fetch("/api/settings/gemini_model", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model_name: chosen })
+          });
+          const d = await res.json();
+          if (d.success) {
+            showTemporaryToast(`🤖 AI 모델이 [${chosen}]로 변경되었습니다!`);
+            await checkGeminiKeyStatus();
+          }
+        } catch (e) {
+          console.error("모델 변경 실패:", e);
+        }
+      };
+    }
+
+    if (keyData.configured) {
+      if (btn) {
+        btn.innerHTML = `<span style="color:#16A34A; font-weight:700;">🔑 AI 키 연결됨 (${currentModel} 활성)</span>`;
+        btn.style.borderColor = "#86EFAC";
+        btn.style.background = "#F0FDF4";
+        btn.title = `Google Gemini 키가 연동되어 있습니다 (${keyData.masked_key}). 현재 ${currentModel} 모델로 시를 빚습니다.`;
+      }
+      if (statusText) {
+        statusText.innerHTML = `<span style="color:#16A34A; font-weight:700;">✓ 현재 키 연동됨: ${keyData.masked_key} (${currentModel})</span>`;
+      }
+    } else {
+      if (btn) {
+        btn.innerHTML = '<span>🔑 무료 AI 키 설정 (100% 무료)</span>';
+        btn.style.borderColor = "#B8977E";
+        btn.style.background = "#FFFDF9";
+        btn.title = "Google AI Studio에서 30초 만에 100% 무료 키를 발급받아 등록하면, 상투적이지 않은 고품격 서정시를 빚어냅니다.";
+      }
+      if (statusText) {
+        statusText.innerHTML = '<span style="color:#DC2626;">✕ 등록된 API 키가 없습니다 (기본 룰베이스 엔진 작동 중)</span>';
+      }
+    }
+    if (btn) {
+      btn.onclick = openGeminiKeyModal;
+    }
+  } catch (err) {
+    console.warn("Gemini 키 상태 확인 실패:", err);
+  }
+}
+
+function openGeminiKeyModal() {
+  const modal = document.getElementById("modalGeminiKey");
+  if (modal) {
+    modal.style.display = "flex";
+    const msg = document.getElementById("geminiKeyValidationMsg");
+    if (msg) msg.style.display = "none";
+    const input = document.getElementById("inputGeminiApiKey");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+    checkGeminiKeyStatus();
+  }
+}
+
+// 전역 window 객체 노출 (인라인 onclick 안전 보장)
+window.openGeminiKeyModal = openGeminiKeyModal;
+window.closeGeminiKeyModal = closeGeminiKeyModal;
+window.saveGeminiApiKey = saveGeminiApiKey;
+window.checkGeminiKeyStatus = checkGeminiKeyStatus;
+
+function closeGeminiKeyModal() {
+  const modal = document.getElementById("modalGeminiKey");
+  if (modal) modal.style.display = "none";
+}
+
+async function saveGeminiApiKey() {
+  const input = document.getElementById("inputGeminiApiKey");
+  const msg = document.getElementById("geminiKeyValidationMsg");
+  const saveBtn = document.getElementById("btnSaveGeminiKey");
+  const modelSelect = document.getElementById("selectGeminiModel");
+  const apiKey = (input ? input.value : "").trim();
+  const selectedModel = modelSelect ? modelSelect.value : "gemini-3.8-flash";
+
+  // 모델 먼저 저장
+  if (selectedModel) {
+    await fetch("/api/settings/gemini_model", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_name: selectedModel })
+    });
+  }
+
+  if (!apiKey) {
+    // 키 입력 없이 모델만 바꾼 경우
+    showTemporaryToast(`🤖 AI 모델이 [${selectedModel}]로 저장되었습니다!`);
+    await checkGeminiKeyStatus();
+    closeGeminiKeyModal();
+    return;
+  }
+
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = "<span>⏳ 검증 및 저장 중...</span>";
+  }
+
+  try {
+    const res = await fetch("/api/settings/gemini_key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: apiKey })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (msg) {
+        msg.style.display = "block";
+        msg.style.color = "#16A34A";
+        msg.textContent = `✓ Gemini 키 및 [${selectedModel}] 모델이 성공적으로 활성화되었습니다!`;
+      }
+      showTemporaryToast(`✨ [${selectedModel}] 모델이 활성화되었습니다. 깊이 있는 현대시를 빚어냅니다!`);
+      await checkGeminiKeyStatus();
+      setTimeout(() => {
+        closeGeminiKeyModal();
+      }, 1200);
+    } else {
+      if (msg) {
+        msg.style.display = "block";
+        msg.style.color = "#DC2626";
+        msg.textContent = `⚠️ 오류: ${data.detail || "검증 실패"}`;
+      }
+    }
+  } catch (err) {
+    if (msg) {
+      msg.style.display = "block";
+      msg.style.color = "#DC2626";
+      msg.textContent = `⚠️ 통신 실패: ${err.message}`;
+    }
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = "<span>💾 저장 및 즉시 활성화</span>";
+    }
+  }
+}
+
+// =========================================================
+// 22. AI 심층 인터뷰 (영감 꼬리질문 & 감각 발굴)
+// =========================================================
+async function onStartDeepInterview() {
+  const coreMemory = (document.getElementById("inputCoreMemory")?.value || "").trim();
+  const sensoryDetails = (document.getElementById("inputSensoryDetails")?.value || "").trim();
+  const spokenWords = (document.getElementById("inputSpokenWords")?.value || "").trim();
+
+  if (!coreMemory && !sensoryDetails && !spokenWords) {
+    alert("인터뷰 1, 2, 3번 질문 중 적어도 한 가지를 간단히 적어주셔야 맞춤형 심층 꼬리 질문을 던져드릴 수 있습니다.");
+    document.getElementById("inputCoreMemory")?.focus();
+    return;
+  }
+
+  const btn = document.getElementById("btnStartDeepInterview");
+  const panel = document.getElementById("deepInterviewPanel");
+  const origBtnHtml = btn ? btn.innerHTML : "";
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "<span>⏳ 영감 분석 & 꼬리 질문 생성 중...</span>";
+  }
+
+  try {
+    const res = await fetch("/api/interview/deep_questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        core_memory: coreMemory,
+        sensory_details: sensoryDetails,
+        spoken_words: spokenWords
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.questions) {
+      throw new Error(data.detail || "심층 질문 생성에 실패했습니다.");
+    }
+
+    // 1. 공감 요약 박스 업데이트
+    const summaryBox = document.getElementById("deepInterviewSummaryBox");
+    if (summaryBox) {
+      summaryBox.innerHTML = `<strong>🕊️ AI 시인의 마음 읽기:</strong><br>${data.summary || "선생님께서 들려주신 기억의 편린을 소중히 음미하고 있습니다."}`;
+    }
+
+    // 2. 꼬리 질문 3개 리스트 렌더링
+    const qList = document.getElementById("deepInterviewQuestionsList");
+    if (qList) {
+      qList.innerHTML = "";
+      data.questions.forEach((q, idx) => {
+        const item = document.createElement("div");
+        item.style.cssText = "background: #FFFFFF; border: 1px solid #EBD0B5; border-radius: 6px; padding: 8px 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: flex-start; gap: 8px;";
+        item.onmouseenter = () => { item.style.borderColor = "#8B5A2B"; item.style.background = "#FFF9F2"; };
+        item.onmouseleave = () => { item.style.borderColor = "#EBD0B5"; item.style.background = "#FFFFFF"; };
+        item.onclick = () => selectDeepQuestion(q);
+
+        item.innerHTML = `
+          <span style="background: #8B5A2B; color: #FFF; font-size: 0.72rem; font-weight: 700; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">${idx + 1}</span>
+          <div style="flex: 1;">
+            <div style="font-size: 0.83rem; color: #3E2723; font-weight: 600; line-height: 1.45;">${q}</div>
+            <div style="font-size: 0.72rem; color: #8D6E63; margin-top: 2px;">👉 이 질문을 선택하고 아래에 한 줄로 답하기</div>
+          </div>
+        `;
+        qList.appendChild(item);
+      });
+    }
+
+    // 3. 패널 열기 및 부드러운 스크롤
+    if (panel) {
+      panel.style.display = "block";
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    // 4. 입력창 포커스
+    const inputDeep = document.getElementById("inputDeepAnswer");
+    if (inputDeep) {
+      inputDeep.focus();
+    }
+  } catch (err) {
+    alert("심층 인터뷰 생성 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+    }
+  }
+}
+
+function selectDeepQuestion(qText) {
+  const input = document.getElementById("inputDeepAnswer");
+  if (input) {
+    input.placeholder = `[선택한 질문] "${qText}" → 짧게 한 줄 덧붙여주세요`;
+    input.focus();
+  }
+}
+
+function closeDeepInterviewPanel() {
+  const panel = document.getElementById("deepInterviewPanel");
+  if (panel) panel.style.display = "none";
+}
+
+async function onGenerateDraftsWithDeepAnswer() {
+  const inputDeep = document.getElementById("inputDeepAnswer");
+  const deepVal = inputDeep ? inputDeep.value.trim() : "";
+  if (!deepVal) {
+    if (!confirm("심층 질문에 대한 답변이 비어있습니다. 기존 입력 내용만으로 시안을 생성할까요?")) {
+      if (inputDeep) inputDeep.focus();
+      return;
+    }
+  }
+  await onGenerateDrafts();
+}
+
+
+

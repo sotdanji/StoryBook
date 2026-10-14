@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.auth_session.json
+.DS_Store
+*.zip
+scratch/
+.system_generated/
+.pytest_cache/
+*.log
+

@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryBook Studio | 최고 관리자 센터 (Admin HQ)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0F1115;
+      --bg-surface: #181B20;
+      --bg-card: rgba(28, 32, 39, 0.75);
+      --bg-card-hover: rgba(35, 40, 49, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-gold: rgba(212, 175, 55, 0.35);
+      --gold-primary: #E5C07B;
+      --gold-hover: #F3D38C;
+      --gold-gradient: linear-gradient(135deg, #E5C07B 0%, #D19A66 100%);
+      --accent-blue: #61AFEF;
+      --accent-green: #98C379;
+      --accent-red: #E06C75;
+      --accent-purple: #C678DD;
+      --text-main: #ECEFF4;
+      --text-muted: #8E95A2;
+      --text-dim: #5C6370;
+      --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --glass-blur: blur(14px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(229, 192, 123, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(97, 175, 239, 0.04) 0%, transparent 40%);
+    }
+
+    /* 상단 헤더 */
+    .admin-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 17, 21, 0.85);
+      backdrop-filter: var(--glass-blur);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      font-size: 1.6rem;
+      background: rgba(229, 192, 123, 0.12);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      border: 1px solid var(--border-gold);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title span {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      margin-left: 6px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .admin-profile-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 30px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    .admin-profile-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-gold {
+      background: var(--gold-gradient);
+      color: #121418;
+      box-shadow: 0 4px 14px rgba(229, 192, 123, 0.25);
+    }
+
+    .btn-gold:hover {
+      background: var(--gold-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* 메인 컨테이너 */
+    .admin-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Hero / 소개 배너 */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(28, 32, 39, 0.9) 0%, rgba(20, 23, 28, 0.95) 100%);
+      border: 1px solid var(--border-gold);
+      border-radius: 16px;
+      padding: 1.8rem 2.2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-card);
+      backdrop-filter: var(--glass-blur);
+    }
+
+    .hero-text h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #FFFFFF;
+    }
+
+    .hero-text p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* 5대 KPI 그리드 */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.4rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(229, 192, 123, 0.4);
+      background: var(--bg-card-hover);
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--gold-gradient);
+      opacity: 0.6;
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-icon {
+      font-size: 1.3rem;
+      opacity: 0.85;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kpi-sub .badge-pos {
+      color: var(--accent-green);
+      font-weight: 600;
+    }
+
+    /* 탭 바 */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 1.5rem;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      color: var(--gold-primary);
+      background: rgba(229, 192, 123, 0.08);
+    }
+
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--gold-primary);
+      box-shadow: 0 0 8px var(--gold-primary);
+    }
+
+    /* 탭 콘텐츠 영역 */
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 테이블 & 카드 레이아웃 */
+    .table-container {
+      background: var(--bg-card);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .table-toolbar {
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.02);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(15, 17, 21, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 12px 8px 34px;
+      color: #FFFFFF;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 0 3px rgba(229, 192, 123, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: rgba(15, 17, 21, 0.5);
+      padding: 12px 18px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    table.data-table td {
+      padding: 16px 18px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    table.data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-gold { background: rgba(229, 192, 123, 0.15); color: var(--gold-primary); border: 1px solid var(--border-gold); }
+    .badge-green { background: rgba(152, 195, 121, 0.15); color: var(--accent-green); border: 1px solid rgba(152, 195, 121, 0.3); }
+    .badge-blue { background: rgba(97, 175, 239, 0.15); color: var(--accent-blue); border: 1px solid rgba(97, 175, 239, 0.3); }
+    .badge-gray { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+    /* 진척도 바 */
+    .progress-bar-wrap {
+      width: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      height: 6px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--gold-gradient);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    /* 시스템 상태 카드 그리드 */
+    .system-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .sys-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+
+    .sys-card h3 {
+      font-size: 1.1rem;
+      color: #FFFFFF;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sys-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.88rem;
+    }
+
+    .sys-item:last-child {
+      border-bottom: none;
+    }
+
+    .sys-label {
+      color: var(--text-muted);
+    }
+
+    .sys-val {
+      font-weight: 600;
+      color: var(--text-main);
+      font-family: monospace;
+    }
+
+    /* 로딩 스피너 */
+    .spinner-wrap {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 상단 관리자 헤더 -->
+  <header class="admin-header">
+    <div class="brand-wrap">
+      <div class="brand-badge">📖</div>
+      <div>
+        <h1 class="brand-title">StoryBook Studio <span>HQ</span></h1>
+        <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">최고 관리자 전용 대시보드</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-profile-pill">
+        <span class="dot"></span>
+        <span id="adminEmailText">{{ current_user.email if current_user else '관리자' }}</span>
+        <span class="badge badge-gold" style="padding: 1px 7px;">👑 MASTER</span>
+      </div>
+
+      <button type="button" class="btn-action btn-secondary" onclick="loadOverviewData()">
+        <span>🔄 새로고침</span>
+      </button>
+
+      <a href="/" class="btn-action btn-gold">
+        <span>✍️ 작가 집필실 입장</span>
+      </a>
+
+      <button type="button" class="btn-action btn-secondary" onclick="handleAdminLogout()">
+        <span>로그아웃</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. 메인 컨테이너 -->
+  <main class="admin-container">
+
+    <!-- Hero 배너 -->
+    <div class="hero-banner">
+      <div class="hero-text">
+        <h2>스튜디오 창작 현황 종합 관제실</h2>
+        <p>전체 회원의 기억 기반 시화집 프로젝트, 집필 원고 진척도, 생성 삽화 자산 및 AI 엔진 연결 상태를 모니터링합니다.</p>
+      </div>
+      <div>
+        <span class="badge badge-green" style="font-size: 0.85rem; padding: 6px 12px;">● 시스템 정상 가동 중</span>
+      </div>
+    </div>
+
+    <!-- 5대 KPI 카드 그리드 -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">전체 시화집 프로젝트</span>
+          <span class="kpi-icon">📚</span>
+        </div>
+        <div class="kpi-value" id="kpiProjects">-</div>
+        <div class="kpi-sub">
+          <span>총 창작 도서 목록</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">누적 집필 시 원고</span>
+          <span class="kpi-icon">✍️</span>
+        </div>
+        <div class="kpi-value" id="kpiPoems">-</div>
+        <div class="kpi-sub">
+          <span>완성 편수: <strong id="kpiCompleted" style="color: var(--accent-green);">-</strong></span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">창작 삽화 자산</span>
+          <span class="kpi-icon">🎨</span>
+        </div>
+        <div class="kpi-value" id="kpiImages">-</div>
+        <div class="kpi-sub">
+          <span>인쇄용 300DPI 이미지</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">등록 작가 (회원)</span>
+          <span class="kpi-icon">👥</span>
+        </div>
+        <div class="kpi-value" id="kpiWriters">-</div>
+        <div class="kpi-sub">
+          <span class="badge-pos">Google OAuth 연동</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">평균 집필 완성률</span>
+          <span class="kpi-icon">📈</span>
+        </div>
+        <div class="kpi-value" id="kpiRate">-%</div>
+        <div class="kpi-sub">
+          <span>목표 35편 기준 산출</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 탭 네비게이션 -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('tabProjects', this)">
+        <span>📚 전체 시집 프로젝트</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('tabWriters', this)">
+        <span>👥 가입 작가(회원) 활동</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('tabSystem', this)">
+        <span>⚙️ AI 엔진 & 시스템 상태</span>
+      </button>
+    </nav>
+
+    <!-- 탭 1: 전체 시집 프로젝트 목록 -->
+    <div id="tabProjects" class="tab-pane active">
+      <div class="table-container">
+        <div class="table-toolbar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="projectSearchInput" class="search-input" placeholder="시집 제목 또는 작가명 검색..." oninput="filterProjects()">
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            총 <strong id="projectCountLabel" style="color: var(--gold-primary);">0</strong>개의 프로젝트 등록됨
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>상태</th>
+              <th>시집 제목</th>
+              <th>작가(필명)</th>
+              <th>소유자 계정</th>
+              <th>집필 진척도</th>
+              <th>삽화</th>
+              <th>출판 자산</th>
+              <th>최근 수정일</th>
+              <th>관리 작업</th>
+            </tr>
+          </thead>
+          <tbody id="projectsTableBody">
+            <tr>
+              <td colspan="9" class="spinner-wrap">데이터를 불러오는 중입니다...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 탭 2: 가입 작가 활동 현황 -->
+    <div id="tabWriters" class="tab-pane">
+      <div class="table-container">
+        <div class="table-toolbar">
+          <h3 style="font-size: 1rem; color: #FFFFFF;">👥 등록 작가 계정별 프로젝트 보유 현황</h3>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>작가 계정 (Email)</th>
+              <th>활동 필명</th>
+              <th>보유 시집 수</th>
+              <th>총 작성 시 편수</th>
+              <th>완성된 시</th>
+              <th>최근 활동일</th>
+            </tr>
+          </thead>
+          <tbody id="writersTableBody">
+            <tr>
+              <td colspan="6" class="spinner-wrap">데이터를 불러오는 중입니다...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 탭 3: 시스템 및 AI 엔진 상태 -->
+    <div id="tabSystem" class="tab-pane">
+      <div class="system-grid">
+        <div class="sys-card">
+          <h3><span>🤖</span> Google Gemini AI 엔진</h3>
+          <div class="sys-item">
+            <span class="sys-label">API 키 등록 상태</span>
+            <span class="sys-val" id="sysGeminiStatus">-</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">마스킹된 키</span>
+            <span class="sys-val" id="sysGeminiKey">-</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">권장 모델</span>
+            <span class="sys-val" style="color: var(--accent-blue);">gemini-2.5-flash</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">주요 작업</span>
+            <span class="sys-val">심층 인터뷰 / 시 창작 / 삽화 프롬프트</span>
+          </div>
+        </div>
+
+        <div class="sys-card">
+          <h3><span>🔐</span> Supabase 중앙 회원 인증</h3>
+          <div class="sys-item">
+            <span class="sys-label">연동 상태</span>
+            <span class="sys-val" id="sysSupaStatus">-</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">Supabase Endpoint</span>
+            <span class="sys-val" id="sysSupaUrl" style="font-size: 0.78rem;">-</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">간편 로그인</span>
+            <span class="sys-val" style="color: var(--accent-green);">Google OAuth 활성화됨</span>
+          </div>
+        </div>
+
+        <div class="sys-card">
+          <h3><span>📖</span> 부크크 독립출판 도서 사양</h3>
+          <div class="sys-item">
+            <span class="sys-label">권장 판형</span>
+            <span class="sys-val">A5 (148 x 210 mm)</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">기본 용지</span>
+            <span class="sys-val" id="sysPaperType">백색모조 100g</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">표준 목표 편수</span>
+            <span class="sys-val" id="sysTargetCount">35편</span>
+          </div>
+          <div class="sys-item">
+            <span class="sys-label">기본 화풍</span>
+            <span class="sys-val" id="sysDefaultStyle" style="font-size: 0.8rem;">한국적 서정 수채화</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let globalOverviewData = null;
+
+    // 데이터 로드
+    async function loadOverviewData() {
+      try {
+        const res = await fetch("/api/admin/overview");
+        if (res.status === 403) {
+          alert("최고 관리자 권한이 없습니다. 작가 집필실로 이동합니다.");
+          window.location.href = "/";
+          return;
+        }
+        const data = await res.json();
+        if (!data.success) throw new Error("데이터 조회 실패");
+        globalOverviewData = data;
+        renderDashboard(data);
+      } catch (err) {
+        console.error("Admin Load Error:", err);
+      }
+    }
+
+    // 대시보드 렌더링
+    function renderDashboard(data) {
+      // 1. KPI
+      document.getElementById("kpiProjects").textContent = data.kpi.total_projects;
+      document.getElementById("kpiPoems").textContent = data.kpi.total_poems;
+      document.getElementById("kpiCompleted").textContent = data.kpi.total_completed + "편";
+      document.getElementById("kpiImages").textContent = data.kpi.total_images;
+      document.getElementById("kpiWriters").textContent = data.kpi.total_writers + "명";
+      document.getElementById("kpiRate").textContent = data.kpi.completion_rate + "%";
+
+      // 2. 프로젝트 테이블
+      renderProjectsTable(data.projects);
+
+      // 3. 작가 테이블
+      renderWritersTable(data.writers);
+
+      // 4. 시스템 상태
+      const gemini = data.system.gemini;
+      document.getElementById("sysGeminiStatus").innerHTML = gemini.configured 
+        ? '<span class="badge badge-green">정상 연결됨</span>' 
+        : '<span class="badge badge-red">미등록</span>';
+      document.getElementById("sysGeminiKey").textContent = gemini.masked_key || "(없음)";
+
+      const supa = data.system.supabase;
+      document.getElementById("sysSupaStatus").innerHTML = supa.configured 
+        ? '<span class="badge badge-green">정상 가동</span>' 
+        : '<span class="badge badge-gray">미설정</span>';
+      document.getElementById("sysSupaUrl").textContent = supa.url || "-";
+
+      document.getElementById("sysPaperType").textContent = data.system.paper_type || "white_100g";
+      document.getElementById("sysTargetCount").textContent = data.system.default_target_count + "편";
+      document.getElementById("sysDefaultStyle").textContent = data.system.default_art_style;
+    }
+
+    function renderProjectsTable(projects) {
+      const tbody = document.getElementById("projectsTableBody");
+      document.getElementById("projectCountLabel").textContent = projects.length;
+
+      if (!projects || projects.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #888;">등록된 시집 프로젝트가 없습니다.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = projects.map(p => {
+        const activeBadge = p.is_active 
+          ? '<span class="badge badge-gold">● 활성 집필 중</span>' 
+          : '<span class="badge badge-gray">대기</span>';
+
+        const pdfBadge = p.has_pdf 
+          ? '<span class="badge badge-green" title="출판본 PDF 생성됨">PDF</span>' 
+          : '<span class="badge badge-gray">-</span>';
+
+        const coverBadge = p.has_cover 
+          ? '<span class="badge badge-blue" title="인쇄용 표지 생성됨">표지</span>' 
+          : '';
+
+        const csvBadge = p.has_csv 
+          ? '<span class="badge badge-gold" title="Canva CSV 생성됨">CSV</span>' 
+          : '';
+
+        return `
+          <tr>
+            <td>${activeBadge}</td>
+            <td>
+              <strong style="color: #FFFFFF; font-size: 0.95rem;">${p.name}</strong>
+              <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 2px;">${p.subtitle || ''}</div>
+            </td>
+            <td><span class="badge badge-gold">${p.author || '작가'}</span></td>
+            <td>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">${p.owner_email || '미할당 (게스트)'}</div>
+            </td>
+            <td>
+              <div style="font-weight: 600;">${p.completed_count} / ${p.target_count}편 <span style="font-size: 0.75rem; color: var(--gold-primary);">(${p.progress_percent}%)</span></div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" style="width: ${Math.min(100, p.progress_percent)}%;"></div>
+              </div>
+            </td>
+            <td><strong style="color: var(--accent-blue);">${p.image_count || 0}</strong>장</td>
+            <td>
+              <div style="display: flex; gap: 4px;">
+                ${pdfBadge} ${coverBadge} ${csvBadge}
+              </div>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-dim);">${p.updated_at || p.created_at || '-'}</td>
+            <td>
+              <button class="btn-action btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchToProject('${p.id}')">
+                집필실 전환 ➔
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderWritersTable(writers) {
+      const tbody = document.getElementById("writersTableBody");
+      if (!writers || writers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #888;">활동 작가 데이터가 없습니다.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = writers.map(w => `
+        <tr>
+          <td><strong style="color: #FFFFFF;">${w.email}</strong></td>
+          <td>${(w.authors || []).join(', ') || '-'}</td>
+          <td><span class="badge badge-gold">${w.project_count}권</span></td>
+          <td>${w.total_poems}편</td>
+          <td><strong style="color: var(--accent-green);">${w.completed_poems}편</strong></td>
+          <td style="font-size: 0.82rem; color: var(--text-dim);">${w.last_updated || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // 프로젝트 검색 필터
+    function filterProjects() {
+      if (!globalOverviewData) return;
+      const query = document.getElementById("projectSearchInput").value.toLowerCase().trim();
+      const filtered = globalOverviewData.projects.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        (p.author && p.author.toLowerCase().includes(query)) ||
+        (p.owner_email && p.owner_email.toLowerCase().includes(query))
+      );
+      renderProjectsTable(filtered);
+    }
+
+    // 특정 프로젝트로 즉시 전환
+    async function switchToProject(projectId) {
+      if (!confirm(`'${projectId}' 프로젝트를 현재 활성 작업으로 전환하고 집필실로 이동하시겠습니까?`)) return;
+      try {
+        const res = await fetch("/api/admin/project/switch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: projectId })
+        });
+        const result = await res.json();
+        if (result.success) {
+          window.location.href = "/";
+        }
+      } catch (err) {
+        alert("전환 실패: " + err.message);
+      }
+    }
+
+    // 탭 전환
+    function switchTab(tabId, btn) {
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    // 로그아웃
+    async function handleAdminLogout() {
+      if (confirm("관리자 세션을 종료하고 로그아웃하시겠습니까?")) {
+        try {
+          await fetch("/api/auth/logout", { method: "POST" });
+        } catch (e) {}
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith("sb-") || key.includes("supabase"))) {
+              localStorage.removeItem(key);
+            }
+          }
+        } catch (e) {}
+        window.location.href = "/login";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadOverviewData();
+    });
+  </script>
+</body>
+</html>
