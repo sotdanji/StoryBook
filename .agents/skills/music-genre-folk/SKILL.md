@@ -5,7 +5,7 @@ description: 서정 어쿠스틱 포크(Korean Acoustic Folk) 고유 음악 지�
 
 # 🎸 서정 어쿠스틱 포크 음악 스킬 (Music Genre: Folk)
 
-> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StroyBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 아날로그 어쿠스틱 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StoryBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 아날로그 어쿠스틱 원칙을 준수합니다.
 
 ---
 

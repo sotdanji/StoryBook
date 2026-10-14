@@ -56,7 +56,7 @@ flowchart TD
 각 시집은 물리적으로 격리된 디렉토리에서 독자적인 데이터 라이프사이클을 갖습니다.
 
 ```
-d:/AG/StroyBook/
+d:/AG/StoryBook/
 ├── .active_project                 # 현재 작업 중인 시집 ID (예: mother_cotton)
 ├── projects/                       # 멀티 시집 프로젝트 루트
 │   ├── mother_cotton/              # 1호 시집 (어머니의 무명베 회상기)

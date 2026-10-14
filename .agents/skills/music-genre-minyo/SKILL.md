@@ -5,7 +5,7 @@ description: 남도/경기 서정 민요조(Korean Lyrical Folk/Minyo) 고유 �
 
 # 🌾 남도/경기 민요조 음악 스킬 (Music Genre: Minyo)
 
-> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StroyBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 아날로그 어쿠스틱 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StoryBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 아날로그 어쿠스틱 원칙을 준수합니다.
 
 ---
 

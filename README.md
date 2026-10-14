@@ -35,7 +35,7 @@
 ```bash
 # 1. 저장소 클론 (또는 다운로드)
 git clone <repository-url>
-cd StroyBook
+cd StoryBook
 
 # 2. 필수 라이브러리 설치
 pip install -r requirements.txt
@@ -90,7 +90,7 @@ python main.py
 ## 📂 파일 및 디렉토리 구조
 
 ```
-StroyBook/
+StoryBook/
 ├── main.py                  # CLI 메인 진입점
 ├── requirements.txt         # 필수 라이브러리 목록
 ├── .env.example             # 환경 설정 템플릿

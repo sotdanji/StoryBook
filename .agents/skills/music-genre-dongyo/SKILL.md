@@ -5,7 +5,7 @@ description: 서정 동요/동심(Korean Lyrical Children's Song/Dongyo) 고유 
 
 # 🎈 서정 동요 음악 스킬 (Music Genre: Dongyo)
 
-> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StroyBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 따뜻한 동심 정서 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StoryBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 따뜻한 동심 정서 원칙을 준수합니다.
 
 ---
 

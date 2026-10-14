@@ -5,7 +5,7 @@ description: 서정 만화/스케치(Manga Sketch & Drawing) 고유 화풍 지�
 
 # ✏️ 서정 만화/스케치 화풍 스킬 (Art Style: Manga & Sketch)
 
-> 💡 **참조**: 본 스킬은 [공통 출판 표준(art-style-common)](file:///d:/AG/StroyBook/.agents/skills/art-style-common/SKILL.md)의 10% 페이드아웃 여백, 말풍선/효과음/문자 배제 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 출판 표준(art-style-common)](file:///d:/AG/StoryBook/.agents/skills/art-style-common/SKILL.md)의 10% 페이드아웃 여백, 말풍선/효과음/문자 배제 원칙을 준수합니다.
 
 ---
 

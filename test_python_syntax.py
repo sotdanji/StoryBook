@@ -4,7 +4,7 @@ import py_compile
 import ast
 from pathlib import Path
 
-BASE_DIR = Path("d:/AG/StroyBook")
+BASE_DIR = Path("d:/AG/StoryBook")
 
 print("=" * 60)
 print("1. PYTHON SYNTAX & AST VALIDATION")

@@ -5,7 +5,7 @@ description: 파스텔 동화(Pastel Storybook) 고유 화풍 지침. 부드러�
 
 # 🖍️ 파스텔 동화 화풍 스킬 (Art Style: Pastel Fairytale)
 
-> 💡 **참조**: 본 스킬은 [공통 출판 표준(art-style-common)](file:///d:/AG/StroyBook/.agents/skills/art-style-common/SKILL.md)의 10% 페이드아웃 여백 및 문자 배제 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 출판 표준(art-style-common)](file:///d:/AG/StoryBook/.agents/skills/art-style-common/SKILL.md)의 10% 페이드아웃 여백 및 문자 배제 원칙을 준수합니다.
 
 ---
 

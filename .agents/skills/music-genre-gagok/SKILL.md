@@ -5,7 +5,7 @@ description: 한국 서정 예술 가곡(Korean Classical Art Song/Gagok) 고유
 
 # 🎹 한국 서정 예술 가곡 음악 스킬 (Music Genre: Gagok)
 
-> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StroyBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 클래식 어쿠스틱 원칙을 준수합니다.
+> 💡 **참조**: 본 스킬은 [공통 작곡 표준(music-genre-common)](file:///d:/AG/StoryBook/.agents/skills/music-genre-common/SKILL.md)의 메타태그 규격 및 클래식 어쿠스틱 원칙을 준수합니다.
 
 ---
 
