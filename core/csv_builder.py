@@ -43,3 +43,42 @@ def build_canva_csv(
             })
 
     return len(valid_works), output_file
+
+
+def build_canva_publishing_metadata_csv(
+    output_file: Optional[Path] = None,
+    project_id: Optional[str] = None
+) -> Path:
+    """
+    Canva 표지/서문/목차/에필로그/판권 템플릿에 데이터 바인딩할 수 있는
+    시집 본문 외 출판 전용 메타데이터 CSV 파일을 생성합니다.
+    """
+    info = project_manager.get_project_info(project_id)
+    if output_file is None:
+        pdir = project_manager.get_project_dir(project_id)
+        output_file = pdir / "시화집_출판구성데이터.csv"
+
+    headers = [
+        "Book_Title", "Book_Subtitle", "Book_Author",
+        "Prologue", "Epilogue", "Back_Cover_Blurb", "Cover_Image",
+        "Publisher", "Published_Date", "Price", "ISBN"
+    ]
+
+    with open(output_file, mode="w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=headers)
+        writer.writeheader()
+        writer.writerow({
+            "Book_Title": info.name,
+            "Book_Subtitle": info.subtitle,
+            "Book_Author": info.author,
+            "Prologue": info.prologue,
+            "Epilogue": info.epilogue,
+            "Back_Cover_Blurb": info.back_cover_blurb,
+            "Cover_Image": Path(info.cover_image).name if info.cover_image else "",
+            "Publisher": info.publisher,
+            "Published_Date": info.published_date,
+            "Price": info.price,
+            "ISBN": info.isbn
+        })
+
+    return output_file

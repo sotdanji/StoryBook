@@ -9,15 +9,15 @@ StoryBook Studio의 모든 화풍(수채화, 수묵담채, 파스텔, 만화/스
 
 ---
 
-## 1. 캔버스 외곽 10% 자연 페이드아웃 (Edge Bleed & Vignette)
+## 1. 캔버스 외곽 5% 미세 페이드아웃 (Edge Bleed & Subtle Vignette)
 
-1. **테두리 경계 소멸 (Soft Vignette Fade-out)**:
+1. **테두리 경계 소멸 및 중심 피사체 95% 온전 보존**:
    - 사각형 캔버스 모서리에 날카로운 칼선(Hard Rectangular Border)이 남지 않도록 합니다.
-   - 외곽 10% 영역으로 갈수록 채색이 옅어지며, 그림이 배경 종이 속으로 부드럽게 스며들어 사라지는(Fading seamlessly into paper) 효과를 적용합니다.
+   - 단, 중심 인물이나 사물이 잘려나가지 않도록 **외곽 5% 미세 영역만 은은하게 페이드아웃**하고, **중심부 95% 영역은 인물과 사물의 디테일이 온전히 보존**되도록 연출합니다.
 2. **시화집 본문 종이와의 자연스러운 융합 (Paper Texture Integration)**:
    - 그림이 인쇄될 책의 순백색 또는 미색 본문 종이(Textured white/cream book paper)와 경계 없이 이어져, 시의 텍스트가 놓일 여백과 하나의 호흡을 이룹니다.
 3. **시그니처 표현 문구 (Prompt Suffix Tokens)**:
-   - `soft vignette fading into paper, wide 10% pure paper margin, seamless paper transition, 300 dpi`
+   - `subtle 5% edge vignette fading gently into pure paper margin, full rich central composition, 300 dpi`
 
 ---
 

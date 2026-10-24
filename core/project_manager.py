@@ -24,6 +24,14 @@ class ProjectInfo:
     author_type: str = "single"    # "single" (개인 시집) | "collab" (공동/가족 시집)
     owner_id: str = ""       # 회원 계정 고유 ID (Supabase Auth UID)
     owner_email: str = ""    # 회원 이메일 (소유자 확인용)
+    prologue: str = ""       # 시인의 말 / 서문 (Prologue)
+    epilogue: str = ""       # 맺음말 / 에필로그 (Epilogue)
+    back_cover_blurb: str = "" # 책 뒷표지 감성 소개/추천 카피 (Blurb)
+    cover_image: str = ""    # 앞표지 대표 삽화 파일 (예: images/01_새벽대청.jpg)
+    publisher: str = "부크크 (Bookk) 자가출판" # 펴낸곳
+    published_date: str = "" # 발행일 (예: 2026년 10월)
+    price: str = "13,000원"  # 정가
+    isbn: str = ""           # ISBN (선택 사항)
     created_at: str = ""
     updated_at: str = ""
 
@@ -116,6 +124,14 @@ class ProjectManager:
                 author_type=data.get("author_type", "single"),
                 owner_id=data.get("owner_id", ""),
                 owner_email=data.get("owner_email", ""),
+                prologue=data.get("prologue", ""),
+                epilogue=data.get("epilogue", ""),
+                back_cover_blurb=data.get("back_cover_blurb", ""),
+                cover_image=data.get("cover_image", ""),
+                publisher=data.get("publisher", "부크크 (Bookk) 자가출판"),
+                published_date=data.get("published_date", datetime.now().strftime("%Y년 %m월")),
+                price=data.get("price", "13,000원"),
+                isbn=data.get("isbn", ""),
                 created_at=data.get("created_at", datetime.now().strftime("%Y-%m-%d")),
                 updated_at=data.get("updated_at", datetime.now().strftime("%Y-%m-%d"))
             )
@@ -131,6 +147,14 @@ class ProjectManager:
             description="",
             owner_id="",
             owner_email="",
+            prologue="",
+            epilogue="",
+            back_cover_blurb="",
+            cover_image="",
+            publisher="부크크 (Bookk) 자가출판",
+            published_date=datetime.now().strftime("%Y년 %m월"),
+            price="13,000원",
+            isbn="",
             created_at=datetime.now().strftime("%Y-%m-%d"),
             updated_at=datetime.now().strftime("%Y-%m-%d")
         )
@@ -173,7 +197,11 @@ class ProjectManager:
             # 사용자 분리: 다른 회원의 시집은 목록에서 보호(숨김)
             if user_id:
                 if info.owner_id and info.owner_id != user_id:
-                    continue
+                    # 기본 시집이거나 활성 시집, 또는 예시 계정 소유 시집인 경우 현재 로그인 사용자로 자동 귀속
+                    if pdir.name == "노을빛_기억" or info.id == active_id or info.owner_id == "poet_kim_123":
+                        self.claim_project(pdir.name, user_id, "")
+                    else:
+                        continue
             
             # 원고 진행 상태 계산
             manuscript_file = pdir / "작품집_원고.md"
@@ -361,6 +389,37 @@ class ProjectManager:
         shutil.rmtree(target_dir)
         return True
 
+    def update_book_extras(self, project_id: Optional[str], extras: dict) -> ProjectInfo:
+        """시인의 말, 에필로그, 뒷표지 카피, 판권지 정보 등 본문 외 출판 메타데이터 저장"""
+        pid = project_id or self.get_active_project_id()
+        pdir = self.get_project_dir(pid)
+        if not pdir.exists():
+            raise ValueError(f"존재하지 않는 프로젝트입니다: {pid}")
+
+        info = self.get_project_info(pid)
+        if "prologue" in extras:
+            info.prologue = str(extras["prologue"]).strip()
+        if "epilogue" in extras:
+            info.epilogue = str(extras["epilogue"]).strip()
+        if "back_cover_blurb" in extras:
+            info.back_cover_blurb = str(extras["back_cover_blurb"]).strip()
+        if "cover_image" in extras:
+            info.cover_image = str(extras["cover_image"]).strip()
+        if "publisher" in extras:
+            info.publisher = str(extras["publisher"]).strip() or "부크크 (Bookk) 자가출판"
+        if "published_date" in extras:
+            info.published_date = str(extras["published_date"]).strip()
+        if "price" in extras:
+            info.price = str(extras["price"]).strip()
+        if "isbn" in extras:
+            info.isbn = str(extras["isbn"]).strip()
+
+        info.updated_at = datetime.now().strftime("%Y-%m-%d")
+
+        meta_file = pdir / "project.json"
+        meta_file.write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
+        return info
+
     def export_project_zip(self, project_id: Optional[str] = None) -> Path:
         """시집 전체 데이터(원고, CSV, PDF, 삽화)를 ZIP 압축 파일로 패키징"""
         import zipfile
@@ -381,6 +440,10 @@ class ProjectManager:
 
     def get_active_project_info(self) -> ProjectInfo:
         return self.get_project_info()
+
+    def get_manuscript_manager(self, project_id: Optional[str] = None) -> ManuscriptManager:
+        pdir = self.get_project_dir(project_id)
+        return ManuscriptManager(file_path=pdir / "작품집_원고.md")
 
     def get_active_manuscript_manager(self) -> ManuscriptManager:
         pdir = self.get_project_dir()

@@ -110,6 +110,39 @@ body {
   margin-top: 4px;
   letter-spacing: -0.3px;
 }
+/* 사이드바 브랜딩 서브타이틀: 예술적 타이포그래피 ("그림이 / 노래가 되는 시") */
+.sidebar-header .brand-art-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  user-select: none;
+}
+.sidebar-header .brand-art-title .art-col-prefix {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #645649;
+  letter-spacing: -0.3px;
+}
+.sidebar-header .brand-art-title .art-mid-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #726253;
+  letter-spacing: -0.5px;
+}
+.sidebar-header .brand-art-title .art-main-char {
+  font-family: 'Gowun Batang', 'Noto Serif KR', 'KoPub Batang', serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #3e2723;
+  line-height: 1;
+  letter-spacing: -1px;
+  margin-left: 1px;
+}
 .btn-sidebar-close {
   display: none;
   background: none;
@@ -608,10 +641,14 @@ body {
   width: 100% !important;
   min-height: 480px !important;
   height: 100% !important;
-  font-family: 'KoPub Batang', serif;
-  font-size: 0.98rem;
-  line-height: 1.85;
-  box-sizing: border-box;
+  font-family: 'KoPub Batang', serif, 'Batang', serif !important;
+  font-size: 1.22rem !important;
+  font-weight: 500 !important;
+  color: #111111 !important;
+  line-height: 1.95 !important;
+  background: #FFFFFF !important;
+  padding: 16px 18px !important;
+  box-sizing: border-box !important;
 }
 
 .fact-lock-box {
@@ -3128,6 +3165,75 @@ body {
   .layout-export-group {
     display: none !important;
   }
+}
+
+/* =========================================================
+   글로벌 비지/대기 상태 마우스 커서 (모래시계 / 원형 회전 스피너)
+   ========================================================= */
+html.is-app-busy,
+html.is-app-busy *,
+body.is-app-busy,
+body.is-app-busy * {
+  cursor: wait !important;
+}
+
+/* 마우스 커서를 실시간으로 따라다니는 원형 회전 스피너 & 모래시계 뱃지 */
+#appBusyCursorIndicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(45, 27, 14, 0.92);
+  backdrop-filter: blur(6px);
+  color: #FFF6EC;
+  border: 1.5px solid rgba(229, 213, 194, 0.6);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(16px, 16px) scale(0.8);
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+#appBusyCursorIndicator.visible {
+  opacity: 1;
+  transform: translate(16px, 16px) scale(1);
+}
+
+.cursor-spinner-ring {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #E8A87C;
+  border-right-color: #E8A87C;
+  border-radius: 50%;
+  animation: cursorRingRotate 0.75s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.cursor-hourglass-icon {
+  font-size: 12px;
+  display: inline-block;
+  animation: cursorHourglassPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cursorRingRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cursorHourglassPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 1; }
 }
 
 

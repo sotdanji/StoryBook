@@ -27,7 +27,8 @@ from core.config import (
 from core.auth_manager import auth_manager
 from core.manuscript import ManuscriptManager, PoemWork
 from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv
+from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
+from core.publishing_copier import publishing_copier
 from core.book_spec import calculate_spine_and_cover, inspect_images
 from core.pdf_builder import build_pdf_book
 from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
@@ -36,6 +37,7 @@ from core.poetic_engine import poetic_engine
 from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
 from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
 from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
+from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
 
 app = FastAPI(title="StoryBook Studio", description="기억 기반 시화집 독립출판 웹 스튜디오")
 
@@ -72,7 +74,9 @@ class SetApiKeyRequest(BaseModel):
 
 class RefinePoemRequest(BaseModel):
     poem_body: str
-    mode: str  # "shorten", "subdued", "rhythm"
+    mode: Optional[str] = "custom"  # "shorten", "subdued", "rhythm", "custom"
+    instruction: Optional[str] = ""  # 사용자 자유 수정 요청문
+    title: Optional[str] = ""
 
 class ImagePromptRequest(BaseModel):
     title: str
@@ -87,6 +91,7 @@ class LyricsGenerateRequest(BaseModel):
     title: str
     poem_body: str
     genre: Optional[str] = "minyo"
+    custom_guide: Optional[str] = ""
 
 class ColabNotebookRequest(BaseModel):
     episode_no: str
@@ -109,6 +114,16 @@ class SpeakPoemRequest(BaseModel):
     title: str
     poem_body: str
     episode_no: Optional[str] = "제01화"
+    voice: Optional[str] = "Aoede"  # Aoede(여성 서정), Charon(남성 중저음), Kore(여성 차분), Puck(남성 담백), Fenrir(원로 중후)
+
+class ImportSunoRequest(BaseModel):
+    url: str
+    episode_no: str
+
+class TrimAudioRequest(BaseModel):
+    episode_no: str
+    start_time: str = "00:00"
+    end_time: str = ""
 
 class AuthSessionRequest(BaseModel):
     user_id: str
@@ -132,6 +147,8 @@ class SaveWorkRequest(BaseModel):
     poem_body: str
     author: Optional[str] = ""
     audio_file: Optional[str] = ""
+    recite_file: Optional[str] = ""
+    music_file: Optional[str] = ""
     lyrics: Optional[str] = ""
     layout_mode: Optional[str] = "compact"
     part2_mode: Optional[str] = "motif_symbol"
@@ -163,6 +180,7 @@ class GenerateFreeImageRequest(BaseModel):
     prompt: Optional[str] = None
     title: Optional[str] = ""
     memory_anchor: Optional[str] = ""
+    art_style: Optional[str] = "watercolor"
 
 class GenerateImageCandidatesRequest(BaseModel):
     episode_no: str
@@ -170,8 +188,11 @@ class GenerateImageCandidatesRequest(BaseModel):
     title: Optional[str] = ""
     memory_anchor: Optional[str] = ""
     custom_guide: Optional[str] = ""
+    art_style: Optional[str] = "watercolor"
     reference_image: Optional[str] = None  # Base64 데이터 URL 또는 base64 인코딩 이미지
     direct_use_photo: Optional[bool] = False  # 사용자가 첨부한 사진 자체를 300 DPI 출판용 삽화로 즉시 변환 사용
+    base_image_filename: Optional[str] = None  # 연속 편집(Image-to-Image)의 베이스가 될 기존 이미지 파일명
+    use_current_as_base: Optional[bool] = True  # 기존 그림의 인물/구도를 유지한 채 부분 수정할지 여부
 
 class SelectImageCandidateRequest(BaseModel):
     episode_no: str
@@ -185,6 +206,9 @@ class GeneratePart2ImageRequest(BaseModel):
     custom_guide: Optional[str] = ""
     reference_image: Optional[str] = None
     direct_use_photo: Optional[bool] = False
+    art_style: Optional[str] = "watercolor"
+    base_image_filename: Optional[str] = None
+    use_current_as_base: Optional[bool] = True
 
 class ProjectSelectRequest(BaseModel):
     project_id: str
@@ -219,6 +243,10 @@ class BulkImportRequest(BaseModel):
     mode: str = "overwrite"  # "overwrite" or "append"
     auto_prompts: bool = True
 
+class ImportSunoShareRequest(BaseModel):
+    share_url: str
+    episode_no: str
+
 
 # 동적 이미지 서빙 (활성 프로젝트 폴더 내 images 서빙)
 @app.get("/images/{image_path:path}")
@@ -237,6 +265,24 @@ async def serve_image(image_path: str):
         return FileResponse(str(p_direct))
 
     raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다.")
+
+# 동적 오디오 음원 서빙 (활성 프로젝트 및 프로젝트별 music 서빙)
+@app.get("/music/{audio_path:path}")
+async def serve_audio(audio_path: str):
+    clean_path = audio_path.replace("..", "").lstrip("/\\")
+    audio_name = Path(clean_path).name
+
+    # 1. 활성 프로젝트의 music 디렉토리
+    p_music = project_manager.get_project_dir() / "music" / audio_name
+    if p_music.exists() and p_music.is_file():
+        return FileResponse(str(p_music))
+
+    # 2. 프로젝트 폴더 내 상대경로
+    p_direct = project_manager.get_project_dir() / clean_path
+    if p_direct.exists() and p_direct.is_file():
+        return FileResponse(str(p_direct))
+
+    raise HTTPException(status_code=404, detail="음원 파일을 찾을 수 없습니다.")
 
 # -------------------------------------------------------------
 # 중앙 회원 인증 및 로그인 라우트
@@ -273,6 +319,15 @@ async def index(request: Request):
             "is_guest": is_guest,
             "is_admin": auth_manager.is_current_user_admin()
         }
+    )
+
+@app.get("/manual", response_class=HTMLResponse)
+async def user_manual_page(request: Request):
+    """어르신 및 컴퓨터 초보자 맞춤형 큰 글씨 사용 설명서 페이지"""
+    return templates.TemplateResponse(
+        request=request,
+        name="manual.html",
+        context={}
     )
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -570,7 +625,9 @@ async def get_status():
                 "status": w.status,
                 "memory_anchor": w.memory_anchor,
                 "image_file": w.image_file,
-                "audio_file": getattr(w, "audio_file", ""),
+                "recite_file": getattr(w, "recite_file", ""),
+                "music_file": getattr(w, "music_file", ""),
+                "audio_file": getattr(w, "audio_file", "") or getattr(w, "music_file", "") or getattr(w, "recite_file", ""),
                 "lyrics": getattr(w, "lyrics", ""),
                 "art_direction": w.art_direction,
                 "poem_body": w.poem_body
@@ -590,10 +647,32 @@ async def get_gallery_data(project_id: Optional[str] = None):
         safe_name = info.name.replace(" ", "_")
         episodes = []
         for w in works:
-            img_file = w.image_file or ""
-            img_path = f"/projects/{safe_name}/images/{img_file}" if img_file else ""
-            audio_f = getattr(w, "audio_file", "") or ""
-            audio_path = f"/projects/{safe_name}/images/{audio_f}" if audio_f else ""
+            img_file = (w.image_file or "").replace("./", "").lstrip("/")
+            if img_file.startswith("images/"):
+                img_path = f"/projects/{safe_name}/{img_file}"
+            elif img_file:
+                img_path = f"/projects/{safe_name}/images/{img_file}"
+            else:
+                img_path = ""
+
+            recite_f = getattr(w, "recite_file", "") or ""
+            music_f = getattr(w, "music_file", "") or ""
+            # 하위 호환 매핑
+            if not recite_f and not music_f:
+                old_a = getattr(w, "audio_file", "") or ""
+                if "낭송" in old_a or old_a.endswith(".webm"):
+                    recite_f = old_a
+                else:
+                    music_f = old_a
+
+            def _clean_audio_url(f_path):
+                if not f_path:
+                    return ""
+                f_clean = f_path.replace("./", "").lstrip("/")
+                return f"/projects/{safe_name}/{f_clean}"
+
+            recite_path = _clean_audio_url(recite_f)
+            music_path = _clean_audio_url(music_f)
 
             episodes.append({
                 "ep": w.episode_no,
@@ -601,8 +680,12 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 "image": img_path,
                 "memory": w.memory_anchor,
                 "body": w.poem_body,
-                "hasMusic": bool(audio_f),
-                "audio": audio_path,
+                "hasRecite": bool(recite_f),
+                "recite": recite_path,
+                "hasMusic": bool(music_f),
+                "music": music_path,
+                "hasAudio": bool(recite_f or music_f),
+                "audio": music_path or recite_path,
                 "lyrics": getattr(w, "lyrics", "") or ""
             })
 
@@ -835,41 +918,83 @@ async def generate_drafts(req: DraftRequest):
 
 @app.post("/api/refine_poem")
 async def refine_poem_endpoint(req: RefinePoemRequest):
-    """현재 시 본문을 사용자가 원하는 방향(압축, 절제, 운율 정돈)으로 즉시 다듬기"""
-    refined = poetic_engine.refine_poem(req.poem_body, req.mode)
-    return {"success": True, "refined_body": refined}
-
-@app.post("/api/generate_image_prompt")
-async def generate_image_prompt_endpoint(req: ImagePromptRequest):
-    """다듬어진 시 제목과 본문을 분석하여 300 DPI 서정 삽화 프롬프트 생성 (사용자 친화적 한국어 프롬프트 우선)"""
-    korean_prompt = poetic_engine.generate_korean_art_prompt(
-        title=req.title,
+    """현재 시 본문을 사용자가 원하는 방향(압축, 절제, 운율 또는 자유 지시문)으로 즉시 다듬기 (Gemini 퇴고 스킬 지원)"""
+    res = poetic_engine.refine_poem_with_gemini(
+        title=req.title or "시",
         poem_body=req.poem_body,
-        core_memory=req.core_memory,
-        sensory_details=req.sensory_details,
-        style_mode=req.style_mode or "literal",
-        art_style=req.art_style or "watercolor",
-        custom_guide=req.custom_guide or ""
-    )
-    english_prompt = poetic_engine.generate_art_prompt_with_gemini(
-        title=req.title,
-        poem_body=req.poem_body,
-        core_memory=req.core_memory,
-        sensory_details=req.sensory_details,
-        style_mode=req.style_mode or "literal",
-        art_style=req.art_style or "watercolor",
-        custom_guide=req.custom_guide or ""
-    )
-    korean_instruction = poetic_engine.get_image_generation_instruction_ko(
-        title=req.title,
-        poem_body=req.poem_body,
-        art_style=req.art_style or "watercolor",
-        custom_guide=req.custom_guide or ""
+        mode=req.mode or "custom",
+        custom_instruction=req.instruction or ""
     )
     return {
         "success": True,
-        "prompt": korean_prompt,
-        "korean_prompt": korean_prompt,
+        "refined_body": res.get("refined_body", req.poem_body),
+        "commentary": res.get("commentary", "")
+    }
+
+@app.post("/api/generate_lyrics")
+async def generate_lyrics_endpoint(req: LyricsGenerateRequest):
+    """
+    [음악 모듈러 블록 아키텍처]
+    시 본문에서 이전 장르 오염을 도려내고, 선택된 서정 장르(민요, 포크, 가곡, 동요) 고유 스킬 블록과
+    공통 음악 출판 규격을 결합하여 맞춤 노랫말 및 음악 AI 프롬프트 생성
+    """
+    try:
+        from core.skill_pack import build_modular_song_package
+        api_key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
+        pkg = build_modular_song_package(
+            poem_body=req.poem_body or "",
+            title=req.title or "무제",
+            genre_key=req.genre or "folk",
+            custom_guide=req.custom_guide or "",
+            api_key=api_key
+        )
+        return {
+            "success": True,
+            "data": pkg,
+            "title": pkg.get("title", req.title or "무제"),
+            "genre": pkg.get("genre", req.genre or "folk"),
+            "genre_name": pkg.get("genre_name", ""),
+            "mood_theme": pkg.get("mood_theme", ""),
+            "instruments": pkg.get("instruments", ""),
+            "bpm": pkg.get("bpm", ""),
+            "music_prompt": pkg.get("music_prompt", ""),
+            "lyrics": pkg.get("lyrics", "")
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/generate_image_prompt")
+async def generate_image_prompt_endpoint(req: ImagePromptRequest):
+    """다듬어진 시 제목과 본문을 분석하여 300 DPI 서정 삽화 프롬프트 생성 (모듈러 블록 아키텍처)"""
+    from core.skill_pack import build_modular_art_prompt
+    
+    raw_korean = poetic_engine.generate_korean_art_prompt(
+        title=req.title,
+        poem_body=req.poem_body,
+        core_memory=req.core_memory,
+        sensory_details=req.sensory_details,
+        style_mode=req.style_mode or "literal",
+        art_style=req.art_style or "watercolor",
+        custom_guide=req.custom_guide or ""
+    )
+    
+    # 모듈러 블록 아키텍처를 통한 화풍 전용 블록 결합 및 타 화풍 오염 도려내기
+    modular = build_modular_art_prompt(
+        raw_prompt=raw_korean,
+        art_style=req.art_style or "watercolor",
+        custom_guide=req.custom_guide or "",
+        title=req.title or "",
+        memory_anchor=req.core_memory or ""
+    )
+    
+    english_prompt = modular["guarded_en_prompt"]
+    korean_instruction = modular["gemini_ko_content"]
+    display_prompt = modular["display_ko_prompt"]
+
+    return {
+        "success": True,
+        "prompt": display_prompt,
+        "korean_prompt": display_prompt,
         "english_prompt": english_prompt,
         "korean_instruction": korean_instruction,
         "style_mode": req.style_mode or "literal",
@@ -891,18 +1016,33 @@ async def get_smart_prompt_endpoint(req: ExternalPromptRequest):
 @app.post("/api/save_work")
 async def save_work(req: SaveWorkRequest):
     mgr = project_manager.get_active_manuscript_manager()
+    recite_f = req.recite_file or ""
+    music_f = req.music_file or ""
+    audio_f = req.audio_file or music_f or recite_f or ""
+
+    # 기존 work가 있다면 2부 삽화, 조판 설정 등 기존 값 보존
+    existing_works = mgr.load_works()
+    clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
+    old_work = next((w for w in existing_works if clean_ep in w.episode_no or w.episode_no.strip() == req.episode_no.strip()), None)
+
     work = PoemWork(
         episode_no=req.episode_no,
         title=req.title,
         status=req.status,
         memory_anchor=req.memory_anchor,
-        image_file=req.image_file,
+        image_file=req.image_file or (old_work.image_file if old_work else ""),
         art_direction=req.art_direction,
         poem_body=req.poem_body,
-        audio_file=req.audio_file or "",
-        lyrics=req.lyrics or "",
-        author=req.author or "",
-        layout_mode=req.layout_mode or "compact"
+        audio_file=audio_f or (old_work.audio_file if old_work else ""),
+        recite_file=recite_f or (old_work.recite_file if old_work else ""),
+        music_file=music_f or (old_work.music_file if old_work else ""),
+        lyrics=req.lyrics or (old_work.lyrics if old_work else ""),
+        author=req.author or (old_work.author if old_work else ""),
+        layout_mode=req.layout_mode or (old_work.layout_mode if old_work else "compact"),
+        chapter=old_work.chapter if old_work else "",
+        part2_mode=old_work.part2_mode if old_work else "motif_symbol",
+        image_file_2=old_work.image_file_2 if old_work else "",
+        layout_config=old_work.layout_config if old_work else None
     )
     mgr.save_work(work)
 
@@ -1003,11 +1143,13 @@ async def save_voice_recording(
 
     rel_path = f"images/{saved_name}"
 
-    # 원고에도 audio_file 경로 자동 업데이트
+    # 원고에도 recite_file 경로 자동 업데이트 (기존 노래 music_file은 보존)
     mgr = project_manager.get_active_manuscript_manager()
     work = mgr.get_work_by_episode(episode_no)
     if work:
-        work.audio_file = rel_path
+        work.recite_file = rel_path
+        if not getattr(work, "audio_file", ""):
+            work.audio_file = rel_path
         mgr.save_work(work)
         try:
             build_canva_csv()
@@ -1055,55 +1197,170 @@ async def reorder_works_endpoint(req: ReorderWorksRequest):
         "works_count": len(works)
     }
 
-@app.post("/api/generate_lyrics")
-async def generate_lyrics_endpoint(req: LyricsGenerateRequest):
-    """다듬어진 시 본문을 기반으로 3대 서정 장르(민요, 포크, 가곡)에 맞춘 노래 가사 생성"""
-    try:
-        lyrics_data = poetic_engine.generate_song_lyrics(
-            title=req.title,
-            poem_body=req.poem_body,
-            genre=req.genre or "minyo"
-        )
-        return {
-            "success": True,
-            "data": lyrics_data,
-            "lyrics": lyrics_data.get("lyrics", "")
-        }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
 
 @app.post("/api/upload_audio")
 async def upload_audio_endpoint(
     audio_file: UploadFile = File(...),
     episode_no: str = Form(...)
 ):
-    """사용자가 외부 AI(Colab YuE2, Suno 등)에서 생성한 오디오 파일을 현재 프로젝트의 music/ 디렉토리에 저장"""
+    """사용자가 외부 AI(Colab YuE2, Suno 등)나 웹 녹음기에서 녹음한 오디오 파일을
+    앞뒤 무음 자동 검사/트리밍 및 320kbps MP3로 최적화하여 music/ 디렉토리에 저장"""
+    temp_upload = None
     try:
         project_dir = project_manager.get_project_dir()
         music_dir = project_dir / "music"
         music_dir.mkdir(parents=True, exist_ok=True)
 
         orig_name = audio_file.filename or "song.mp3"
-        ext = Path(orig_name).suffix.lower()
-        if ext not in [".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac"]:
-            ext = ".mp3"
-
         clean_ep = re.sub(r'[^0-9]', '', episode_no).zfill(2) if episode_no else "01"
-        safe_name = f"{clean_ep}_음원{ext}"
+        safe_name = f"{clean_ep}_음원.mp3"
         target_path = music_dir / safe_name
 
-        with open(target_path, "wb") as buffer:
+        # 임시 업로드 파일로 먼저 저장
+        temp_upload = music_dir / f"upload_tmp_{int(time.time())}_{orig_name}"
+        with open(temp_upload, "wb") as buffer:
             shutil.copyfileobj(audio_file.file, buffer)
+
+        # 안실장 오디오 프로세서: 앞뒤 무음 자동 감지/트리밍 및 고음질 MP3 변환
+        proc_result = clean_and_optimize_audio(temp_upload, target_path)
+
+        rel_path = f"music/{safe_name}"
+        active_id = project_manager.get_active_project_id()
+        web_url = f"/projects/{active_id}/{rel_path}?t={int(time.time())}"
+
+        # 원고에도 music_file 경로 자동 업데이트 (기존 낭송 recite_file은 보존)
+        mgr = project_manager.get_active_manuscript_manager()
+        work = mgr.get_work_by_episode(episode_no)
+        if work:
+            work.music_file = rel_path
+            if not getattr(work, "audio_file", ""):
+                work.audio_file = rel_path
+            mgr.save_work(work)
+
+        return {
+            "success": True,
+            "audio_file": rel_path,
+            "music_file": rel_path,
+            "web_url": web_url,
+            "filename": safe_name,
+            "trimmed": proc_result.get("trimmed", False),
+            "trim_message": proc_result.get("message", "음원이 성공적으로 등록되었습니다."),
+            "orig_duration": proc_result.get("orig_duration_str", ""),
+            "final_duration": proc_result.get("final_duration_str", ""),
+            "trimmed_seconds": proc_result.get("trimmed_seconds", 0.0)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_upload and temp_upload.exists():
+            try:
+                temp_upload.unlink()
+            except Exception:
+                pass
+
+@app.post("/api/trim_audio")
+async def trim_audio_endpoint(req: TrimAudioRequest):
+    """지정한 회차의 음원 앞뒤를 수동으로 정밀하게 자르기"""
+    try:
+        project_dir = project_manager.get_project_dir()
+        music_dir = project_dir / "music"
+        clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
+        target_path = music_dir / f"{clean_ep}_음원.mp3"
+        if not target_path.exists():
+            matches = list(music_dir.glob(f"{clean_ep}_음원.*"))
+            if matches:
+                target_path = matches[0]
+            else:
+                return {"success": False, "error": f"{req.episode_no}의 등록된 음원 파일을 찾을 수 없습니다."}
+
+        start_sec = parse_time_to_seconds(req.start_time) or 0.0
+        end_sec = parse_time_to_seconds(req.end_time) if req.end_time else None
+
+        res = trim_audio_manually(target_path, start_sec=start_sec, end_sec=end_sec)
+        if res["success"]:
+            active_id = project_manager.get_active_project_id()
+            rel_path = f"music/{target_path.name}"
+            web_url = f"/projects/{active_id}/{rel_path}?t={int(time.time())}"
+            return {
+                "success": True,
+                "message": res["message"],
+                "new_duration": res["new_duration"],
+                "new_duration_str": res["new_duration_str"],
+                "web_url": web_url,
+                "filename": target_path.name
+            }
+        else:
+            return {"success": False, "error": res["message"]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/import_suno_url")
+async def import_suno_url_endpoint(req: ImportSunoRequest):
+    """
+    Suno 곡 공유 링크(https://suno.com/song/{uuid})에서 song ID를 추출하여
+    Suno 무료 공개 CDN에서 MP3를 직접 무료 다운로드하여 등록 (Out of Downloads 결제 우회)
+    """
+    try:
+        raw_url = req.url.strip()
+        # UUID 추출
+        uuid_match = re.search(r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', raw_url)
+        if not uuid_match:
+            return {"success": False, "error": "올바른 Suno 곡 링크나 UUID가 아닙니다. Suno의 [Copy Link] 버튼을 눌러 링크를 복사해주세요."}
+        
+        song_uuid = uuid_match.group(1).lower()
+        cdn_urls = [
+            f"https://cdn1.suno.ai/{song_uuid}.mp3",
+            f"https://audiopipe.suno.ai/?item_id={song_uuid}"
+        ]
+
+        # 음원 다운로드 시도
+        audio_bytes = None
+        for cdn in cdn_urls:
+            try:
+                req_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                r = urllib.request.Request(cdn, headers=req_headers)
+                with urllib.request.urlopen(r, timeout=15) as resp:
+                    if resp.status == 200:
+                        audio_bytes = resp.read()
+                        if len(audio_bytes) > 1000:
+                            break
+            except Exception:
+                continue
+
+        if not audio_bytes:
+            return {"success": False, "error": "Suno 음원 CDN 서버에서 오디오를 내려받지 못했습니다. 링크가 유효한지 확인해주세요."}
+
+        project_dir = project_manager.get_project_dir()
+        music_dir = project_dir / "music"
+        music_dir.mkdir(parents=True, exist_ok=True)
+
+        clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
+        safe_name = f"{clean_ep}_음원.mp3"
+        target_path = music_dir / safe_name
+
+        with open(target_path, "wb") as f:
+            f.write(audio_bytes)
 
         rel_path = f"music/{safe_name}"
         active_id = project_manager.get_active_project_id()
         web_url = f"/projects/{active_id}/{rel_path}"
 
+        # 원고에도 music_file 자동 업데이트
+        mgr = project_manager.get_active_manuscript_manager()
+        work = mgr.get_work_by_episode(req.episode_no)
+        if work:
+            work.music_file = rel_path
+            if not getattr(work, "audio_file", ""):
+                work.audio_file = rel_path
+            mgr.save_work(work)
+
         return {
             "success": True,
             "audio_file": rel_path,
+            "music_file": rel_path,
             "web_url": web_url,
-            "filename": safe_name
+            "filename": safe_name,
+            "size": len(audio_bytes)
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1121,19 +1378,24 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
     if not key or not genai:
         raise HTTPException(status_code=400, detail="Gemini API 키가 등록되지 않았습니다.")
 
+    clean_title = (req.title or "").strip()
     poem_text = req.poem_body.strip()
     if not poem_text:
         raise HTTPException(status_code=400, detail="낭송할 시 본문이 비어 있습니다.")
 
+    # 제목 낭송: '제목 : ' 같은 안내 라벨 없이, 순수 제목만 먼저 낭독하고 숨을 고른 뒤 본문으로 연결
+    if clean_title and clean_title != "무제":
+        full_recite_text = f"{clean_title}.\n\n{poem_text}"
+    else:
+        full_recite_text = poem_text
+
     try:
         client = genai.Client(api_key=key)
-        # 서정적 호흡의 전문 낭독 프롬프트
-        tts_prompt = (
-            f"다음 한국 서정시를 차분하고 깊은 울림을 지닌 목소리로 서정적이고 따뜻하게 낭독해 주세요.\n\n"
-            f"제목: {req.title}\n\n{poem_text}"
-        )
+        # 성우 프로필 설정 (Aoede, Charon, Kore, Puck, Fenrir)
+        voice_key = req.voice if req.voice in ["Aoede", "Charon", "Kore", "Puck", "Fenrir"] else "Aoede"
 
-        # 최신 gemini-3.8-flash-tts 우선 호출 (폴백: gemini-2.5-flash-preview-tts)
+        # Gemini 고품질 TTS 모델: 1순위 최신 gemini-3.8-flash-tts (초자연적 성우 음질)
+        # 주의: TTS 모델은 developer instruction(system_instruction) 전달 시 400 에러가 발생하므로 speech_config만 사용합니다.
         models_to_try = ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]
         audio_data = None
         mime_type = "audio/wav"
@@ -1142,23 +1404,45 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
             try:
                 res = client.models.generate_content(
                     model=m_name,
-                    contents=tts_prompt
+                    contents=full_recite_text,
+                    config={
+                        "response_modalities": ["AUDIO"],
+                        "speech_config": {
+                            "voice_config": {
+                                "prebuilt_voice_config": {
+                                    "voice_name": voice_key
+                                }
+                            }
+                        }
+                    }
                 )
                 if res and res.candidates and res.candidates[0].content and res.candidates[0].content.parts:
                     for part in res.candidates[0].content.parts:
                         if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
                             audio_data = part.inline_data.data
                             mime_type = getattr(part.inline_data, "mime_type", "audio/wav")
-                            print(f"[Gemini TTS 성공] {m_name} 모델로 낭송 생성 완료 ({len(audio_data)} bytes)")
+                            print(f"[Gemini 3.8 TTS 성공 (성우: {voice_key})] {m_name} 모델로 시 낭송 생성 완료 ({len(audio_data)} bytes)")
                             break
                 if audio_data:
                     break
             except Exception as tts_err:
-                print(f"[Gemini TTS {m_name}] 시도 실패: {tts_err}")
+                print(f"[Gemini TTS {m_name} 성우={voice_key}] 시도 실패: {tts_err}")
                 continue
 
         if not audio_data:
             raise RuntimeError("Gemini 음성 합성 응답에서 오디오 데이터를 찾을 수 없습니다.")
+
+        # Gemini TTS 원시 PCM 데이터를 표준 RIFF/WAV 규격으로 포장
+        if not audio_data.startswith(b"RIFF"):
+            import io, wave
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(24000)
+                wf.writeframes(audio_data)
+            audio_data = wav_io.getvalue()
+            mime_type = "audio/wav"
 
         b64_audio = base64.b64encode(audio_data).decode("utf-8")
         data_uri = f"data:{mime_type};base64,{b64_audio}"
@@ -1173,6 +1457,19 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
         with open(recite_path, "wb") as f:
             f.write(audio_data)
 
+        # 원고(작품집_원고.md)에 낭송 음원(recite_file) 자동 동기화
+        try:
+            mgr = project_manager.get_active_manuscript_manager()
+            works = mgr.load_works()
+            target_ep = f"제{clean_ep}화"
+            target_work = next((w for w in works if w.episode_no == target_ep), None)
+            if target_work:
+                target_work.recite_file = f"music/{recite_filename}"
+                mgr.save_work(target_work)
+                print(f"[원고 낭송 동기화] {target_ep} recite_file = music/{recite_filename} 저장 완료")
+        except Exception as sync_err:
+            print(f"[원고 낭송 동기화 알림]: {sync_err}")
+
         active_id = project_manager.get_active_project_id()
         audio_url = f"/projects/{active_id}/music/{recite_filename}?t={int(time.time())}"
 
@@ -1186,6 +1483,155 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini 음성 합성 오류: {str(e)}")
+
+@app.post("/api/import_suno_share")
+async def import_suno_share_endpoint(req: ImportSunoShareRequest):
+    """
+    Suno 공유 링크(https://suno.com/song/<UUID>)에서 CDN 오디오 스트림을 추출하여
+    무료 계정 다운로드 7회 제한 없이 즉시 프로젝트 내 music/{ep}_음원.mp3로 자동 저장 및 원고 연동
+    """
+    import urllib.request, time, re
+
+    raw_url = (req.share_url or "").strip()
+    if not raw_url:
+        raise HTTPException(status_code=400, detail="Suno 공유 링크를 입력해주세요.")
+
+    # 1. UUID 추출 (직접 UUID가 포함된 링크 또는 단축 공유 링크 https://suno.com/s/... 지원)
+    song_id = None
+    match = re.search(r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', raw_url, re.IGNORECASE)
+    if match:
+        song_id = match.group(1).lower()
+    else:
+        # 단축 공유 링크 (예: https://suno.com/s/...) 리다이렉트 추적
+        try:
+            resolve_req = urllib.request.Request(raw_url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://suno.com/"
+            })
+            with urllib.request.urlopen(resolve_req, timeout=10) as resolve_resp:
+                final_url = resolve_resp.geturl()
+                m_url = re.search(r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', final_url, re.IGNORECASE)
+                if m_url:
+                    song_id = m_url.group(1).lower()
+                else:
+                    html_content = resolve_resp.read().decode("utf-8", errors="ignore")
+                    m_html = re.search(r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', html_content, re.IGNORECASE)
+                    if m_html:
+                        song_id = m_html.group(1).lower()
+        except Exception as resolve_err:
+            print(f"[Suno 단축 링크 추적 오류]: {resolve_err}")
+
+    if not song_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="유효한 Suno 곡 공유 링크 형식이 아닙니다.\n지원 형식:\n• https://suno.com/s/단축코드\n• https://suno.com/song/곡UUID"
+        )
+
+    # 2. Suno 최신 오디오 스트림 다운로드 (공식 임베드 CloudFront 자동 추출 1순위 -> CDN 직접 시도 2순위)
+    audio_bytes = None
+    last_err = None
+
+    # [1순위] Suno 공식 임베드 페이지에서 최신 CloudFront 오디오 URL 동적 추출
+    try:
+        embed_url = f"https://suno.com/embed/{song_id}"
+        embed_req = urllib.request.Request(embed_url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://suno.com/"
+        })
+        with urllib.request.urlopen(embed_req, timeout=10) as embed_resp:
+            embed_html = embed_resp.read().decode("utf-8", errors="ignore")
+            # CloudFront 또는 CDN 오디오 스트림 URL 정규식 추출
+            cf_match = re.search(r'(https://[a-zA-Z0-9.-]+\.cloudfront\.net/[^\s"\'<>\\]+\.(?:m4a|mp3))', embed_html)
+            if cf_match:
+                stream_url = cf_match.group(1).replace("\\", "")
+                print(f"[Suno 임베드 CloudFront 감지]: {stream_url}")
+                dl_req = urllib.request.Request(stream_url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Referer": f"https://suno.com/embed/{song_id}"
+                })
+                with urllib.request.urlopen(dl_req, timeout=20) as dl_resp:
+                    data = dl_resp.read()
+                    if len(data) > 5000:
+                        audio_bytes = data
+                        print(f"[Suno CloudFront 다운로드 성공] {len(data)} bytes")
+    except Exception as cf_err:
+        last_err = cf_err
+        print(f"[Suno 임베드 추출 실패, 레거시 CDN으로 폴백]: {cf_err}")
+
+    # [2순위 폴백] 레거시 cdn1 / cdn2 직접 시도
+    if not audio_bytes:
+        candidate_urls = [
+            f"https://cdn1.suno.ai/{song_id}.mp3",
+            f"https://cdn2.suno.ai/{song_id}.mp3",
+            f"https://audiopipe.suno.ai/?item_id={song_id}"
+        ]
+        headers_list = [
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": f"https://suno.com/song/{song_id}",
+                "Origin": "https://suno.com"
+            },
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://suno.com/"
+            }
+        ]
+
+        for target_url in candidate_urls:
+            for headers in headers_list:
+                try:
+                    url_req = urllib.request.Request(target_url, headers=headers)
+                    with urllib.request.urlopen(url_req, timeout=15) as resp:
+                        data = resp.read()
+                        if len(data) > 5000:
+                            audio_bytes = data
+                            break
+                except Exception as e:
+                    last_err = e
+                    continue
+            if audio_bytes:
+                break
+
+    if not audio_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Suno 음원을 가져오지 못했습니다. 링크가 비공개이거나 유효하지 않은지 확인해주세요. (오류: {last_err})"
+        )
+
+    # 3. 프로젝트 music 폴더에 자동 영구 저장
+    clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
+    project_dir = project_manager.get_project_dir()
+    music_dir = project_dir / "music"
+    music_dir.mkdir(parents=True, exist_ok=True)
+    music_filename = f"{clean_ep}_음원.mp3"
+    music_path = music_dir / music_filename
+    with open(music_path, "wb") as f:
+        f.write(audio_bytes)
+
+    # 4. 원고(작품집_원고.md)의 노래 음원(music_file) 자동 동기화
+    try:
+        mgr = project_manager.get_active_manuscript_manager()
+        works = mgr.load_works()
+        target_ep = f"제{clean_ep}화"
+        target_work = next((w for w in works if w.episode_no == target_ep or clean_ep in w.episode_no), None)
+        if target_work:
+            target_work.music_file = f"music/{music_filename}"
+            mgr.save_work(target_work)
+            print(f"[원고 노래 음원 동기화] {target_ep} music_file = music/{music_filename} 저장 완료")
+    except Exception as sync_err:
+        print(f"[원고 노래 음원 동기화 알림]: {sync_err}")
+
+    active_id = project_manager.get_active_project_id()
+    music_url = f"/projects/{active_id}/music/{music_filename}?t={int(time.time())}"
+
+    return {
+        "success": True,
+        "song_id": song_id,
+        "filename": music_filename,
+        "music_url": music_url,
+        "rel_path": f"music/{music_filename}",
+        "message": f"[{req.episode_no}] Suno 노래 음원이 7회 다운로드 제한 없이 성공적으로 가져와졌습니다!"
+    }
 
 @app.post("/api/export_colab_notebook")
 async def export_colab_notebook_endpoint(req: ColabNotebookRequest):
@@ -1261,20 +1707,24 @@ async def generate_image_free(req: GenerateFreeImageRequest):
     images_dir.mkdir(parents=True, exist_ok=True)
     target_path = images_dir / filename
 
+    art_style = req.art_style or "watercolor"
+
     # 프롬프트 구성 (사용자가 수정한 프롬프트 우선, 없으면 기억 중심 기반 생성)
     prompt_text = req.prompt.strip() if req.prompt and req.prompt.strip() else ""
     if not prompt_text:
+        from core.skill_pack import get_art_style_korean_instruction
         anchor = req.memory_anchor or req.title or "고향의 추억"
+        style_info = get_art_style_korean_instruction(art_style)
         prompt_text = (
-            f"Delicate Korean lyric watercolor illustration of {anchor}, "
-            f"warm nostalgic morning sunlight, soft translucent washes, peaceful empty space, textured white paper"
+            f"{style_info['prefix_en']} of {anchor}, "
+            f"warm nostalgic morning sunlight, peaceful empty space, textured paper margin"
         )
 
     seed = random.randint(1000, 999999)
 
     try:
         # 통합 3단계 고신뢰도 파이프라인으로 생성 및 300 DPI 저장
-        img_bytes = await asyncio.to_thread(_generate_art_image_bytes, prompt_text, seed)
+        img_bytes = await asyncio.to_thread(_generate_art_image_bytes, prompt_text, seed, art_style=art_style)
         ensure_300dpi_image(img_bytes, target_path)
 
         # 활성 원고(작품집_원고.md)의 해당 회차 이미지 파일명 자동 갱신
@@ -1305,69 +1755,60 @@ def _clean_image_prompt(raw_prompt: str) -> str:
     p = re.sub(r"\s+", " ", p).strip(" ,.")
     return p
 
-def _generate_art_image_bytes(prompt_str: str, seed_val: int) -> bytes:
+def _generate_art_image_bytes(prompt_str: str, seed_val: int, art_style: str = "watercolor", ref_image_bytes: Optional[bytes] = None) -> bytes:
     """
-    [지능형 하이브리드 이미지 생성 파이프라인]
+    [모듈러 블록 아키텍처 기반 지능형 하이브리드 이미지 생성 파이프라인]
+    공통 스킬(순백 10% 여백, 300 DPI, 글자 배제)은 단단히 유지하고,
+    화풍 전환 시 이전 화풍 수식어를 100% 도려내어 지정된 화풍 전용 스킬 블록으로 완벽 교체 결합합니다.
+    ref_image_bytes가 전달된 경우 기존 베이스 이미지를 유지한 채 지시 사항만 부분 수정(Image-to-Image)합니다.
     ★ 1순위 (최우선 직행) : Google Gemini Image (API 키 연결 시 한국어/정서 1위 엔진 즉시 가동)
     ★ 2순위 (무료 폴백) : Pollinations AI turbo/default (API 키 미등록자 또는 할당량 초과 시 오픈 서버)
     ★ 3순위 (보조 폴백) : Pollinations AI flux
     """
-    clean_p = _clean_image_prompt(prompt_str)
+    from core.skill_pack import build_modular_art_prompt
+    import io
+    from PIL import Image
     
-    # [서예/한자/텍스트 및 서양 오두막 원천 차단 가드레일]
-    lower_p = clean_p.lower()
-    guard_clauses = []
-    if "no text" not in lower_p and "without text" not in lower_p:
-        guard_clauses.append("pure fine art illustration without any text")
-    if "no calligraphy" not in lower_p:
-        guard_clauses.append("no calligraphy")
-    if "no letters" not in lower_p:
-        guard_clauses.append("no letters or words")
-    if "no seal" not in lower_p and "no stamp" not in lower_p:
-        guard_clauses.append("no seal stamp or signature")
-    if "vertical" not in lower_p and "portrait" not in lower_p:
-        guard_clauses.append("vertical portrait orientation (3:4 tall aspect ratio)")
-
-    if guard_clauses:
-        guarded_prompt = f"{clean_p}, {', '.join(guard_clauses)}"
-    else:
-        guarded_prompt = clean_p
+    # [모듈러 블록 아키텍처 조립]
+    # 블록 A (선택된 화풍 전용) + 블록 B (오염 제거된 순수 정경) + 블록 C (공통 출판 규격)
+    modular = build_modular_art_prompt(prompt_str, art_style=art_style)
+    style_name_ko = modular["name_ko"]
+    clean_scene = modular["clean_scene"]
+    gemini_contents = modular["gemini_ko_content"]
+    guarded_prompt = modular["guarded_en_prompt"]
+    negative_en = modular["negative_en"]
 
     # ========================================================
     # ★ 1순위 (최우선) : Google Gemini Image (API 키 연결 시)
-    # 구글의 방대한 한국어/동양 문화 이해력으로 정밀 세로형 수채화 즉시 생성!
+    # 지정 화풍 전용 블록과 순수 정경이 조립된 모듈러 지침으로 즉시 생성!
     # ========================================================
     api_key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
     if api_key and genai:
-        print("[1순위 최우선 직행: Google Gemini Image] 구글 고지능 이미지 AI로 한국 서정 삽화를 즉시 생성합니다.")
+        print(f"[1순위 Google Gemini Image: 화풍={style_name_ko}] 모듈러 스킬 블록으로 [{style_name_ko}] 삽화를 생성합니다.")
         try:
             client = genai.Client(api_key=api_key)
             image_models = ["gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3-pro-image"]
-            
-            has_ko = bool(re.search(r'[\uac00-\ud7a3]', prompt_str))
-            if has_ko:
-                gemini_contents = (
-                    "한국 출판 시화집을 위한 정통 서정 수채화 삽화를 3:4 세로형 구도(A5 규격)로 아름답고 깊이 있게 그려주세요.\n"
-                    "핵심 가이드:\n"
-                    "1. 화풍: 맑고 투명한 물빛 번짐(Wet-on-wet)과 따뜻한 아침 햇살, 전통 수채화 종이의 섬세한 질감.\n"
-                    "2. 여백: 외곽 10%는 책의 순백 종이(#FFFFFF)와 자연스럽게 융합되도록 은은하고 부드러운 페이드아웃 여백(Soft Vignette).\n"
-                    "3. 금지: 글자, 한글, 알파벳, 한자, 낙관, 서명, 사각 테두리 선 절대 금지.\n"
-                    "4. 배경: 어두운 동굴이나 땅구멍, 서양식 통나무집(cabin), 샬레 등 절대 배제. 북풍을 막아주는 양지바른 언덕 비탈과 흙 둔덕 아래 따스한 야외 흙터만 표현.\n"
-                    f"5. 장면 연출: {clean_p}"
-                )
-            else:
-                gemini_contents = f"Generate a delicate Korean lyric watercolor illustration on textured paper, in vertical portrait orientation (3:4 tall aspect ratio), 300 dpi, pure fine art without any text, letters, calligraphy, stamps, or frames: {guarded_prompt}"
+
+            # [Image-to-Image] 기존 베이스 이미지가 제공된 경우 멀티모달 입력으로 함께 전달
+            call_contents = [gemini_contents]
+            if ref_image_bytes:
+                try:
+                    ref_pil = Image.open(io.BytesIO(ref_image_bytes))
+                    call_contents = [ref_pil, f"Modify the attached base illustration according to this direction: {gemini_contents}"]
+                    print(f"[Google Gemini Image-to-Image] 기존 베이스 이미지를 탑재하여 멀티모달 연속 수정을 수행합니다.")
+                except Exception as pil_err:
+                    print(f"[기존 이미지 멀티모달 변환 실패, 텍스트 전용으로 진행]: {pil_err}")
 
             for m_name in image_models:
                 try:
                     res = client.models.generate_content(
                         model=m_name,
-                        contents=gemini_contents
+                        contents=call_contents
                     )
                     if res and res.candidates and res.candidates[0].content and res.candidates[0].content.parts:
                         for part in res.candidates[0].content.parts:
                             if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
-                                print(f"[Google Gemini 성공] {m_name} 모델로 최고 품질 삽화 생성 완료 ({len(part.inline_data.data)} bytes)")
+                                print(f"[Google Gemini 성공] {m_name} 모델로 [{style_name_ko}] 삽화 생성 완료 ({len(part.inline_data.data)} bytes)")
                                 return part.inline_data.data
                 except Exception as m_err:
                     print(f"[Gemini 모델 {m_name} 실패, 다음 시도]: {m_err}")
@@ -1377,18 +1818,11 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int) -> bytes:
 
     # ========================================================
     # ★ 2순위 (무료 폴백) : Pollinations AI
-    # API 키가 없거나 Gemini 할당량 초과 시 무료 오픈 AI로 안전하게 전환
+    # 화풍 고유의 Negative 프롬프트(타 화풍 배제)를 주입하여 화풍 혼입을 원천 차단
     # ========================================================
-    print("[2순위 무료 오픈 AI 전환] Pollinations 엔진으로 생성을 진행합니다.")
+    print(f"[2순위 무료 오픈 AI 전환: 화풍={style_name_ko}] Pollinations 엔진으로 모듈러 블록 삽화를 생성합니다.")
     encoded = urllib.parse.quote(guarded_prompt)
-    neg_items = [
-        "text", "letters", "words", "typography", "hangul", "chinese characters", "calligraphy",
-        "stamp", "seal", "signature", "frame", "border", "watermark", "logo", "blurry", "ugly",
-        "horizontal", "landscape orientation", "wide panorama"
-    ]
-    if "cabin" not in lower_p and "cottage" not in lower_p and "house" not in lower_p:
-        neg_items.extend(["cabin", "western log cabin", "chalet"])
-    neg_param = urllib.parse.quote(",".join(neg_items))
+    neg_param = urllib.parse.quote(negative_en)
 
     candidate_urls = [
         f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&model=turbo&negative={neg_param}",
@@ -1404,7 +1838,7 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int) -> bytes:
             with urllib.request.urlopen(url_req, timeout=25) as resp:
                 data = resp.read()
                 if len(data) > 1000:
-                    print(f"[2순위 Pollinations 성공] 무료 오픈 AI로 생성 완료 ({len(data)} bytes)")
+                    print(f"[2순위 Pollinations 성공] 무료 오픈 AI로 [{style_name_ko}] 생성 완료 ({len(data)} bytes)")
                     return data
         except Exception as p_err:
             print(f"[Pollinations 일시 불가] {p_err}")
@@ -1414,12 +1848,12 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int) -> bytes:
     # ★ 3순위 (보조 폴백) : 추가 무료 오픈 이미지 엔드포인트
     # ========================================================
     try:
-        free_backup_url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true"
+        free_backup_url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&negative={neg_param}"
         url_req = urllib.request.Request(free_backup_url, headers={"User-Agent": "StoryBook-Studio/1.0"})
         with urllib.request.urlopen(url_req, timeout=20) as resp:
             data = resp.read()
             if len(data) > 1000:
-                print(f"[3순위 무료 오픈 폴백 성공] ({len(data)} bytes)")
+                print(f"[3순위 무료 오픈 폴백 성공] [{style_name_ko}] ({len(data)} bytes)")
                 return data
     except Exception as free_err:
         print(f"[3순위 무료 폴백 실패] {free_err}")
@@ -1443,49 +1877,67 @@ def _parse_base64_image(b64_str: Optional[str]) -> Optional[bytes]:
         print(f"[참조 이미지 Base64 디코딩 실패]: {e}")
         return None
 
-def _download_and_save_candidate(prompt_str: str, seed_val: int, file_path: Path):
-    img_bytes = _generate_art_image_bytes(prompt_str, seed_val)
+def _download_and_save_candidate(prompt_str: str, seed_val: int, file_path: Path, art_style: str = "watercolor", ref_image_bytes: Optional[bytes] = None):
+    img_bytes = _generate_art_image_bytes(prompt_str, seed_val, art_style=art_style, ref_image_bytes=ref_image_bytes)
     ensure_300dpi_image(img_bytes, file_path)
 
 @app.post("/api/generate_image_candidates")
 async def generate_image_candidates(req: GenerateImageCandidatesRequest):
     """
     무료 한도(Rate Limit) 절약 및 초고속 생성을 위해 단 1장의 최적 서정 삽화를 즉시 생성하고 원고에 자동 반영합니다.
-    참조 사진(reference_image)이 전달된 경우 멀티모달 비전 분석을 통해 사진 구도와 피사체를 수채화로 재창작하거나,
+    선택된 화풍(수묵담채, 파스텔, 스케치, 유화, 수채화)을 완벽히 반영하여 고품질 삽화를 생성합니다.
+    참조 사진(reference_image)이 전달된 경우 멀티모달 비전 분석을 통해 사진 구도와 피사체를 해당 화풍으로 재창작하거나,
     direct_use_photo=True인 경우 해당 사진 자체를 300 DPI 순백 여백 보정하여 바로 시안으로 사용합니다.
     """
-    clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
-    images_dir = project_manager.get_active_images_dir()
-    images_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
+        images_dir = project_manager.get_active_images_dir()
+        images_dir.mkdir(parents=True, exist_ok=True)
+        art_style = req.art_style or "watercolor"
 
-    ref_bytes = _parse_base64_image(req.reference_image)
+        ref_bytes = _parse_base64_image(req.reference_image)
 
-    # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 시안으로 등록
-    if req.direct_use_photo and ref_bytes:
-        seed = random.randint(100000, 999999)
-        filename = f"{clean_ep}_생성후보.jpg"
-        target_path = images_dir / filename
-        print(f"[{req.episode_no}화] 첨부 사진 자체를 300 DPI 수채화 여백 보정하여 바로 시안 등록 ({len(ref_bytes)} bytes)")
-        ensure_300dpi_image(ref_bytes, target_path)
-        return {
-            "success": True,
-            "episode_no": req.episode_no,
-            "filename": filename,
-            "used_prompt": "사용자 첨부 사진 직접 변환 (300 DPI 순백 여백 보정 적용)",
-            "image_url": f"/images/{filename}?t={seed}",
-            "message": f"[{req.episode_no}] 첨부하신 사진이 300 DPI 출판용 규격과 순백 여백으로 보정되어 등록되었습니다."
-        }
+        # [방법 1: 연속 편집 모드 (Image-to-Image)]
+        # 사용자가 수동 사진을 첨부하지 않았으나, 현재 그림 유지 부분 수정(use_current_as_base)이 활성화되어 있고 가이드가 있는 경우
+        is_refining_existing = False
+        if not ref_bytes and req.use_current_as_base and custom_guide:
+            cand_files = []
+            if req.base_image_filename:
+                cand_files.append(images_dir / req.base_image_filename)
+            cand_files.append(images_dir / f"{clean_ep}_생성후보.jpg")
+            cand_files.append(images_dir / f"{clean_ep}_삽화.jpg")
+            
+            for c_path in cand_files:
+                if c_path.exists() and c_path.stat().st_size > 1000:
+                    try:
+                        ref_bytes = c_path.read_bytes()
+                        is_refining_existing = True
+                        print(f"[{req.episode_no}화 Image-to-Image 연속 편집] 기존 그림({c_path.name})을 베이스 이미지로 자동 탑재하여 인물/구도를 유지한 채 부분 수정을 수행합니다.")
+                        break
+                    except Exception as b_err:
+                        print(f"기존 이미지 바이트 로드 실패: {b_err}")
 
-    base_prompt = req.prompt.strip() if req.prompt and req.prompt.strip() else ""
-    custom_guide = req.custom_guide.strip() if req.custom_guide else ""
+        # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 시안으로 등록
+        if req.direct_use_photo and ref_bytes and not is_refining_existing:
+            seed = random.randint(100000, 999999)
+            filename = f"{clean_ep}_생성후보.jpg"
+            target_path = images_dir / filename
+            print(f"[{req.episode_no}화] 첨부 사진 자체를 300 DPI 여백 보정하여 바로 시안 등록 ({len(ref_bytes)} bytes)")
+            ensure_300dpi_image(ref_bytes, target_path)
+            return {
+                "success": True,
+                "episode_no": req.episode_no,
+                "filename": filename,
+                "used_prompt": "사용자 첨부 사진 직접 변환 (300 DPI 순백 여백 보정 적용)",
+                "image_url": f"/images/{filename}?t={seed}",
+                "message": f"[{req.episode_no}] 첨부하신 사진이 300 DPI 출판용 규격과 순백 여백으로 보정되어 등록되었습니다."
+            }
 
-    api_key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
-    has_korean = bool(re.search(r'[\uac00-\ud7a3]', base_prompt))
-    
-    # 프롬프트가 없거나, 연출 가이드가 추가되었거나, 참조 사진이 있는 경우 최적 프롬프트 조립
-    if custom_guide or ref_bytes or not base_prompt or len(base_prompt) < 15:
-        ref_msg = " + [참조 사진 비전 분석]" if ref_bytes else ""
-        print(f"[{req.episode_no}화 프롬프트 조립] 연출 가이드('{custom_guide}'){ref_msg} 반영하여 감성 프롬프트를 생성합니다.")
+        base_prompt = req.prompt.strip() if req.prompt and req.prompt.strip() else ""
+
+        # 모듈러 블록 아키텍처를 통한 화풍 전환 및 오염 제거
+        from core.skill_pack import build_modular_art_prompt, strip_style_contamination
+        
         mgr = project_manager.get_active_manuscript_manager()
         works = mgr.load_works()
         target_work = next((w for w in works if clean_ep in w.episode_no or w.episode_no.strip() == req.episode_no.strip()), None)
@@ -1495,47 +1947,76 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
         p_memory = req.memory_anchor or (target_work.memory_anchor if target_work else "")
         p_direction = (target_work.art_direction if target_work and target_work.art_direction else "")
 
-        if api_key and genai:
-            # Gemini 1순위: 한국어 문화 정서 100% 직행
-            base_prompt = poetic_engine.generate_korean_art_prompt(
-                title=p_title,
-                poem_body=p_body,
-                core_memory=p_memory,
-                sensory_details=p_direction,
-                style_mode="literal",
-                art_style="watercolor",
-                custom_guide=custom_guide,
-                api_key=api_key
-            )
+        # 이전 화풍 오염 감지 및 블록 전환 판단
+        other_styles = {
+            "watercolor": ["수묵", "파스텔", "스케치", "유화", "ink_wash", "pastel", "sketch", "oil_painting"],
+            "ink_wash": ["수채화", "파스텔", "스케치", "유화", "watercolor", "pastel", "sketch", "oil_painting"],
+            "pastel": ["수채화", "수묵", "스케치", "유화", "watercolor", "ink_wash", "sketch", "oil_painting"],
+            "sketch": ["수채화", "수묵", "파스텔", "유화", "watercolor", "ink_wash", "pastel", "oil_painting"],
+            "oil_painting": ["수채화", "수묵", "파스텔", "스케치", "watercolor", "ink_wash", "pastel", "sketch"]
+        }
+        mismatch_keywords = other_styles.get(art_style, [])
+        has_mismatched_style = any(kw in base_prompt for kw in mismatch_keywords)
+
+        # 정경 묘사가 비어있거나 화풍이 바뀌었거나 가이드가 있는 경우 서정 정경 생성
+        if custom_guide or ref_bytes or not base_prompt or len(base_prompt) < 15 or has_mismatched_style:
+            ref_msg = " + [기존 그림 기반 연속 수정]" if is_refining_existing else (" + [참조 사진 비전 분석]" if ref_bytes else "")
+            print(f"[{req.episode_no}화 모듈러 블록 조립: 화풍={art_style}] 이전 화풍을 완전히 걷어내고 [{art_style}] 전용 스킬 블록으로 전환합니다.{ref_msg}")
+
+            api_key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
+            if ref_bytes:
+                raw_scene_prompt = poetic_engine.generate_art_prompt_with_gemini(
+                    title=p_title,
+                    poem_body=p_body,
+                    core_memory=p_memory,
+                    sensory_details=p_direction,
+                    style_mode="literal",
+                    art_style=art_style,
+                    custom_guide=custom_guide,
+                    reference_image_bytes=ref_bytes,
+                    is_refining_existing=is_refining_existing
+                )
+            else:
+                raw_scene_prompt = poetic_engine.generate_korean_art_prompt(
+                    title=p_title,
+                    poem_body=p_body,
+                    core_memory=p_memory,
+                    sensory_details=p_direction,
+                    style_mode="literal",
+                    art_style=art_style,
+                    custom_guide=custom_guide,
+                    api_key=api_key
+                )
         else:
-            base_prompt = poetic_engine.generate_art_prompt_with_gemini(
-                title=p_title,
-                poem_body=p_body,
-                core_memory=p_memory,
-                sensory_details=p_direction,
-                style_mode="literal",
-                art_style="watercolor",
-                custom_guide=custom_guide,
-                reference_image_bytes=ref_bytes
-            )
+            raw_scene_prompt = base_prompt
 
-    # 단일 최적 시안 생성 (미리보기 확인 후 [삽입] 클릭 시에만 원고에 반영)
-    seed = random.randint(100000, 999999)
-    filename = f"{clean_ep}_생성후보.jpg"
-    target_path = images_dir / filename
+        # [모듈러 블록 아키텍처 조립기 최종 가동]
+        # 블록 A (선택된 화풍 전용 블록) + 블록 B (이전 화풍 오염이 도려내진 순수 정경) + 블록 C (공통 출판 규격)
+        modular = build_modular_art_prompt(
+            raw_prompt=raw_scene_prompt,
+            art_style=art_style,
+            custom_guide=custom_guide,
+            title=p_title,
+            memory_anchor=p_memory
+        )
+        final_used_prompt = modular["display_ko_prompt"]
 
-    try:
-        # 단 1회 초고속 생성 (300 DPI 규격 보정)
-        await asyncio.to_thread(_download_and_save_candidate, base_prompt, seed, target_path)
+        # 단일 최적 시안 생성 (미리보기 확인 후 [삽입] 클릭 시에만 원고에 반영)
+        seed = random.randint(100000, 999999)
+        filename = f"{clean_ep}_생성후보.jpg"
+        target_path = images_dir / filename
 
-        # 원고 즉시 덮어쓰기는 수행하지 않음 (사용자가 미리보기 후 [삽입]을 선택할 때만 반영)
+        # 단 1회 초고속 생성 (300 DPI 규격 보정, 모듈러 화풍 스킬 블록 적용, Image-to-Image 바이트 전달)
+        await asyncio.to_thread(_download_and_save_candidate, modular["clean_scene"], seed, target_path, art_style=art_style, ref_image_bytes=ref_bytes)
+
+        msg_style = "기존 그림의 인물과 구도를 유지하며 부분 수정한" if is_refining_existing else f"[{modular['name_ko']}] 전용 스킬 블록으로"
         return {
             "success": True,
             "episode_no": req.episode_no,
             "filename": filename,
-            "used_prompt": base_prompt,
+            "used_prompt": final_used_prompt,
             "image_url": f"/images/{filename}?t={seed}",
-            "message": f"[{req.episode_no}] 새 삽화 시안이 생성되었습니다. 미리보기 창에서 확인하세요.",
+            "message": f"[{req.episode_no}] {msg_style} 새 삽화 시안이 생성되었습니다.",
             # 하위 호환 데이터
             "candidate_a": {
                 "id": "A",
@@ -1658,60 +2139,80 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
     """
     4P 조판 시 2부(후반부) 좌측면에 배치할 연작 수채화 삽화를 시의 후반부 정경에 맞춰 무료 자동 생성 (미리보기 후 승인 시 반영)
     """
-    clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
-    filename = f"{clean_ep}_생성후보_2부.jpg"
-
-    images_dir = project_manager.get_active_images_dir()
-    images_dir.mkdir(parents=True, exist_ok=True)
-    target_path = images_dir / filename
-
-    ref_bytes = _parse_base64_image(req.reference_image)
-
-    # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 2부 시안으로 등록
-    if req.direct_use_photo and ref_bytes:
-        seed = random.randint(100000, 999999)
-        ensure_300dpi_image(ref_bytes, target_path)
-        return {
-            "success": True,
-            "episode_no": req.episode_no,
-            "filename": filename,
-            "target_slot": "part2",
-            "image_url": f"/images/{filename}?t={seed}",
-            "message": f"[{req.episode_no}] 첨부하신 사진이 300 DPI 출판용 규격으로 보정되어 2부 연작 삽화 시안으로 등록되었습니다."
-        }
-
-    mgr = project_manager.get_active_manuscript_manager()
-    works = mgr.load_works()
-    target_work = None
-    for w in works:
-        if clean_ep in w.episode_no or w.episode_no.strip() == req.episode_no.strip():
-            target_work = w
-            break
-
-    prompt_text = (req.prompt or "").strip()
-    custom_guide = (req.custom_guide or "").strip()
-    if custom_guide or ref_bytes or not prompt_text:
-        # ★ 묘책: 시의 후반부(Part 2) 본문을 정밀 분석한 전용 연작 서정 프롬프트 자동 조립!
-        if target_work:
-            prompt_text = poetic_engine.generate_sequel_image_prompt(
-                title=target_work.title,
-                poem_body=target_work.poem_body or "",
-                core_memory=target_work.memory_anchor or "",
-                sensory_details="",
-                custom_guide=custom_guide
-            )
-        else:
-            prompt_text = (
-                "authentic Korean lyric transparent watercolor painting, intimate nostalgic midnight room, "
-                "warm kerosene lamp glowing in chilly night breeze, on pure clean white paper background, wide 10% white margin, "
-                "soft vignetting, delicate brush textures, masterpiece, no text, no frame"
-            )
-
-    seed = random.randint(100000, 999999)
-
     try:
-        # 다단계 무료 폴백 엔진 & 300 DPI 사방 10% 수채화 블러 비네팅 마스크 자동 적용
-        await asyncio.to_thread(_download_and_save_candidate, prompt_text, seed, target_path)
+        clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
+        filename = f"{clean_ep}_생성후보_2부.jpg"
+        art_style = req.art_style or "watercolor"
+
+        images_dir = project_manager.get_active_images_dir()
+        images_dir.mkdir(parents=True, exist_ok=True)
+        target_path = images_dir / filename
+
+        ref_bytes = _parse_base64_image(req.reference_image)
+
+        # [방법 1: 2부 연속 편집 모드 (Image-to-Image)]
+        is_refining_existing = False
+        custom_guide = (req.custom_guide or "").strip()
+        if not ref_bytes and req.use_current_as_base and custom_guide:
+            cand_files = []
+            if req.base_image_filename:
+                cand_files.append(images_dir / req.base_image_filename)
+            cand_files.append(images_dir / f"{clean_ep}_생성후보_2부.jpg")
+            cand_files.append(images_dir / f"{clean_ep}_삽화_후반.jpg")
+            for c_path in cand_files:
+                if c_path.exists() and c_path.stat().st_size > 1000:
+                    try:
+                        ref_bytes = c_path.read_bytes()
+                        is_refining_existing = True
+                        print(f"[{req.episode_no}화 2부 Image-to-Image] 기존 2부 그림({c_path.name})을 베이스로 부분 수정을 수행합니다.")
+                        break
+                    except Exception as b_err:
+                        print(f"2부 기존 이미지 로드 실패: {b_err}")
+
+        # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 2부 시안으로 등록
+        if req.direct_use_photo and ref_bytes and not is_refining_existing:
+            seed = random.randint(100000, 999999)
+            ensure_300dpi_image(ref_bytes, target_path)
+            return {
+                "success": True,
+                "episode_no": req.episode_no,
+                "filename": filename,
+                "target_slot": "part2",
+                "image_url": f"/images/{filename}?t={seed}",
+                "message": f"[{req.episode_no}] 첨부하신 사진이 300 DPI 출판용 규격으로 보정되어 2부 연작 삽화 시안으로 등록되었습니다."
+            }
+
+        mgr = project_manager.get_active_manuscript_manager()
+        works = mgr.load_works()
+        target_work = None
+        for w in works:
+            if clean_ep in w.episode_no or w.episode_no.strip() == req.episode_no.strip():
+                target_work = w
+                break
+
+        prompt_text = (req.prompt or "").strip()
+        if custom_guide or ref_bytes or not prompt_text:
+            # ★ 묘책: 시의 후반부(Part 2) 본문을 정밀 분석한 전용 연작 서정 프롬프트 자동 조립!
+            if target_work:
+                prompt_text = poetic_engine.generate_sequel_image_prompt(
+                    title=target_work.title,
+                    poem_body=target_work.poem_body or "",
+                    core_memory=target_work.memory_anchor or "",
+                    sensory_details="",
+                    art_style=art_style,
+                    custom_guide=custom_guide
+                )
+            else:
+                prompt_text = (
+                    "authentic Korean lyric transparent watercolor painting, intimate nostalgic midnight room, "
+                    "warm kerosene lamp glowing in chilly night breeze, on pure clean white paper background, wide 10% white margin, "
+                    "soft vignetting, delicate brush textures, masterpiece, no text, no frame"
+                )
+
+        seed = random.randint(100000, 999999)
+
+        # 다단계 무료 폴백 엔진 & 300 DPI 사방 10% 수채화 블러 비네팅 마스크 자동 적용 (ref_image_bytes 연동)
+        await asyncio.to_thread(_download_and_save_candidate, prompt_text, seed, target_path, art_style=art_style, ref_image_bytes=ref_bytes)
 
         # 원고 즉시 덮어쓰기는 수행하지 않음 (미리보기 창에서 사용자가 [삽화로 삽입]을 누를 때 반영)
         return {
@@ -1811,7 +2312,7 @@ async def get_bookk_formats():
     return {"formats": BOOKK_FORMATS}
 
 @app.get("/api/bookk/export_interior")
-async def export_bookk_interior(format_key: str = "b6_mod", paper_type: str = "white_100g"):
+async def export_bookk_interior(format_key: str = "a5", paper_type: str = "white_100g"):
     """부크크 300DPI 사방 3mm 도련 및 20mm 제본 여백 내지 완제본 PDF 생성 및 다운로드"""
     try:
         info = project_manager.get_active_project_info()
@@ -1837,12 +2338,19 @@ async def export_bookk_interior(format_key: str = "b6_mod", paper_type: str = "w
         raise HTTPException(status_code=500, detail=f"부크크 내지 PDF 생성 오류: {str(e)}")
 
 @app.get("/api/bookk/export_cover")
-async def export_bookk_cover(format_key: str = "b6_mod", paper_type: str = "white_100g", total_pages: int = 80):
+async def export_bookk_cover(format_key: str = "b6_mod", paper_type: str = "white_100g", total_pages: int = 0):
     """부크크 표지 펼침면(뒤표지 + 책등 세네카 + 앞표지 + 도련 3mm) PDF 생성 및 다운로드"""
     try:
         info = project_manager.get_active_project_info()
         p_dir = project_manager.get_project_dir()
         builder = BookkPDFBuilder(format_key=format_key, paper_type=paper_type)
+
+        # 총 페이지 수 자동 산출 (미지정 또는 기본값일 때)
+        if total_pages <= 0 or total_pages == 28:
+            episodes = manuscript_manager.list_episodes()
+            # 본문(작품당 2P) + 권두(도비라/서문/목차) + 권말(맺음말/판권지) = 최소 40~80쪽 표준
+            actual_pages = len(episodes) * 2 + 8
+            total_pages = max(actual_pages, 80)
 
         format_label = "사륙판" if format_key == "b6_mod" else "국판"
         out_filename = f"{info.name}_부크크_표지_{format_label}_300DPI.pdf"
@@ -1861,6 +2369,111 @@ async def export_bookk_cover(format_key: str = "b6_mod", paper_type: str = "whit
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"부크크 표지 PDF 생성 오류: {str(e)}")
+
+
+# -------------------------------------------------------------
+# 시집 출판 본문 외 구성 요소 (Front & Back Matter) 관리 API
+# -------------------------------------------------------------
+class BookExtrasSaveRequest(BaseModel):
+    prologue: Optional[str] = ""
+    epilogue: Optional[str] = ""
+    back_cover_blurb: Optional[str] = ""
+    cover_image: Optional[str] = ""
+    publisher: Optional[str] = "부크크 (Bookk) 자가출판"
+    published_date: Optional[str] = ""
+    price: Optional[str] = "13,000원"
+    isbn: Optional[str] = ""
+
+class BookExtrasGenerateRequest(BaseModel):
+    target: str  # "prologue" | "epilogue" | "back_cover_blurb"
+
+@app.get("/api/book_extras")
+async def get_book_extras():
+    """현재 활성 시집의 본문 외 출판 구성 요소(서문, 에필로그, 뒷표지카피, 판권) 조회"""
+    try:
+        info = project_manager.get_active_project_info()
+        images_dir = project_manager.get_active_images_dir()
+        
+        # 프로젝트 내 사용 가능한 삽화 목록
+        available_images = []
+        if images_dir.exists():
+            for f in images_dir.glob("*.*"):
+                if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]:
+                    available_images.append(f.name)
+            available_images.sort()
+
+        return {
+            "success": True,
+            "extras": {
+                "prologue": getattr(info, 'prologue', ''),
+                "epilogue": getattr(info, 'epilogue', ''),
+                "back_cover_blurb": getattr(info, 'back_cover_blurb', ''),
+                "cover_image": getattr(info, 'cover_image', ''),
+                "publisher": getattr(info, 'publisher', '부크크 (Bookk) 자가출판'),
+                "published_date": getattr(info, 'published_date', ''),
+                "price": getattr(info, 'price', '13,000원'),
+                "isbn": getattr(info, 'isbn', '')
+            },
+            "project_name": info.name,
+            "project_subtitle": info.subtitle,
+            "project_author": info.author,
+            "available_images": available_images
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"출판 데이터 조회 실패: {str(e)}")
+
+@app.post("/api/book_extras/save")
+async def save_book_extras(req: BookExtrasSaveRequest):
+    """시집의 본문 외 출판 구성 요소(서문, 에필로그, 뒷표지카피, 판권 정보) 저장"""
+    try:
+        info = project_manager.update_book_extras(None, req.dict())
+        return {"success": True, "message": "출판 구성 요소가 안전하게 저장되었습니다.", "info": asdict(info)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"출판 데이터 저장 실패: {str(e)}")
+
+@app.post("/api/book_extras/generate")
+async def generate_book_extras(req: BookExtrasGenerateRequest):
+    """수록된 시와 시집 기획 의도를 분석하여 AI 시인의 말 / 맺음말 / 뒷표지 카피 자동 생성"""
+    try:
+        info = project_manager.get_active_project_info()
+        mgr = project_manager.get_active_manuscript_manager()
+        works = mgr.load_works()
+
+        if req.target == "prologue":
+            generated_text = publishing_copier.generate_prologue(info, works)
+        elif req.target == "epilogue":
+            generated_text = publishing_copier.generate_epilogue(info, works)
+        elif req.target == "back_cover_blurb":
+            generated_text = publishing_copier.generate_back_cover_blurb(info, works)
+        else:
+            raise HTTPException(status_code=400, detail="유효하지 않은 생성 요청 대상입니다.")
+
+        return {
+            "success": True,
+            "target": req.target,
+            "generated_text": generated_text
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 출판 문구 생성 실패: {str(e)}")
+
+@app.get("/api/canva/export_publishing_csv")
+async def export_canva_publishing_csv():
+    """Canva 표지/서문/목차/에필로그/판권지 일괄 바인딩용 메타데이터 CSV 다운로드"""
+    try:
+        info = project_manager.get_active_project_info()
+        p_dir = project_manager.get_project_dir()
+        out_path = p_dir / f"{info.name}_출판구성데이터.csv"
+        build_canva_publishing_metadata_csv(output_file=out_path)
+
+        safe_name = urllib.parse.quote(out_path.name)
+        return FileResponse(
+            path=str(out_path),
+            filename=out_path.name,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Canva 출판 메타데이터 CSV 생성 실패: {str(e)}")
 
 
 # -------------------------------------------------------------

@@ -7,13 +7,13 @@ from PIL import Image, ImageDraw, ImageFilter
 A5_PRINT_WIDTH_300DPI = 1748
 A5_PRINT_HEIGHT_300DPI = 2480
 
-def apply_watercolor_edge_fade(image: Image.Image, margin_ratio: float = 0.12) -> Image.Image:
+def apply_watercolor_edge_fade(image: Image.Image, margin_ratio: float = 0.05) -> Image.Image:
     """
     이미지 사방 가장자리를 순백색(#FFFFFF) 종이 배경으로 경계선 없이 완벽하게 스며들도록
     출판 표준 서정 비네팅(Smoothstep Vignette) 마스크를 적용합니다.
-    - 외곽 4~5% 영역: 수학적으로 100% 완전한 순백색(#FFFFFF)으로 고정하여 사각 칼선/테두리 원천 제거
-    - 외곽 4~14% 영역: 부드러운 에르미트 S-커브(Smoothstep)로 종이에 물감이 번지는 듯한 무경계 페이드아웃
-    - 인공지능 워터마크(pollinations.ai 등) 및 직사각형 프레임 100% 완전 차단
+    - 외곽 1% 영역: 수학적으로 100% 완전한 순백색(#FFFFFF)으로 고정하여 사각 칼선/테두리 원천 제거
+    - 외곽 1~5% 영역: 부드러운 에르미트 S-커브(Smoothstep)로 종이에 물감이 번지는 듯한 미세 페이드아웃
+    - 중심부 95%의 인물, 사물, 배경 디테일이 온전히 보존되도록 최소한의 미세 여백만 처리
     """
     img_rgb = image.convert("RGB")
     w, h = img_rgb.size
@@ -30,9 +30,9 @@ def apply_watercolor_edge_fade(image: Image.Image, margin_ratio: float = 0.12) -
         dist_x = np.minimum(xx, 1.0 - xx)
         dist_y = np.minimum(yy, 1.0 - yy)
 
-        # 마진 파라미터 (외곽 4%는 무조건 100% 순백, 14%까지 부드럽게 번짐)
-        zero_margin = 0.04
-        fade_margin = max(margin_ratio, 0.13)
+        # 마진 파라미터: 중심 피사체(인물/사물) 보존을 위해 5% 이내로 미세 페이드아웃
+        zero_margin = 0.01
+        fade_margin = max(margin_ratio, 0.05)
 
         # 3차 에르미트 보간 S-커브 (부드러운 물감 번짐 연출)
         t_x = np.clip((dist_x - zero_margin) / (fade_margin - zero_margin), 0.0, 1.0)
@@ -41,20 +41,14 @@ def apply_watercolor_edge_fade(image: Image.Image, margin_ratio: float = 0.12) -
         t_y = np.clip((dist_y - zero_margin) / (fade_margin - zero_margin), 0.0, 1.0)
         mask_y = t_y * t_y * (3.0 - 2.0 * t_y)
 
-        # 사방 및 네 모서리 자연스러운 타원형 감쇄 결합
+        # 사방 및 네 모서리 자연스러운 타원형 감쇄 결합 (95% 중심 영역 온전 보존)
         mask = mask_x * mask_y
-
-        # 우하단 워터마크 영역 집중 제거 가드: 우측 및 하단 모서리 추가 소프트 페이드
-        corner_dist = np.sqrt(np.square(1.0 - xx) + np.square(1.0 - yy))
-        # 우하단 모서리 부근(워터마크 위치) 감쇄 보조
-        br_fade = np.clip(corner_dist / 0.25, 0.0, 1.0)
-        mask = mask * (br_fade * br_fade * (3.0 - 2.0 * br_fade))
 
         mask_u8 = (mask * 255.0).astype(np.uint8)
         mask_img = Image.fromarray(mask_u8, mode="L")
 
         # 부드러운 가우시안 블러를 미세하게 입혀 디지털 계단 현상 완벽 방지
-        mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=max(2.0, min(w, h) * 0.005)))
+        mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=max(1.5, min(w, h) * 0.003)))
 
         white_bg = Image.new("RGB", (w, h), (255, 255, 255))
         return Image.composite(img_rgb, white_bg, mask_img)
@@ -62,17 +56,17 @@ def apply_watercolor_edge_fade(image: Image.Image, margin_ratio: float = 0.12) -
     except Exception:
         # Fallback: 순수 PIL 방식
         white_bg = Image.new("RGB", (w, h), (255, 255, 255))
-        margin_x = int(w * 0.12)
-        margin_y = int(h * 0.12)
+        margin_x = int(w * 0.05)
+        margin_y = int(h * 0.05)
 
         mask = Image.new("L", (w, h), 0)
         draw = ImageDraw.Draw(mask)
         draw.rounded_rectangle(
             [margin_x, margin_y, w - margin_x, h - margin_y],
-            radius=int(min(margin_x, margin_y) * 1.8),
+            radius=int(min(margin_x, margin_y) * 1.5),
             fill=255
         )
-        blur_radius = max(margin_x, margin_y) * 0.8
+        blur_radius = max(margin_x, margin_y) * 0.6
         mask = mask.filter(ImageFilter.GaussianBlur(radius=blur_radius))
         return Image.composite(img_rgb, white_bg, mask)
 

@@ -1,10 +1,113 @@
 // StoryBook Studio Frontend Application Logic (Multi-Project Edition)
+window.name = "StoryBookStudio";
 
 let currentStatus = null;
 let currentDrafts = null;
 let currentWorkIndex = 0;
 let projectList = [];
 let currentEditingEpisode = null; // 현재 편집 중인 회차 (null이면 신규 작성)
+
+// ============================================================================
+// ⏳ [신규] 글로벌 비지/생성 대기 상태 관리자 (모래시계 & 원형 회전 스피너 커서)
+// ============================================================================
+let globalBusyCount = 0;
+let busyIndicatorElem = null;
+let lastMouseX = -100;
+let lastMouseY = -100;
+let busyDebounceTimer = null;
+
+function initBusyCursorIndicator() {
+  if (busyIndicatorElem) return;
+  busyIndicatorElem = document.createElement("div");
+  busyIndicatorElem.id = "appBusyCursorIndicator";
+  busyIndicatorElem.innerHTML = `
+    <span class="cursor-hourglass-icon">⏳</span>
+    <span class="cursor-spinner-ring"></span>
+    <span id="appBusyCursorLabel" style="font-size: 11px; letter-spacing: -0.3px;">처리 중...</span>
+  `;
+  document.body.appendChild(busyIndicatorElem);
+
+  // 마우스 위치 실시간 추적 (커서 오른쪽 아래에 부드럽게 위치)
+  window.addEventListener("mousemove", (e) => {
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    if (busyIndicatorElem) {
+      busyIndicatorElem.style.left = `${lastMouseX}px`;
+      busyIndicatorElem.style.top = `${lastMouseY}px`;
+    }
+  }, { passive: true });
+}
+
+function setAppBusy(busy, label = "생성 및 처리 중...") {
+  if (!busyIndicatorElem && document.body) {
+    initBusyCursorIndicator();
+  }
+
+  if (busy) {
+    globalBusyCount++;
+    if (globalBusyCount === 1) {
+      // 40ms 이상 소요되는 요청 시 표시 (불필요한 미세 깜빡임 방지)
+      if (busyDebounceTimer) clearTimeout(busyDebounceTimer);
+      busyDebounceTimer = setTimeout(() => {
+        if (globalBusyCount > 0) {
+          document.documentElement.classList.add("is-app-busy");
+          document.body.classList.add("is-app-busy");
+          if (busyIndicatorElem) {
+            const labelElem = document.getElementById("appBusyCursorLabel");
+            if (labelElem && label) labelElem.textContent = label;
+            busyIndicatorElem.classList.add("visible");
+          }
+        }
+      }, 40);
+    }
+  } else {
+    globalBusyCount = Math.max(0, globalBusyCount - 1);
+    if (globalBusyCount === 0) {
+      if (busyDebounceTimer) {
+        clearTimeout(busyDebounceTimer);
+        busyDebounceTimer = null;
+      }
+      document.documentElement.classList.remove("is-app-busy");
+      document.body.classList.remove("is-app-busy");
+      if (busyIndicatorElem) {
+        busyIndicatorElem.classList.remove("visible");
+      }
+    }
+  }
+}
+window.setAppBusy = setAppBusy;
+
+// 🌐 전역 fetch 인터셉터: 앱 내의 모든 API 요청(시 생성, 다듬기, 삽화 생성, 노래 생성, 저장 등)에
+// 자동으로 모래시계 / 원형 회전 커서 적용
+(function wrapGlobalFetchForBusyCursor() {
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url ? args[0].url : "");
+    
+    // 상황별 라벨 자동 부여
+    let busyLabel = "처리 중...";
+    if (url.includes("generate_poem") || url.includes("generate_episodes")) busyLabel = "시 생성 중...";
+    else if (url.includes("refine_poem")) busyLabel = "시 다듬는 중...";
+    else if (url.includes("generate_illustration") || url.includes("regenerate_illustration")) busyLabel = "삽화 그리는 중...";
+    else if (url.includes("generate_music") || url.includes("music")) busyLabel = "노래 작곡 중...";
+    else if (url.includes("save_work") || url.includes("save")) busyLabel = "저장 중...";
+    else if (url.includes("export") || url.includes("pdf")) busyLabel = "전자책 출판 중...";
+
+    setAppBusy(true, busyLabel);
+    try {
+      return await originalFetch.apply(this, args);
+    } finally {
+      setAppBusy(false);
+    }
+  };
+})();
+
+// DOM 준비 완료 시 인디케이터 초기화
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initBusyCursorIndicator);
+} else {
+  initBusyCursorIndicator();
+}
 
 // ✨ 사용자 친화적인 감성 플로팅 토스트 메시지
 function showToast(message, type = "success") {
@@ -251,21 +354,55 @@ function loadWorkIntoEditor(episodeNo) {
   const lyricsInput = document.getElementById("musicLyricsInput");
   if (lyricsInput) lyricsInput.value = work.lyrics || "";
 
-  if (work.audio_file) {
-    currentAudioFile = work.audio_file;
-    const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
-    const safeName = (proj && proj.name) ? proj.name.replace(/\s+/g, '_') : "노을빛_기억";
-    const audioUrl = (work.audio_file.startsWith("http") || work.audio_file.startsWith("/"))
-      ? work.audio_file
-      : `/projects/${safeName}/images/${work.audio_file}`;
+  const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
+  const safeName = (proj && proj.name) ? proj.name.replace(/\s+/g, '_') : "노을빛_기억";
 
-    const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
-    const audioPlayer = document.getElementById("studioAudioPlayer");
-    const audioNameElem = document.getElementById("studioPreviewAudioFilename");
+  // 1) 시인의 육성 낭송 음원 로드
+  let rawRecite = work.recite_file || "";
+  let rawMusic = work.music_file || "";
+  // 하위 호환: 기존 audio_file만 있는 경우
+  if (!rawRecite && !rawMusic && work.audio_file) {
+    if (work.audio_file.includes("낭송") || work.audio_file.endsWith(".webm")) {
+      rawRecite = work.audio_file;
+    } else {
+      rawMusic = work.audio_file;
+    }
+  }
 
-    if (audioNameElem) audioNameElem.textContent = work.audio_file;
+  currentReciteFile = rawRecite;
+  currentMusicFile = rawMusic;
+  currentAudioFile = rawMusic || rawRecite || "";
+
+  const recitePreviewArea = document.getElementById("studioRecitePreviewArea");
+  const recitePlayer = document.getElementById("studioRecitePlayer");
+  const reciteNameElem = document.getElementById("studioPreviewReciteFilename");
+
+  if (rawRecite) {
+    const reciteUrl = (rawRecite.startsWith("http") || rawRecite.startsWith("/"))
+      ? rawRecite
+      : `/projects/${safeName}/${rawRecite.replace(/^\.?\//, '')}`;
+    if (reciteNameElem) reciteNameElem.textContent = rawRecite.split("/").pop();
+    if (recitePlayer) {
+      recitePlayer.src = reciteUrl;
+      recitePlayer.load();
+    }
+    if (recitePreviewArea) recitePreviewArea.style.display = "block";
+  } else {
+    if (typeof removeReciteFile === 'function') removeReciteFile();
+  }
+
+  // 2) 서정 노래 음원 로드
+  const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
+  const audioPlayer = document.getElementById("studioAudioPlayer");
+  const audioNameElem = document.getElementById("studioPreviewAudioFilename");
+
+  if (rawMusic) {
+    const musicUrl = (rawMusic.startsWith("http") || rawMusic.startsWith("/"))
+      ? rawMusic
+      : `/projects/${safeName}/${rawMusic.replace(/^\.?\//, '')}`;
+    if (audioNameElem) audioNameElem.textContent = rawMusic.split("/").pop();
     if (audioPlayer) {
-      audioPlayer.src = audioUrl;
+      audioPlayer.src = musicUrl;
       audioPlayer.load();
     }
     if (audioPreviewArea) audioPreviewArea.style.display = "block";
@@ -437,7 +574,10 @@ function closeSidebarMobile() {
   if (backdrop) backdrop.classList.remove("active");
 }
 
-// 독자용 시화 갤러리 열기
+// 독자용 시화 갤러리 단일 윈도우 인스턴스 (중복 생성 방지)
+let readerGalleryWindow = null;
+
+// 독자용 시화 갤러리 열기 (단일 창 유지 및 포커스)
 function openReaderGallery() {
   const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
   let targetUrl = "/projects/노을빛_기억/시화집_갤러리.html";
@@ -446,7 +586,39 @@ function openReaderGallery() {
     const safeName = proj.name.replace(/\s+/g, '_');
     targetUrl = `/projects/${safeName}/시화집_갤러리.html`;
   }
-  window.open(targetUrl, '_blank');
+
+  const windowName = "StoryBookReaderGallery";
+
+  // 1. 이미 열린 창이 존재하고 닫히지 않은 경우: 해당 창으로 포커스 이동 및 URL 갱신
+  if (readerGalleryWindow && !readerGalleryWindow.closed) {
+    try {
+      if (readerGalleryWindow.location && readerGalleryWindow.location.pathname !== targetUrl) {
+        readerGalleryWindow.location.href = targetUrl;
+      }
+      readerGalleryWindow.focus();
+      return;
+    } catch (e) {
+      // 크로스 도메인이거나 접근 제한 시 window.open 재사용 진행
+    }
+  }
+
+  // 2. 창이 없거나 닫힌 경우: 고유 윈도우 이름으로 열기 (브라우저 수준 중복 방지)
+  readerGalleryWindow = window.open(targetUrl, windowName);
+  if (readerGalleryWindow) {
+    readerGalleryWindow.focus();
+  }
+}
+
+// 시 본문 글자 크기 실시간 조절 (시니어 눈 편안 배려)
+let currentPoemFontSize = 1.25; // rem
+function adjustPoemFontSize(delta) {
+  const textarea = document.getElementById("inputFinalPoem");
+  if (!textarea) return;
+  currentPoemFontSize = Math.max(0.95, Math.min(2.2, currentPoemFontSize + delta * 0.12));
+  textarea.style.setProperty("font-size", `${currentPoemFontSize.toFixed(2)}rem`, "important");
+  if (typeof showToast === 'function') {
+    showToast(`시 본문 글자 크기: ${(currentPoemFontSize * 16).toFixed(0)}px`, "info");
+  }
 }
 
 // 1. 탭 전환 초기화
@@ -850,10 +1022,15 @@ async function loadStatus() {
 
     // 프롬프트 가이드 라벨 업데이트
     const labelPromptTitle = document.getElementById("labelPromptGuideTitle");
+    const labelPromptDpi = document.getElementById("labelPromptDpiSubtitle");
     if (labelPromptTitle) {
-      labelPromptTitle.textContent = (proj.book_type === "standard")
-        ? "🎨 (선택) 삽화 프롬프트 - 일반 시집에서는 생략 가능"
-        : "🎨 삽화 생성 가이드 프롬프트 (300 DPI)";
+      if (proj.book_type === "standard") {
+        labelPromptTitle.textContent = "🎨 (선택) 삽화 프롬프트";
+        if (labelPromptDpi) labelPromptDpi.textContent = "일반 시집에서는 생략 가능";
+      } else {
+        labelPromptTitle.textContent = "🎨 삽화 생성 가이드 프롬프트";
+        if (labelPromptDpi) labelPromptDpi.textContent = "(출판 표준 300 DPI)";
+      }
     }
 
     // 가상 시화집 북 뷰어 드롭다운 채우기
@@ -895,13 +1072,10 @@ async function loadStatus() {
 }
 
 
+let isSavingWork = false; // 저장 중복 클릭 및 동시 실행 방지 플래그
+
 // 6. 이벤트 바인딩
 function bindEvents() {
-  const btnSave = document.getElementById("btnSaveWork");
-  if (btnSave) {
-    btnSave.removeEventListener("click", onSaveWork);
-    btnSave.addEventListener("click", onSaveWork);
-  }
   const btnGemini = document.getElementById("btnOpenGeminiKeyModal");
   if (btnGemini) {
     btnGemini.onclick = openGeminiKeyModal;
@@ -1096,6 +1270,8 @@ async function reDraftDifferentStyle() {
   }
 }
 
+let previousPoemBody = null;
+
 // 7-2. 원클릭 시 퇴고 다듬기 (더 담담하게, 3행 압축, 운율 정돈)
 async function refineCurrentPoem(mode) {
   const inputPoem = document.getElementById("inputFinalPoem");
@@ -1105,11 +1281,16 @@ async function refineCurrentPoem(mode) {
     return;
   }
 
+  const title = document.getElementById("inputFinalTitle") ? document.getElementById("inputFinalTitle").value.trim() : "";
+  previousPoemBody = currentBody;
+  const btnUndo = document.getElementById("btnUndoPoemRefine");
+
   try {
     const res = await fetch("/api/refine_poem", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        title: title,
         poem_body: currentBody,
         mode: mode
       })
@@ -1117,11 +1298,15 @@ async function refineCurrentPoem(mode) {
     const data = await res.json();
     if (data.success && data.refined_body) {
       inputPoem.value = data.refined_body;
+      if (btnUndo) btnUndo.style.display = "inline-flex";
+
       const modeNames = {
         "subdued": "🌿 담담하게 절제된 어조로 다듬었습니다.",
         "shorten": "🍂 3행의 묵직한 압축시로 정제했습니다.",
         "rhythm": "🎵 연 구성을 보존하고 낭송 호흡과 운율에 맞게 정돈했습니다."
       };
+      showToast(modeNames[mode] || "시를 아름답게 다듬었습니다.", "success");
+
       // 가벼운 시각적 피드백
       inputPoem.style.transition = "background-color 0.3s ease";
       inputPoem.style.backgroundColor = "#FDF8F0";
@@ -1130,6 +1315,87 @@ async function refineCurrentPoem(mode) {
   } catch (err) {
     alert("시 다듬기 중 오류가 발생했습니다: " + err);
   }
+}
+
+// 7-2-1. [신규] 사용자 맞춤 설명 및 자유 수정 요청 다듬기 (대화창 연동)
+async function onCustomRefinePoem() {
+  const inputPoem = document.getElementById("inputFinalPoem");
+  const currentBody = inputPoem.value.trim();
+  if (!currentBody) {
+    alert("먼저 시안을 선택하거나 시 본문을 입력해주세요.");
+    return;
+  }
+
+  const inputGuide = document.getElementById("inputCustomPoemGuide");
+  const instruction = inputGuide ? inputGuide.value.trim() : "";
+  if (!instruction) {
+    alert("원하시는 수정 방향이나 설명을 입력해주세요.\n(예: 2연에 고무신을 잃어버린 슬픔을 더 강조해줘, 마지막 연을 노을빛 풍경으로 바꿔줘)");
+    if (inputGuide) inputGuide.focus();
+    return;
+  }
+
+  const title = document.getElementById("inputFinalTitle") ? document.getElementById("inputFinalTitle").value.trim() : "";
+  const btn = document.getElementById("btnCustomRefinePoem");
+  const origBtnContent = btn ? btn.innerHTML : "";
+
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    btn.innerHTML = `<span style="font-size: 0.85rem; line-height: 1;">⏳</span>`;
+  }
+
+  previousPoemBody = currentBody;
+  const btnUndo = document.getElementById("btnUndoPoemRefine");
+
+  try {
+    const res = await fetch("/api/refine_poem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title,
+        poem_body: currentBody,
+        mode: "custom",
+        instruction: instruction
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.refined_body) {
+      inputPoem.value = data.refined_body;
+      if (btnUndo) btnUndo.style.display = "inline-flex";
+
+      showToast(`💬 [${instruction}] 요청이 반영되어 시가 다듬어졌습니다!`, "success");
+      if (inputGuide) inputGuide.value = ""; // 입력창 초기화
+
+      // 시각적 강조 피드백
+      inputPoem.style.transition = "background-color 0.4s ease";
+      inputPoem.style.backgroundColor = "#FDF4EC";
+      setTimeout(() => { inputPoem.style.backgroundColor = ""; }, 500);
+    } else {
+      alert("시 수정 중 오류가 발생했습니다: " + (data.error || "응답 실패"));
+    }
+  } catch (err) {
+    alert("시 다듬기 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.innerHTML = origBtnContent;
+    }
+  }
+}
+
+// 7-2-2. [신규] 수정 전 시 본문 되돌리기
+function undoPoemRefine() {
+  if (!previousPoemBody) return;
+  const inputPoem = document.getElementById("inputFinalPoem");
+  const current = inputPoem.value;
+  inputPoem.value = previousPoemBody;
+  previousPoemBody = current; // 한 번 더 누르면 다시 토글
+
+  showToast("↩️ 수정 직전의 시 본문으로 복원되었습니다.", "info");
+  inputPoem.style.transition = "background-color 0.3s ease";
+  inputPoem.style.backgroundColor = "#EEF2FF";
+  setTimeout(() => { inputPoem.style.backgroundColor = ""; }, 400);
 }
 
 // 7-3. 외부 무료 AI(ChatGPT, Claude, 뤼튼 등)용 전문 서정시 프롬프트 복사
@@ -1414,6 +1680,9 @@ async function onGenerateImagePrompt(alertIfEmpty = true) {
     }
     const data = await res.json();
     if (data.success && data.prompt) {
+      if (data.english_prompt) {
+        latestEnglishPrompt = data.english_prompt;
+      }
       if (data.korean_instruction) {
         latestKoreanInstruction = data.korean_instruction;
       }
@@ -1447,44 +1716,93 @@ async function onGenerateImagePrompt(alertIfEmpty = true) {
 }
 
 let latestKoreanInstruction = "";
+let latestEnglishPrompt = "";
 
-// 9. 프롬프트 복사
-function copyPrompt() {
-  const elem = document.getElementById("imagePromptDisplay");
-  if (!elem) return;
-  const text = (elem.value !== undefined && elem.value !== "") ? elem.value : elem.textContent;
-  if (!text) {
-    alert("복사할 프롬프트가 없습니다.");
-    return;
+// 📋 클립보드 안전 복사 헬퍼 (모든 브라우저 환경 및 비보안 HTTP 호환)
+async function safeCopyToClipboard(text) {
+  if (!text) return false;
+  // 1차 시도: 최신 navigator.clipboard API
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (err) {
+    console.warn("navigator.clipboard 실패, 폴백 시도:", err);
   }
-  navigator.clipboard.writeText(text).then(() => {
-    showToast("📋 영문 삽화 프롬프트가 클립보드에 복사되었습니다!", "success");
-  });
+  // 2차 시도: execCommand('copy') 호환성 폴백
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "-9999px";
+    textArea.setAttribute("readonly", "");
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error("클립보드 복사 최종 실패:", err);
+    return false;
+  }
 }
 
-// 9-2. 흰색 종이 10% 여백 및 투명 수채화 규칙이 완비된 전문 한글 지시문 복사
-async function copyKoreanArtInstruction() {
-  if (latestKoreanInstruction) {
-    try {
-      await navigator.clipboard.writeText(latestKoreanInstruction);
-      showToast("📋 [흰색 종이 10% 여백 & 수채화 지시문]이 복사되었습니다!<br>ChatGPT나 외부 AI에 그대로 붙여넣으세요.", "success");
-      return;
-    } catch (e) {}
+// 9. 영문 마스터 프롬프트 복사
+async function copyPrompt() {
+  let targetText = latestEnglishPrompt;
+
+  // 아직 영문 프롬프트가 준비되지 않았다면 즉시 생성 시도
+  if (!targetText) {
+    await onGenerateImagePrompt(false);
+    targetText = latestEnglishPrompt;
   }
 
-  // 아직 지시문이 준비되지 않은 경우 즉시 생성 후 복사
-  await onGenerateImagePrompt(false);
-  if (latestKoreanInstruction) {
-    navigator.clipboard.writeText(latestKoreanInstruction).then(() => {
-      showToast("📋 [흰색 종이 10% 여백 & 수채화 지시문]이 복사되었습니다!<br>ChatGPT나 외부 AI에 그대로 붙여넣으세요.", "success");
-    });
+  // 그래도 비어있다면 화면 입력창 내용 활용
+  if (!targetText) {
+    const elem = document.getElementById("imagePromptDisplay");
+    targetText = elem ? (elem.value || elem.textContent || "") : "";
+  }
+
+  if (!targetText) {
+    alert("복사할 프롬프트가 없습니다. 먼저 [시 본문으로 삽화 프롬프트 작성]을 눌러주세요.");
+    return;
+  }
+
+  const success = await safeCopyToClipboard(targetText);
+  if (success) {
+    showToast("📋 [영문 삽화 마스터 프롬프트]가 클립보드에 복사되었습니다!<br>Midjourney, Stable Diffusion, 외부 AI에 붙여넣으세요.", "success");
   } else {
+    alert("클립보드 복사에 실패했습니다. 브라우저 권한을 확인해주세요.");
+  }
+}
+
+// 9-2. 흰색 종이 10% 여백 및 화풍 규칙이 완비된 전문 한글 지시문 복사
+async function copyKoreanArtInstruction() {
+  let targetText = latestKoreanInstruction;
+  if (!targetText) {
+    await onGenerateImagePrompt(false);
+    targetText = latestKoreanInstruction;
+  }
+
+  if (!targetText) {
     showToast("⚠️ 먼저 좌측에서 시를 선택하거나 [시 본문으로 삽화 프롬프트 작성]을 눌러주세요.", "error");
+    return;
+  }
+
+  const success = await safeCopyToClipboard(targetText);
+  if (success) {
+    showToast("📋 [순백 10% 여백 & 화풍 규격 한글 전문 지시문]이 복사되었습니다!<br>ChatGPT, Gemini, Claude에 그대로 붙여넣으세요.", "success");
+  } else {
+    alert("클립보드 복사에 실패했습니다.");
   }
 }
 
 // 10. 원고 최종 저장 (시 본문 우선 저장 또는 전체 최종 저장)
 async function onSaveWork() {
+  if (isSavingWork) return;
   const inputTitleEl = document.getElementById("inputFinalTitle");
   const inputPoemEl = document.getElementById("inputFinalPoem");
   const title = inputTitleEl ? inputTitleEl.value.trim() : "";
@@ -1572,8 +1890,10 @@ async function onSaveWork() {
     imageFile = `images/${targetEp.replace(/[^0-9]/g, '')}_${cleanTitle}.jpg`;
   }
 
-  // 음원 파일 결정: 기존 작품의 음원 유지
-  const audioFile = currentAudioFile || (origWork ? origWork.audio_file : "") || "";
+  // 음원 파일 결정: 낭송 음원과 노래 음원을 독립적으로 유지
+  const reciteFile = currentReciteFile || (origWork ? (origWork.recite_file || "") : "") || "";
+  const musicFile = currentMusicFile || (origWork ? (origWork.music_file || "") : "") || "";
+  const audioFile = musicFile || reciteFile || currentAudioFile || (origWork ? origWork.audio_file : "") || "";
 
   const dialLabel = currentArtStyleDial === "atmospheric" ? "여백의 미" : "정경 묘사";
   const artStyleLabels = {
@@ -1600,6 +1920,7 @@ async function onSaveWork() {
     btnLeft.innerHTML = '<span>⏳ 저장 중...</span>';
   }
 
+  isSavingWork = true;
   try {
     const res = await fetch("/api/save_work", {
       method: "POST",
@@ -1613,6 +1934,8 @@ async function onSaveWork() {
         art_direction: artDirection,
         poem_body: poem,
         author: authorText || "",
+        recite_file: reciteFile,
+        music_file: musicFile,
         audio_file: audioFile,
         lyrics: lyricsText || ""
       })
@@ -1648,6 +1971,7 @@ async function onSaveWork() {
     console.error("저장 중 오류:", err);
     showToast("❌ 저장 중 오류 발생: " + err.message, "error");
   } finally {
+    isSavingWork = false;
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '<span>💾 시 · 그림 · 노래 전체 최종 저장하기</span>';
@@ -2807,7 +3131,8 @@ async function onStudioGenerateFreeImage() {
         episode_no: ep,
         title: title,
         memory_anchor: memory,
-        prompt: prompt
+        prompt: prompt,
+        art_style: currentArtStyle
       })
     });
 
@@ -3081,6 +3406,10 @@ async function onRegeneratePreviewImage() {
   const radioDirect = document.getElementById("radioRefDirectPhoto");
   const isDirectUsePhoto = Boolean(radioDirect && radioDirect.checked && currentArtReferenceBase64);
 
+  // [신규: 방법 1] 현재 그림 유지하며 부분 수정 (Image-to-Image) 체크 상태
+  const chkUseBase = document.getElementById("chkUseCurrentImageAsBase");
+  const useCurrentAsBase = chkUseBase ? chkUseBase.checked : true;
+
   const overlay = document.getElementById("imgPreviewLoadingOverlay");
   const btnRegen = document.getElementById("btnRegeneratePreviewImage");
   const btnInsert = document.getElementById("btnConfirmInsertImage");
@@ -3088,9 +3417,15 @@ async function onRegeneratePreviewImage() {
   if (overlay) {
     const spinnerText = overlay.querySelector("span");
     if (spinnerText) {
-      spinnerText.textContent = isDirectUsePhoto
-        ? "소장 사진을 300 DPI 출판용 순백 여백으로 보정 중..."
-        : (currentArtReferenceBase64 ? "참조 사진의 구도를 비전 분석하여 수채화 그리는 중..." : "새로운 감성 삽화 그리는 중... (약 3초)");
+      if (isDirectUsePhoto) {
+        spinnerText.textContent = "소장 사진을 300 DPI 출판용 순백 여백으로 보정 중...";
+      } else if (currentArtReferenceBase64) {
+        spinnerText.textContent = "참조 사진의 구도를 비전 분석하여 수채화 그리는 중...";
+      } else if (useCurrentAsBase && customGuide) {
+        spinnerText.textContent = `현재 그림의 구도를 유지하며 [${customGuide}] 부분 수정 중... (약 3초)`;
+      } else {
+        spinnerText.textContent = "새로운 감성 삽화 그리는 중... (약 3초)";
+      }
     }
     overlay.style.display = "flex";
   }
@@ -3104,8 +3439,11 @@ async function onRegeneratePreviewImage() {
           episode_no: ep,
           prompt: "",
           custom_guide: customGuide,
+          art_style: currentArtStyle,
           reference_image: currentArtReferenceBase64,
-          direct_use_photo: isDirectUsePhoto
+          direct_use_photo: isDirectUsePhoto,
+          base_image_filename: currentPreviewCandidate.filename,
+          use_current_as_base: useCurrentAsBase
         }
       : {
           episode_no: ep,
@@ -3113,8 +3451,11 @@ async function onRegeneratePreviewImage() {
           memory_anchor: memory,
           prompt: prompt,
           custom_guide: customGuide,
+          art_style: currentArtStyle,
           reference_image: currentArtReferenceBase64,
-          direct_use_photo: isDirectUsePhoto
+          direct_use_photo: isDirectUsePhoto,
+          base_image_filename: currentPreviewCandidate.filename,
+          use_current_as_base: useCurrentAsBase
         };
 
     const res = await fetch(endpoint, {
@@ -3123,9 +3464,16 @@ async function onRegeneratePreviewImage() {
       body: JSON.stringify(bodyPayload)
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(errText || `서버 응답 오류 (상태 코드: ${res.status})`);
+    }
+
     if (!res.ok || !data.success) {
-      throw new Error(data.detail || "재생성 실패");
+      throw new Error(data.detail || data.error || "재생성 실패");
     }
 
     currentPreviewCandidate.filename = data.filename;
@@ -3145,8 +3493,10 @@ async function onRegeneratePreviewImage() {
       toastMsg = "📷 소장 사진이 300 DPI 순백 여백 규격으로 보정되어 시안에 등록되었습니다!";
     } else if (currentArtReferenceBase64) {
       toastMsg = "🎨 첨부하신 사진의 실제 구도와 피사체를 분석하여 새 수채화 삽화를 그렸습니다!";
+    } else if (useCurrentAsBase && customGuide) {
+      toastMsg = `🎨 기존 구도를 유지하며 [${customGuide}] 연출이 반영되었습니다!`;
     } else if (customGuide) {
-      toastMsg = `🎨 [${customGuide}] 연출이 반영된 새 삽화가 다시 생성되었습니다!`;
+      toastMsg = `🎨 [${customGuide}] 연출이 반영된 새 삽화가 생성되었습니다!`;
     }
     showToast(toastMsg, "success");
 
@@ -3351,7 +3701,8 @@ async function onViewerGenerateFreeImage() {
         episode_no: work.episode_no,
         title: work.title,
         memory_anchor: work.memory_anchor || "",
-        prompt: ""
+        prompt: "",
+        art_style: currentArtStyle
       })
     });
 
@@ -3648,7 +3999,8 @@ async function startBatchGen() {
           episode_no: work.episode_no,
           title: work.title,
           memory_anchor: work.memory_anchor || "",
-          prompt: work.image_prompt || ""
+          prompt: work.image_prompt || "",
+          art_style: currentArtStyle
         })
       });
 
@@ -3716,6 +4068,8 @@ async function onEnhanceAllImages300Dpi() {
 // 18. 서정 노래 / 음원 제작 (선택 옵션) 로직
 // =========================================================
 let currentAudioFile = "";
+let currentReciteFile = "";
+let currentMusicFile = "";
 let currentLyrics = "";
 let currentMusicGenre = "minyo";
 let currentMusicData = null;
@@ -3731,14 +4085,48 @@ function onMusicGenreChange() {
   if (selected) {
     currentMusicGenre = selected.value;
   }
+
+  const genreNames = {
+    minyo: "서정 민요조",
+    folk: "어쿠스틱 포크",
+    gagok: "서정 예술 가곡",
+    dongyo: "서정 동요/동심"
+  };
+  const gName = genreNames[currentMusicGenre] || "서정 음악";
+
+  // 이미 노랫말 또는 시 본문이 있다면 새 장르 스킬 블록으로 자동 재편곡
+  const poem = document.getElementById("inputFinalPoem")?.value?.trim();
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  if (poem || (lyricsInput && lyricsInput.value.trim())) {
+    showToast(`🎵 [${gName}] 장르 스킬 블록으로 전환합니다. 이전 추임새를 정리하고 재편곡합니다.`, "info");
+    onGenerateLyrics(true);
+  }
 }
 
-async function onGenerateLyrics() {
+function highlightFreeMusicButton() {
+  const freeBtn = document.getElementById("btnSelectTrebloAI") || document.getElementById("btnSelectFreeMusicAI");
+  if (!freeBtn) return;
+  freeBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+  freeBtn.style.transition = "all 0.3s ease";
+  freeBtn.style.boxShadow = "0 0 0 4px #2E7D32, 0 4px 14px rgba(46, 125, 50, 0.45)";
+  freeBtn.style.transform = "scale(1.02)";
+  setTimeout(() => {
+    freeBtn.style.boxShadow = "";
+    freeBtn.style.transform = "";
+  }, 2500);
+}
+
+async function onGenerateLyrics(showAlert = true) {
   const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
   const poem = document.getElementById("inputFinalPoem").value.trim();
-  if (!poem) {
-    alert("먼저 시 본문을 작성하거나 다듬어주세요.");
-    document.getElementById("inputFinalPoem").focus();
+  const existingLyrics = document.getElementById("musicLyricsInput")?.value?.trim() || "";
+  const sourceText = poem || existingLyrics;
+
+  if (!sourceText) {
+    if (showAlert) {
+      alert("먼저 시 본문을 작성하거나 다듬어주세요.");
+      document.getElementById("inputFinalPoem").focus();
+    }
     return;
   }
 
@@ -3746,7 +4134,7 @@ async function onGenerateLyrics() {
   const origText = btn ? btn.innerHTML : "";
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = "<span>⏳ 시 본문을 4·4조 운율로 편곡 중...</span>";
+    btn.innerHTML = "<span>⏳ 모듈러 스킬 블록으로 노랫말 운율화 중...</span>";
   }
 
   try {
@@ -3755,26 +4143,51 @@ async function onGenerateLyrics() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: title,
-        poem_body: poem,
+        poem_body: sourceText,
         genre: currentMusicGenre
       })
     });
     const resData = await res.json();
-    if (resData.success && resData.data) {
-      currentMusicData = resData.data;
-      currentLyrics = resData.data.lyrics;
+    const payload = resData.data || (resData.lyrics ? resData : null);
+    if (resData.success && payload) {
+      currentMusicData = payload;
+      currentLyrics = payload.lyrics || resData.lyrics;
       const lyricsInput = document.getElementById("musicLyricsInput");
       if (lyricsInput) {
         lyricsInput.value = currentLyrics;
         lyricsInput.style.backgroundColor = "#FFF9F0";
         setTimeout(() => { lyricsInput.style.backgroundColor = "#FFFFFF"; }, 400);
       }
-      alert(`🎵 [${resData.data.genre_name}] 노랫말이 완성되었습니다!\n\n아래의 [Colab (YuE2) 원클릭 작곡] 또는 [무료 음악 AI]를 선택하여 음악을 만들어보세요.`);
+
+      // 🎼 노랫말 정서 & 맞춤 악기 변주 배지 업데이트
+      const moodTheme = payload.mood_theme || resData.mood_theme || "";
+      const inst = payload.instruments || resData.instruments || "";
+      const varBadge = document.getElementById("badgeMusicVariation");
+      if (varBadge && moodTheme) {
+        const leadInst = inst ? inst.split(',')[0].trim() : "";
+        varBadge.textContent = `🎼 ${moodTheme}` + (leadInst ? ` (${leadInst} 등)` : "");
+        varBadge.style.display = "inline-block";
+        varBadge.title = `[노랫말 맞춤 악기 편성]\n${inst}\n템포: ${payload.bpm || resData.bpm || '72 BPM'}`;
+      }
+
+      if (showAlert) {
+        const genreName = payload.genre_name || resData.genre_name || "서정 음악";
+        setTimeout(() => {
+          let extraMsg = "";
+          if (moodTheme || inst) {
+            extraMsg = `\n[노랫말 맞춤 악기 & 정서 변주]\n• 감성 테마: ${moodTheme || '서정'}\n• 추천 악기: ${inst || '어쿠스틱 편성'}\n`;
+          }
+          alert(
+            `🎵 [${genreName}] 노랫말과 맞춤 악기 편곡이 완료되었습니다!${extraMsg}\n` +
+            `노랫말을 확인하신 후, 아래의 [🎵 1. Suno AI] / [🎼 2. Udio AI] / [🚀 3. YuE2 AI] 중 원하시는 도구를 선택하여 세상에 하나뿐인 노래를 만들어 보세요.`
+          );
+        }, 150);
+      }
     } else {
-      alert("노랫말 생성 실패: " + (resData.error || "알 수 없는 오류"));
+      if (showAlert) alert("노랫말 생성 실패: " + (resData.error || "알 수 없는 오류"));
     }
   } catch (err) {
-    alert("노랫말 생성 중 오류가 발생했습니다: " + err);
+    if (showAlert) alert("노랫말 생성 중 오류가 발생했습니다: " + err);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -3783,23 +4196,77 @@ async function onGenerateLyrics() {
   }
 }
 
-function copyLyricsText() {
+async function copyLyricsText() {
   const lyricsInput = document.getElementById("musicLyricsInput");
   const text = lyricsInput ? lyricsInput.value.trim() : "";
   if (!text) {
     alert("복사할 노랫말이 없습니다. 먼저 '노랫말 운율화하기'를 실행해주세요.");
     return;
   }
-  navigator.clipboard.writeText(text).then(() => {
-    alert("📜 노래 가사(Verse/Chorus)가 클립보드에 복사되었습니다!");
-  });
+  const success = await safeCopyToClipboard(text);
+  if (success) {
+    showToast("📜 노래 가사(Verse/Chorus)가 클립보드에 복사되었습니다!", "success");
+  } else {
+    alert("클립보드 복사에 실패했습니다.");
+  }
 }
 
-function openColabYuE2Guide() {
-  const btnColab = document.getElementById("btnSelectColabYuE2");
-  const btnFree = document.getElementById("btnSelectFreeMusicAI");
-  if (btnColab) btnColab.classList.add("active-music-btn");
-  if (btnFree) btnFree.classList.remove("active-music-btn");
+// 3대 음악 AI 탭 선택 상태 갱신 헬퍼
+function updateMusicTabSelection(selected) {
+  const b1 = document.getElementById("btnSelectSunoAI");
+  const b2 = document.getElementById("btnSelectUdioAI");
+  const b3 = document.getElementById("btnSelectYue2AI");
+  
+  [b1, b2, b3].forEach(b => {
+    if (!b) return;
+    b.classList.remove("active-music-btn");
+    b.style.background = "#ffffff";
+    b.style.color = "#643e19";
+    b.style.borderColor = "#c9a98b";
+    b.style.fontWeight = "normal";
+  });
+
+  let targetBtn = null;
+  if (selected === "suno") targetBtn = b1;
+  else if (selected === "udio") targetBtn = b2;
+  else if (selected === "yue2") targetBtn = b3;
+
+  if (targetBtn) {
+    targetBtn.classList.add("active-music-btn");
+    targetBtn.style.background = "#643e19";
+    targetBtn.style.color = "#ffffff";
+    targetBtn.style.borderColor = "#643e19";
+    targetBtn.style.fontWeight = "bold";
+  }
+}
+
+// 1번 탭: Suno AI 작곡 가이드
+function openSunoAIGuide() {
+  updateMusicTabSelection("suno");
+  const modal = document.getElementById("sunoMusicModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSunoMusicModal() {
+  const modal = document.getElementById("sunoMusicModal");
+  if (modal) modal.style.display = "none";
+}
+
+// 2번 탭: Udio AI 서정 예술 작곡 가이드
+function openUdioAIGuide() {
+  updateMusicTabSelection("udio");
+  const modal = document.getElementById("udioMusicModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeUdioMusicModal() {
+  const modal = document.getElementById("udioMusicModal");
+  if (modal) modal.style.display = "none";
+}
+
+// 3번 탭: YuE2 고성능 웹 스튜디오 가이드
+function openYue2AIGuide() {
+  updateMusicTabSelection("yue2");
   const modal = document.getElementById("colabYuE2Modal");
   if (modal) modal.style.display = "flex";
 }
@@ -3809,19 +4276,11 @@ function closeColabYuE2Modal() {
   if (modal) modal.style.display = "none";
 }
 
-function openFreeMusicAIGuide() {
-  const btnColab = document.getElementById("btnSelectColabYuE2");
-  const btnFree = document.getElementById("btnSelectFreeMusicAI");
-  if (btnFree) btnFree.classList.add("active-music-btn");
-  if (btnColab) btnColab.classList.remove("active-music-btn");
-  const modal = document.getElementById("freeMusicModal");
-  if (modal) modal.style.display = "flex";
-}
-
-function closeFreeMusicModal() {
-  const modal = document.getElementById("freeMusicModal");
-  if (modal) modal.style.display = "none";
-}
+// 하위 호환성 별칭
+function openTrebloAIGuide() { openUdioAIGuide(); }
+function openFreeMusicAIGuide() { openUdioAIGuide(); }
+function closeFreeMusicModal() { closeUdioMusicModal(); }
+function openColabYuE2Guide() { openYue2AIGuide(); }
 
 function getMusicGenrePrompt(genre) {
   const g = genre || currentMusicGenre || "minyo";
@@ -3838,7 +4297,7 @@ function getMusicGenrePrompt(genre) {
   return promptMap[g] || promptMap.minyo;
 }
 
-function copyFullMusicPrompt() {
+async function copyFullMusicPrompt(silent = false) {
   const lyricsInput = document.getElementById("musicLyricsInput");
   const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
   const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
@@ -3846,9 +4305,367 @@ function copyFullMusicPrompt() {
   const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
   const fullPrompt = `[Title]\n${title}\n\n[Style / Tags]\n${genrePrompt}\n\n[Lyrics]\n${lyrics || "(시 본문을 노랫말로 운율화해주세요)"}`;
 
-  navigator.clipboard.writeText(fullPrompt).then(() => {
-    alert("📋 [노랫말 & 음악 AI 스타일 프롬프트]가 모두 클립보드에 복사되었습니다!\n\nColab(YuE2) 또는 Suno/Udio에 그대로 붙여넣어 작곡하세요.");
-  });
+  const success = await safeCopyToClipboard(fullPrompt);
+  if (success) {
+    if (!silent) {
+      showToast("✨ <b>[전체 내용(제목·스타일·가사)]</b>이 복사되었습니다!<br>음악 사이트의 <b>Lyrics(가사)</b> 칸에 <b>Ctrl + V</b>로 통째로 붙여넣으시면 AI가 알아서 작곡합니다.", "success");
+    }
+  } else {
+    if (!silent) alert("클립보드 복사에 실패했습니다.");
+  }
+  return success;
+}
+
+// [시니어/초보자 배려 1] 노래 가사만 따로 복사
+async function copyLyricsOnly(btn) {
+  const lyricsInput = document.getElementById("musicLyricsInput");
+  const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
+  if (!lyrics) {
+    showToast("⚠️ 먼저 [노랫말 운율화하기]를 실행하여 가사를 생성해주세요.", "error");
+    return;
+  }
+  const success = await safeCopyToClipboard(lyrics);
+  if (success) {
+    const firstLine = lyrics.split("\n").filter(l => l.trim()).slice(0, 2).join(" / ");
+    showToast(`📋 <b>[2. 노래 가사]</b> 복사 완료!<br><span style="font-size:0.78rem;color:#f3d9b8;">"${firstLine.substring(0, 45)}..."</span><br>음악 사이트의 <b>Lyrics(가사)</b> 칸에 <b>Ctrl + V</b>로 붙여넣으세요.`, "success");
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = "<span>✓ 가사 복사 완료!</span>";
+      btn.style.borderColor = "#3a7352";
+      btn.style.color = "#3a7352";
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.borderColor = "";
+        btn.style.color = "";
+      }, 1800);
+    }
+  }
+}
+
+// [시니어/초보자 배려 2] 음악 스타일(장르) 태그만 따로 복사
+async function copyStyleOnly(btn) {
+  const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
+  const success = await safeCopyToClipboard(genrePrompt);
+  if (success) {
+    const preview = genrePrompt.length > 50 ? genrePrompt.substring(0, 50) + "..." : genrePrompt;
+    showToast(`🎵 <b>[1. 음악 스타일 태그]</b> 복사 완료!<br><span style="font-size:0.78rem;color:#f3d9b8;">"${preview}"</span><br>음악 사이트의 <b>Song description (또는 Style)</b> 칸에 <b>Ctrl + V</b>로 붙여넣으세요.`, "success");
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = "<span>✓ 스타일 태그 복사 완료!</span>";
+      btn.style.borderColor = "#3a7352";
+      btn.style.color = "#3a7352";
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.borderColor = "";
+        btn.style.color = "";
+      }, 1800);
+    }
+  }
+}
+
+// [시니어/초보자 배려 3] 곡 제목만 따로 복사
+async function copyTitleOnly(btn) {
+  const title = document.getElementById("inputFinalTitle").value.trim() || "서정시 노래";
+  const success = await safeCopyToClipboard(title);
+  if (success) {
+    showToast(`📝 곡 제목(<b>「${title}」</b>)이 복사되었습니다!<br>음악 사이트의 <b>Title(제목)</b> 칸에 <b>Ctrl + V</b>로 붙여넣으세요.`, "success");
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = "<span>✓ 제목 복사 완료!</span>";
+      btn.style.borderColor = "#3a7352";
+      btn.style.color = "#3a7352";
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.borderColor = "";
+        btn.style.color = "";
+      }, 1800);
+    }
+  }
+}
+
+// [가이드 탭 전환] Suno vs Udio
+function switchMusicAITab(platform) {
+  const sunoTab = document.getElementById("tabMusicSuno");
+  const udioTab = document.getElementById("tabMusicUdio");
+  const sunoContent = document.getElementById("guideContentSuno");
+  const udioContent = document.getElementById("guideContentUdio");
+
+  if (platform === "suno") {
+    if (sunoTab) {
+      sunoTab.style.background = "#643e19";
+      sunoTab.style.color = "#ffffff";
+      sunoTab.style.borderColor = "#643e19";
+      sunoTab.style.fontWeight = "bold";
+    }
+    if (udioTab) {
+      udioTab.style.background = "#fbf9f4";
+      udioTab.style.color = "#665f57";
+      udioTab.style.borderColor = "#ebdccb";
+      udioTab.style.fontWeight = "normal";
+    }
+    if (sunoContent) sunoContent.style.display = "block";
+    if (udioContent) udioContent.style.display = "none";
+  } else {
+    if (udioTab) {
+      udioTab.style.background = "#643e19";
+      udioTab.style.color = "#ffffff";
+      udioTab.style.borderColor = "#643e19";
+      udioTab.style.fontWeight = "bold";
+    }
+    if (sunoTab) {
+      sunoTab.style.background = "#fbf9f4";
+      sunoTab.style.color = "#665f57";
+      sunoTab.style.borderColor = "#ebdccb";
+      sunoTab.style.fontWeight = "normal";
+    }
+    if (udioContent) udioContent.style.display = "block";
+    if (sunoContent) sunoContent.style.display = "none";
+  }
+}
+
+// 1번 탭: Suno AI 음악 플랫폼 단일 윈도우 인스턴스 (중복 생성 방지)
+let sunoMusicPlatformWindow = null;
+
+async function openSunoPlatform() {
+  const url = "https://suno.com";
+  const windowName = "SunoAIMusicPlatformWindow";
+
+  // 1. 이미 열린 Suno 창이 존재하고 닫히지 않은 경우: 해당 창으로 포커스 이동 (새 탭 중복 생성 방지)
+  if (sunoMusicPlatformWindow && !sunoMusicPlatformWindow.closed) {
+    try {
+      sunoMusicPlatformWindow.focus();
+      showToast("🚀 이미 열려 있는 Suno 창으로 이동했습니다!<br><b>Ctrl + V</b>로 가사를 붙여넣으세요.", "info");
+      return;
+    } catch (e) {
+      // 크로스 도메인 보안 예외 방어
+    }
+  }
+
+  // 2. 창이 없거나 닫힌 경우: 고유 윈도우 이름으로 열기 (브라우저 수준 중복 방지)
+  sunoMusicPlatformWindow = window.open(url, windowName);
+  if (sunoMusicPlatformWindow) {
+    sunoMusicPlatformWindow.focus();
+    showToast("🚀 Suno AI 사이트가 새 창으로 열렸습니다!<br>화면 좌측 <b>Create</b> ➜ <b>Custom</b> 켠 후 <b>Ctrl + V</b>로 붙여넣으세요.", "success");
+  }
+}
+
+// 2번 탭: Udio AI 음악 플랫폼 단일 윈도우 인스턴스 (중복 생성 방지)
+let udioMusicPlatformWindow = null;
+
+async function openUdioPlatform() {
+  const url = "https://www.udio.com";
+  const windowName = "UdioAIMusicPlatformWindow";
+
+  // 1. 이미 열린 Udio 창이 존재하고 닫히지 않은 경우: 해당 창으로 포커스 이동 (새 탭 중복 생성 방지)
+  if (udioMusicPlatformWindow && !udioMusicPlatformWindow.closed) {
+    try {
+      udioMusicPlatformWindow.focus();
+      showToast("🚀 이미 열려 있는 Udio 창으로 이동했습니다!<br><b>[Custom]</b> 켠 후 스타일과 가사를 붙여넣으세요.", "info");
+      return;
+    } catch (e) {
+      // 크로스 도메인 보안 예외 방어
+    }
+  }
+
+  // 2. 창이 없거나 닫힌 경우: 고유 윈도우 이름으로 열기 (브라우저 수준 중복 방지)
+  udioMusicPlatformWindow = window.open(url, windowName);
+  if (udioMusicPlatformWindow) {
+    udioMusicPlatformWindow.focus();
+    showToast("🚀 Udio AI 사이트가 새 창으로 열렸습니다!<br>상단 <b>[Custom]</b>을 켠 뒤 스타일과 가사를 붙여넣으세요.", "success");
+  }
+}
+
+// 3번 탭: YuE2 공식 웹 스튜디오 단일 윈도우 인스턴스 (중복 생성 방지)
+let yue2MusicPlatformWindow = null;
+
+async function openYue2Platform() {
+  const url = "https://yue.noizai.net/";
+  const windowName = "Yue2AIMusicPlatformWindow";
+
+  // 1. 이미 열린 YuE2 창이 존재하고 닫히지 않은 경우: 해당 창으로 포커스 이동 (새 탭 중복 생성 방지)
+  if (yue2MusicPlatformWindow && !yue2MusicPlatformWindow.closed) {
+    try {
+      yue2MusicPlatformWindow.focus();
+      showToast("🚀 이미 열려 있는 YuE2 스튜디오 창으로 이동했습니다!<br><b>Ctrl + V</b>로 가사와 스타일을 붙여넣으세요.", "info");
+      return;
+    } catch (e) {
+      // 크로스 도메인 보안 예외 방어
+    }
+  }
+
+  // 2. 창이 없거나 닫힌 경우: 고유 윈도우 이름으로 열기 (브라우저 수준 중복 방지)
+  yue2MusicPlatformWindow = window.open(url, windowName);
+  if (yue2MusicPlatformWindow) {
+    yue2MusicPlatformWindow.focus();
+    showToast("🚀 YuE2 공식 스튜디오가 새 창으로 열렸습니다!<br><b>Ctrl + V</b>로 가사와 스타일을 붙여넣으세요.", "success");
+  }
+}
+
+// 하위 호환성 별칭
+async function openTrebloPlatform() { return openUdioPlatform(); }
+async function openMusicPlatform(url, platformName) {
+  if (url && url.includes("udio")) return openUdioPlatform();
+  return openSunoPlatform();
+}
+
+// Suno 곡 링크 붙여넣기로 1초 만에 무료 다운로드 및 스튜디오 등록 (Out of Downloads 결제 우회)
+async function importFromSunoLink() {
+  const linkInput = document.getElementById("inputSunoLink");
+  const rawUrl = linkInput ? linkInput.value.trim() : "";
+  if (!rawUrl) {
+    alert("Suno 사이트 화면의 [Copy Link] 버튼을 눌러 복사한 링크를 붙여넣어 주세요.");
+    if (linkInput) linkInput.focus();
+    return;
+  }
+
+  const ep = document.getElementById("inputEpisode").value || "제01화";
+  const btn = document.getElementById("btnImportSuno");
+  const origBtnText = btn ? btn.innerHTML : "📥 무료 가져오기";
+
+  const statusBox = document.getElementById("studioAudioUploadStatus");
+  if (statusBox) {
+    statusBox.className = "upload-status-text loading";
+    statusBox.style.display = "block";
+    statusBox.innerHTML = `<span>⏳ [${ep}] Suno CDN에서 무료 음원(MP3) 다운로드 및 등록 중...</span>`;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "⏳ 가져오는 중...";
+  }
+
+  try {
+    const res = await fetch("/api/import_suno_url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: rawUrl,
+        episode_no: ep
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      currentMusicFile = data.music_file;
+      currentAudioFile = data.music_file;
+
+      const previewArea = document.getElementById("studioAudioPreviewArea");
+      const player = document.getElementById("studioAudioPlayer");
+      const nameElem = document.getElementById("studioPreviewAudioFilename");
+
+      if (nameElem) nameElem.textContent = data.filename;
+      if (player) {
+        player.src = `${data.web_url}?t=${Date.now()}`;
+        player.load();
+      }
+      if (previewArea) previewArea.style.display = "block";
+
+      if (statusBox) {
+        statusBox.className = "upload-status-text success";
+        statusBox.innerHTML = `<span>✓ [${ep}] Suno 음원이 100% 무료로 성공적으로 등록되었습니다! (${Math.round((data.size || 0)/1024)} KB)</span>`;
+      }
+      if (linkInput) linkInput.value = "";
+      showToast(`🎉 [${ep}] Suno 음원이 결제 없이 100% 무료로 등록되었습니다!`, "success");
+      await loadStatus();
+    } else {
+      if (statusBox) {
+        statusBox.className = "upload-status-text error";
+        statusBox.innerHTML = `<span>✕ 실패: ${data.error || "음원을 가져오지 못했습니다."}</span>`;
+      }
+      alert(`음원 가져오기 실패:\n${data.error || "알 수 없는 오류가 발생했습니다."}`);
+    }
+  } catch (err) {
+    if (statusBox) {
+      statusBox.className = "upload-status-text error";
+      statusBox.innerHTML = `<span>✕ 네트워크 오류가 발생했습니다: ${err}</span>`;
+    }
+    alert("서버 연결 실패: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnText;
+    }
+  }
+}
+
+// Suno 공유 링크로 7회 다운로드 제한 없이 즉시 음원 가져오기
+async function onImportSunoShare() {
+  const input = document.getElementById("inputSunoShareUrl") || document.getElementById("inputSunoLink");
+  const rawUrl = input ? input.value.trim() : "";
+  if (!rawUrl) {
+    alert("Suno 사이트에서 곡 화면의 [Share] ➜ [Copy Link]를 눌러 복사한 링크를 붙여넣어 주세요.\n(예: https://suno.com/song/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
+    if (input) input.focus();
+    return;
+  }
+
+  const ep = document.getElementById("inputEpisode")?.value || "제01화";
+  const btn = document.getElementById("btnImportSunoShare") || document.getElementById("btnImportSuno");
+  const origText = btn ? btn.innerHTML : "📥 음원 가져오기";
+  const statusBox = document.getElementById("studioAudioUploadStatus");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ CDN 음원 가져오는 중...</span>`;
+  }
+  if (statusBox) {
+    statusBox.className = "upload-status-text loading";
+    statusBox.style.display = "block";
+    statusBox.innerHTML = `<span>⏳ [${ep}] Suno 스트리밍 CDN에서 7회 다운로드 제한 없이 고음질 MP3를 내려받는 중입니다...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/import_suno_share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        share_url: rawUrl,
+        episode_no: ep
+      })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      currentMusicFile = data.rel_path || data.filename;
+      currentAudioFile = currentMusicFile;
+
+      // 스튜디오 오디오 플레이어 배너 갱신
+      const previewArea = document.getElementById("studioAudioPreviewArea");
+      const player = document.getElementById("studioAudioPlayer");
+      const nameElem = document.getElementById("studioPreviewAudioFilename");
+
+      if (nameElem) nameElem.textContent = data.filename;
+      if (player && data.music_url) {
+        player.src = data.music_url;
+        player.load();
+      }
+      if (previewArea) previewArea.style.display = "block";
+
+      if (statusBox) {
+        statusBox.className = "upload-status-text success";
+        statusBox.innerHTML = `<span>✓ [${ep}] Suno 음원이 7회 다운로드 제한 없이 성공적으로 등록되었습니다! (${data.filename})</span>`;
+      }
+      if (input) input.value = "";
+      showToast(`🎉 [${ep}] Suno 노래 음원이 7회 제한 없이 성공적으로 시집에 등록되었습니다!`, "success");
+      await loadStatus();
+    } else {
+      const errMsg = data.detail || data.error || "음원을 가져오지 못했습니다.";
+      if (statusBox) {
+        statusBox.className = "upload-status-text error";
+        statusBox.innerHTML = `<span>✕ 실패: ${errMsg}</span>`;
+      }
+      alert(`Suno 음원 가져오기 실패:\n${errMsg}`);
+    }
+  } catch (err) {
+    if (statusBox) {
+      statusBox.className = "upload-status-text error";
+      statusBox.innerHTML = `<span>✕ 서버 통신 오류: ${err}</span>`;
+    }
+    alert("서버 연결 실패: " + err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
 }
 
 function triggerStudioAudioFileInput() {
@@ -3869,7 +4686,7 @@ async function uploadStudioAudio(file) {
   if (statusBox) {
     statusBox.className = "upload-status-text loading";
     statusBox.style.display = "block";
-    statusBox.innerHTML = `<span>⏳ [${ep}] 노래 음원 업로드 중...</span>`;
+    statusBox.innerHTML = `<span>⏳ [${ep}] 노래 음원 분석 및 앞뒤 무음 자동 다듬기 진행 중...</span>`;
   }
 
   const formData = new FormData();
@@ -3883,37 +4700,57 @@ async function uploadStudioAudio(file) {
     });
     const data = await res.json();
     if (data.success) {
-      currentAudioFile = data.audio_file;
+      currentMusicFile = data.music_file || data.audio_file;
+      currentAudioFile = currentMusicFile;
       if (statusBox) {
         statusBox.className = "upload-status-text success";
-        statusBox.innerHTML = `<span>✓ 노래 음원이 성공적으로 등록되었습니다! (${data.filename})</span>`;
+        if (data.trimmed && data.trimmed_seconds > 0) {
+          statusBox.innerHTML = `<span>✨ [안실장 최적화] 앞뒤 무음 <strong>${data.trimmed_seconds}초</strong>를 깔끔하게 잘라내고 고음질(320k) MP3로 등록 완료! (${data.orig_duration} ➔ ${data.final_duration})</span>`;
+        } else {
+          statusBox.innerHTML = `<span>✨ [안실장 최적화] ${data.trim_message || '표준 고음질(320k) MP3로 안전하게 등록되었습니다.'}</span>`;
+        }
       }
       // 미리듣기 오디오 플레이어 노출
       const previewArea = document.getElementById("studioAudioPreviewArea");
       const player = document.getElementById("studioAudioPlayer");
       const nameElem = document.getElementById("studioPreviewAudioFilename");
-      if (nameElem) nameElem.textContent = data.filename;
+      if (nameElem) {
+        let tag = data.filename;
+        if (data.trimmed && data.trimmed_seconds > 0) {
+          tag += ` (무음 ${data.trimmed_seconds}초 자동 정리)`;
+        }
+        nameElem.textContent = tag;
+      }
       if (player) {
         player.src = data.web_url;
         player.load();
       }
       if (previewArea) previewArea.style.display = "block";
+
+      const toastMsg = data.trimmed
+        ? `✨ [안실장] 앞뒤 무음 ${data.trimmed_seconds}초를 깔끔하게 다듬어 고음질 MP3로 등록했습니다!`
+        : `✓ [${ep}] 노래 음원이 고음질 MP3로 성공적으로 등록되었습니다!`;
+      if (typeof showToast === 'function') showToast(toastMsg, "success");
+      if (typeof loadStatus === 'function') await loadStatus();
     } else {
       if (statusBox) {
         statusBox.className = "upload-status-text error";
         statusBox.innerHTML = `<span>❌ 업로드 실패: ${data.error || '오류'}</span>`;
       }
+      alert(`음원 등록 실패: ${data.error || '알 수 없는 오류'}`);
     }
   } catch (err) {
     if (statusBox) {
       statusBox.className = "upload-status-text error";
       statusBox.innerHTML = `<span>❌ 네트워크 오류: ${err}</span>`;
     }
+    alert(`음원 업로드 중 네트워크 오류가 발생했습니다: ${err}`);
   }
 }
 
 function removeAudioFile() {
-  currentAudioFile = "";
+  currentMusicFile = "";
+  currentAudioFile = currentReciteFile || "";
   const previewArea = document.getElementById("studioAudioPreviewArea");
   if (previewArea) previewArea.style.display = "none";
   const player = document.getElementById("studioAudioPlayer");
@@ -3923,6 +4760,123 @@ function removeAudioFile() {
   }
   const statusBox = document.getElementById("studioAudioUploadStatus");
   if (statusBox) statusBox.style.display = "none";
+  const trimBox = document.getElementById("audioTrimBox");
+  if (trimBox) trimBox.style.display = "none";
+}
+
+function toggleAudioTrimBox() {
+  const box = document.getElementById("audioTrimBox");
+  if (!box) return;
+  const isHidden = box.style.display === "none";
+  box.style.display = isHidden ? "block" : "none";
+  if (isHidden) {
+    const player = document.getElementById("studioAudioPlayer");
+    const endInput = document.getElementById("inputTrimEnd");
+    if (player && player.duration && endInput && !endInput.value) {
+      endInput.value = formatAudioSeconds(player.duration);
+    }
+  }
+}
+
+function formatAudioSeconds(sec) {
+  if (isNaN(sec) || sec < 0) return "00:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function setTrimStartFromCurrent() {
+  const player = document.getElementById("studioAudioPlayer");
+  const input = document.getElementById("inputTrimStart");
+  if (player && input) {
+    input.value = formatAudioSeconds(player.currentTime);
+    if (typeof showToast === 'function') showToast(`시작 시간 설정: ${input.value}`, "info");
+  }
+}
+
+function setTrimEndFromCurrent() {
+  const player = document.getElementById("studioAudioPlayer");
+  const input = document.getElementById("inputTrimEnd");
+  if (player && input) {
+    input.value = formatAudioSeconds(player.currentTime);
+    if (typeof showToast === 'function') showToast(`끝 시간 설정: ${input.value} (다음 곡 직전 위치)`, "info");
+  }
+}
+
+async function onApplyAudioTrim() {
+  const ep = document.getElementById("inputEpisode")?.value || "제01화";
+  const startVal = document.getElementById("inputTrimStart")?.value.trim() || "00:00";
+  const endVal = document.getElementById("inputTrimEnd")?.value.trim() || "";
+
+  if (!endVal) {
+    alert("끝 시간을 입력하거나, 노래를 들으시다가 다음 곡이 나오기 직전에 [끝: 현재위치] 버튼을 눌러주세요.");
+    return;
+  }
+
+  const btn = document.getElementById("btnApplyTrim");
+  const origBtnText = btn ? btn.innerHTML : "✂️ 자르기 적용";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "⏳ 자르는 중...";
+  }
+
+  try {
+    const res = await fetch("/api/trim_audio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        episode_no: ep,
+        start_time: startVal,
+        end_time: endVal
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const player = document.getElementById("studioAudioPlayer");
+      if (player) {
+        player.pause();
+        player.src = `${data.web_url}&cachebust=${Date.now()}`;
+        player.load();
+      }
+      const nameElem = document.getElementById("studioPreviewAudioFilename");
+      if (nameElem) {
+        nameElem.textContent = `${data.filename} (${data.new_duration_str})`;
+      }
+      const statusBox = document.getElementById("studioAudioUploadStatus");
+      if (statusBox) {
+        statusBox.className = "upload-status-text success";
+        statusBox.style.display = "block";
+        statusBox.innerHTML = `<span>✨ [안실장 미세 다듬기] ${data.message}</span>`;
+      }
+      if (typeof showToast === 'function') {
+        showToast(`✨ [${ep}] ${data.message}`, "success");
+      }
+      const box = document.getElementById("audioTrimBox");
+      if (box) box.style.display = "none";
+      if (typeof loadStatus === 'function') await loadStatus();
+    } else {
+      alert(`자르기 실패: ${data.error || '오류가 발생했습니다.'}`);
+    }
+  } catch (err) {
+    alert(`네트워크 오류: ${err}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnText;
+    }
+  }
+}
+
+function removeReciteFile() {
+  currentReciteFile = "";
+  currentAudioFile = currentMusicFile || "";
+  const previewArea = document.getElementById("studioRecitePreviewArea");
+  if (previewArea) previewArea.style.display = "none";
+  const player = document.getElementById("studioRecitePlayer");
+  if (player) {
+    player.pause();
+    player.src = "";
+  }
 }
 
 // =========================================================
@@ -4373,6 +5327,10 @@ async function toggleSpeakPoem() {
   const title = document.getElementById("inputFinalTitle") ? document.getElementById("inputFinalTitle").value.trim() : "무제";
   const ep = document.getElementById("inputEpisode") ? document.getElementById("inputEpisode").value.trim() : "제01화";
 
+  const voiceSelect = document.getElementById("selectVoiceActor");
+  const selectedVoice = voiceSelect ? voiceSelect.value : "Aoede";
+  const voiceNameText = voiceSelect && voiceSelect.selectedOptions[0] ? voiceSelect.selectedOptions[0].text : "AI 성우";
+
   // 1. 이미 재생 중인 경우 즉시 중지
   if (currentGeminiReciteAudio && !currentGeminiReciteAudio.paused) {
     currentGeminiReciteAudio.pause();
@@ -4391,10 +5349,16 @@ async function toggleSpeakPoem() {
     return;
   }
 
-  // 2. Gemini 3.8 Flash TTS 호출 시도
+  // 스튜디오 내 기존 육성 낭송 및 노래 플레이어 즉시 중지 (중복 재생 방지)
+  const studioRecitePlayer = document.getElementById("studioRecitePlayer");
+  const studioAudioPlayer = document.getElementById("studioAudioPlayer");
+  if (studioRecitePlayer && !studioRecitePlayer.paused) studioRecitePlayer.pause();
+  if (studioAudioPlayer && !studioAudioPlayer.paused) studioAudioPlayer.pause();
+
+  // 2. Gemini TTS 호출 시도
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span>⏳ 서정 낭송 빚는 중...</span>`;
+    btn.innerHTML = `<span>⏳ ${voiceNameText.split(' ')[1] || '성우'} 낭송 빚는 중...</span>`;
   }
 
   try {
@@ -4404,7 +5368,8 @@ async function toggleSpeakPoem() {
       body: JSON.stringify({
         title: title,
         poem_body: poemText,
-        episode_no: ep
+        episode_no: ep,
+        voice: selectedVoice
       })
     });
 
@@ -4428,9 +5393,28 @@ async function toggleSpeakPoem() {
       };
 
       await currentGeminiReciteAudio.play();
-      showToast("✨ Gemini 3.8 성우의 고음질 서정 낭송이 재생됩니다. (공식 음원으로도 저장되었습니다)", "success");
+      showToast(`✨ [${voiceNameText}] 고음질 서정 낭송이 재생됩니다. (음원으로도 보존되었습니다)`, "success");
 
-      // 우측 하단 음악 플레이어에도 자동 연동
+      // 🎙️ 본문 상단 [시 낭송 등록됨] 전용 오디오 플레이어 배너 즉시 연동 및 표시
+      currentReciteFile = data.rel_path || `music/${data.filename}`;
+      const recitePlayer = document.getElementById("studioRecitePlayer");
+      const recitePreviewArea = document.getElementById("studioRecitePreviewArea");
+      const reciteFilename = document.getElementById("studioPreviewReciteFilename");
+      if (recitePlayer && data.audio_url) {
+        recitePlayer.src = data.audio_url;
+        if (reciteFilename) reciteFilename.textContent = data.filename;
+        if (recitePreviewArea) recitePreviewArea.style.display = "block";
+      }
+
+      // 현재 status 내 works 캐시에도 낭송 파일 동기화
+      if (currentStatus && currentStatus.works) {
+        const curWork = currentStatus.works.find(w => w.episode_no === ep);
+        if (curWork) {
+          curWork.recite_file = currentReciteFile;
+        }
+      }
+
+      // 우측 하단 음악 플레이어에도 보조 연동
       const audioPlayer = document.getElementById("studioAudioPlayer");
       const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
       const audioFilename = document.getElementById("studioPreviewAudioFilename");
@@ -4449,14 +5433,40 @@ async function toggleSpeakPoem() {
 
   // 3. 폴백: 로컬 Web Speech API 브라우저 TTS
   if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(poemText);
+    const fallbackText = (title && title !== "무제") ? `${title}.\n\n${poemText}` : poemText;
+    const utterance = new SpeechSynthesisUtterance(fallbackText);
     utterance.lang = 'ko-KR';
-    utterance.rate = 0.88;
-    utterance.pitch = 1.0;
+    
+    // 성우 성별/연령대에 맞춘 피치 및 속도 조절
+    const isMale = ["Charon", "Puck", "Fenrir"].includes(selectedVoice);
+    if (selectedVoice === "Fenrir") {
+      utterance.pitch = 0.78;
+      utterance.rate = 0.80;
+    } else if (selectedVoice === "Charon") {
+      utterance.pitch = 0.82;
+      utterance.rate = 0.86;
+    } else if (selectedVoice === "Puck") {
+      utterance.pitch = 0.94;
+      utterance.rate = 0.90;
+    } else if (selectedVoice === "Kore") {
+      utterance.pitch = 0.98;
+      utterance.rate = 0.86;
+    } else {
+      utterance.pitch = 1.05; // Aoede 기본 여성
+      utterance.rate = 0.88;
+    }
 
     const voices = window.speechSynthesis.getVoices();
-    const koVoice = voices.find(v => v.lang.startsWith('ko'));
-    if (koVoice) utterance.voice = koVoice;
+    const koVoices = voices.filter(v => v.lang.startsWith('ko'));
+    if (koVoices.length > 0) {
+      if (isMale) {
+        const maleVoice = koVoices.find(v => v.name.includes("Male") || v.name.includes("남성") || v.name.includes("InJoon") || v.name.includes("MinHo"));
+        utterance.voice = maleVoice || koVoices[0];
+      } else {
+        const femaleVoice = koVoices.find(v => v.name.includes("Female") || v.name.includes("여성") || v.name.includes("SunHi") || v.name.includes("HeaMi"));
+        utterance.voice = femaleVoice || koVoices[0];
+      }
+    }
 
     utterance.onstart = () => { if (btn) btn.innerHTML = `⏹️ 낭송 중지`; };
     utterance.onend = () => { if (btn) btn.innerHTML = `🎧 시 낭송 듣기`; };
@@ -5094,13 +6104,21 @@ async function saveVoiceRecordingToWork() {
       alert(`🎉 ${data.message}\n\n가상 북 뷰어와 스튜디오에 시인의 육성이 공식 낭송 음원으로 등록되었습니다.`);
       closeVoiceRecModal();
 
-      const audioPreviewArea = document.getElementById("studioAudioPreviewArea");
-      const audioFilenameEl = document.getElementById("studioPreviewAudioFilename");
-      if (audioPreviewArea && audioFilenameEl) {
-        audioPreviewArea.style.display = "block";
-        audioFilenameEl.textContent = data.filename;
+      currentReciteFile = data.audio_file;
+      currentAudioFile = currentMusicFile || currentReciteFile;
+
+      const recitePreviewArea = document.getElementById("studioRecitePreviewArea");
+      const reciteFilenameEl = document.getElementById("studioPreviewReciteFilename");
+      const recitePlayer = document.getElementById("studioRecitePlayer");
+
+      if (reciteFilenameEl) reciteFilenameEl.textContent = data.filename || data.audio_file.split("/").pop();
+      if (recitePlayer) {
+        const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
+        const safeName = (proj && proj.name) ? proj.name.replace(/\s+/g, '_') : "노을빛_기억";
+        recitePlayer.src = `/projects/${safeName}/${data.audio_file.replace(/^\.?\//, '')}`;
+        recitePlayer.load();
       }
-      currentAudioFile = data.audio_file;
+      if (recitePreviewArea) recitePreviewArea.style.display = "block";
 
       await loadStatus();
     } else {
@@ -5946,6 +6964,229 @@ async function onGenerateDraftsWithDeepAnswer() {
     }
   }
   await onGenerateDrafts();
+}
+
+// =============================================================
+// 📖 시집 본문 외 출판 완결 편집실 (Front & Back Matter) 연동
+// =============================================================
+
+async function loadBookExtras() {
+  try {
+    const res = await fetch("/api/book_extras");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+
+    const extras = data.extras || {};
+
+    const prologueInput = document.getElementById("bookPrologueInput");
+    if (prologueInput && !prologueInput.value) {
+      prologueInput.value = extras.prologue || "";
+    }
+
+    const epilogueInput = document.getElementById("bookEpilogueInput");
+    if (epilogueInput && !epilogueInput.value) {
+      epilogueInput.value = extras.epilogue || "";
+    }
+
+    const blurbInput = document.getElementById("bookBlurbInput");
+    if (blurbInput && !blurbInput.value) {
+      blurbInput.value = extras.back_cover_blurb || "";
+    }
+
+    const pubInput = document.getElementById("bookPublisherInput");
+    if (pubInput && extras.publisher) {
+      pubInput.value = extras.publisher;
+    }
+
+    const dateInput = document.getElementById("bookPublishedDateInput");
+    if (dateInput && extras.published_date) {
+      dateInput.value = extras.published_date;
+    }
+
+    const priceInput = document.getElementById("bookPriceInput");
+    if (priceInput && extras.price) {
+      priceInput.value = extras.price;
+    }
+
+    const isbnInput = document.getElementById("bookIsbnInput");
+    if (isbnInput && extras.isbn) {
+      isbnInput.value = extras.isbn;
+    }
+
+    // 앞표지 삽화 목록 채우기
+    const coverSelect = document.getElementById("bookCoverImageSelect");
+    if (coverSelect && data.available_images) {
+      const currentSelected = extras.cover_image || "";
+      coverSelect.innerHTML = `<option value="">(삽화 없음 - 타이포그래피 표지)</option>`;
+      data.available_images.forEach(img => {
+        const isSel = (img === currentSelected || `images/${img}` === currentSelected) ? "selected" : "";
+        coverSelect.innerHTML += `<option value="images/${img}" ${isSel}>${img}</option>`;
+      });
+    }
+  } catch (err) {
+    console.error("Error loading book extras:", err);
+  }
+}
+
+async function saveBookExtras() {
+  const btn = document.getElementById("btnSaveBookExtras");
+  const origText = btn ? btn.innerHTML : "";
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳ 저장 중...</span>`;
+    }
+
+    const payload = {
+      prologue: document.getElementById("bookPrologueInput")?.value || "",
+      epilogue: document.getElementById("bookEpilogueInput")?.value || "",
+      back_cover_blurb: document.getElementById("bookBlurbInput")?.value || "",
+      cover_image: document.getElementById("bookCoverImageSelect")?.value || "",
+      publisher: document.getElementById("bookPublisherInput")?.value || "부크크 (Bookk) 자가출판",
+      published_date: document.getElementById("bookPublishedDateInput")?.value || "",
+      price: document.getElementById("bookPriceInput")?.value || "13,000원",
+      isbn: document.getElementById("bookIsbnInput")?.value || ""
+    };
+
+    const res = await fetch("/api/book_extras/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || data.message || "저장 실패");
+    }
+
+    alert("✨ 시인의 말, 맺음말, 뒷표지 카피, 판권 정보가 시집 출판 메타데이터에 안전하게 저장되었습니다!\n\n이제 [부크크 내지/표지 완제본 PDF]나 [Canva 출판 CSV]를 내려받으시면 완벽히 반영됩니다.");
+  } catch (err) {
+    alert("출판 구성 요소 저장 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+async function generateBookExtra(target, btnId, inputId) {
+  const btn = document.getElementById(btnId);
+  const input = document.getElementById(inputId);
+  const origHtml = btn ? btn.innerHTML : "";
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>✨ 감성 집필 중...</span>`;
+    }
+
+    const res = await fetch("/api/book_extras/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.detail || "AI 생성 실패");
+    }
+
+    if (input) {
+      input.value = data.generated_text;
+      input.style.backgroundColor = "#FFFDF0";
+      setTimeout(() => {
+        input.style.backgroundColor = "#FFFFFF";
+      }, 1000);
+      input.focus();
+    }
+  } catch (err) {
+    alert("AI 문구 생성 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
+// 이벤트 리스너 등록
+document.addEventListener("DOMContentLoaded", () => {
+  // 출판 데이터 탭 진입 시 로드
+  const tabBtnExport = document.getElementById("tabBtnExport");
+  if (tabBtnExport) {
+    tabBtnExport.addEventListener("click", () => {
+      loadBookExtras();
+    });
+  }
+
+  // 출판 저장 버튼
+  const btnSave = document.getElementById("btnSaveBookExtras");
+  if (btnSave) {
+    btnSave.addEventListener("click", saveBookExtras);
+  }
+
+  // AI 생성 버튼들
+  const btnPrologue = document.getElementById("btnGenPrologue");
+  if (btnPrologue) {
+    btnPrologue.addEventListener("click", () => generateBookExtra("prologue", "btnGenPrologue", "bookPrologueInput"));
+  }
+
+  const btnEpilogue = document.getElementById("btnGenEpilogue");
+  if (btnEpilogue) {
+    btnEpilogue.addEventListener("click", () => generateBookExtra("epilogue", "btnGenEpilogue", "bookEpilogueInput"));
+  }
+
+  const btnBlurb = document.getElementById("btnGenBlurb");
+  if (btnBlurb) {
+    btnBlurb.addEventListener("click", () => generateBookExtra("back_cover_blurb", "btnGenBlurb", "bookBlurbInput"));
+  }
+
+  // 초기 1회 로드
+  setTimeout(loadBookExtras, 800);
+  initAudioMutualExclusion();
+});
+
+// 🎧 오디오 중복 재생 방지 (낭송, 노래, TTS 상호 배타적 제어)
+function initAudioMutualExclusion() {
+  const recitePlayer = document.getElementById("studioRecitePlayer");
+  const musicPlayer = document.getElementById("studioAudioPlayer");
+
+  if (recitePlayer) {
+    recitePlayer.addEventListener("play", () => {
+      // 낭송이 시작되면 노래 및 TTS 즉시 중단
+      if (musicPlayer && !musicPlayer.paused) {
+        musicPlayer.pause();
+      }
+      if (currentGeminiReciteAudio && !currentGeminiReciteAudio.paused) {
+        currentGeminiReciteAudio.pause();
+        const btn = document.getElementById("btnSpeakPoem");
+        if (btn) btn.innerHTML = "🎧 시 낭송 듣기";
+      }
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    });
+  }
+
+  if (musicPlayer) {
+    musicPlayer.addEventListener("play", () => {
+      // 노래가 시작되면 낭송 및 TTS 즉시 중단
+      if (recitePlayer && !recitePlayer.paused) {
+        recitePlayer.pause();
+      }
+      if (currentGeminiReciteAudio && !currentGeminiReciteAudio.paused) {
+        currentGeminiReciteAudio.pause();
+        const btn = document.getElementById("btnSpeakPoem");
+        if (btn) btn.innerHTML = "🎧 시 낭송 듣기";
+      }
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    });
+  }
 }
 
 

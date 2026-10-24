@@ -11,22 +11,22 @@ description: 파스텔 동화(Pastel Storybook) 고유 화풍 지침. 부드러�
 
 ## 1. 고유 미학 원칙 (Unique Aesthetic Principles)
 
-1. **포근한 분필 및 색연필 질감 (Soft Chalk Pastel & Colored Pencil)**:
-   - 손끝으로 부드럽게 문질러 편 듯한 몽환적인 그라데이션과 도화지 결 위로 사각거리는 다정한 색연필 선을 살립니다.
-2. **동화적 노스탤지어와 온기 (Warm Nostalgic Glow)**:
+1. **포근한 분필 파스텔 가루와 색연필 크레용 질감 (Chalk Pastel & Colored Pencil Dust)**:
+   - 물에 번지는 수채화가 아니라, 거친 도화지 표면에 사각거리는 분필 가루와 왁스 크레용 입자가 묻어난 듯한 파우더리한(Powdery & Grainy) 촉각적 질감을 구현합니다.
+2. **동화적 노스탤지어와 온기 (Warm Nostalgic Fairytale Glow)**:
    - 버터빛 햇살, 복숭앗빛 노을, 따스한 밀크티빛 흙내음 등 추억 속 온도를 포근하게 감싸 안는 톤을 유지합니다.
-3. **단순하고 다정한 형태미 (Gentle Whimsical Contours)**:
-   - 날카롭거나 사실적인 윤곽 대신 둥글고 다정한 선으로 사물의 따뜻한 본질을 묘사합니다.
+3. **철저한 투명 수채화 배제 (NOT Watercolor)**:
+   - 투명한 물 번짐이나 젖은 붓 자국(Wet-on-wet)은 철저히 배제하고, 마른 분필과 색연필의 다정한 손그림 선을 살립니다.
 
 ---
 
 ## 2. 권장 시그니처 프롬프트 구조 (Signature Prompt)
 
 ```text
-Heartwarming Korean storybook illustration of [핵심 피사체 및 정경], soft dreamy colored pencil and chalk pastel textures, warm nostalgic mood, soft vignette fading into pure paper margin, gentle airy space, 300 dpi
+Heartwarming fairytale children's storybook illustration of [핵심 피사체 및 정경], distinct powdery soft chalk pastel and heavy colored pencil crayon textures, visible chalk dust and grainy wax pencil strokes on rough drawing craft paper, cozy warm golden fairy tale glow, sweet nostalgic childhood aesthetic, soft vignette fading into pure paper margin, gentle airy space, NOT watercolor, NO transparent water washes, 300 dpi
 ```
 
 * **정경 묘사형 (Literal Mode)**:
-  * 예: `Heartwarming storybook illustration of mother and child sitting by a warm country hearth, rich textured colored pencil and soft chalk pastel, warm golden glow, sweet nostalgic childhood fairy tale style, soft vignette fading into paper, 300 dpi`
+  * 예: `Heartwarming fairytale storybook illustration of mother and child sitting by a warm country hearth with roasted chestnuts, rich powdery colored pencil crayon and soft chalk pastel textures, warm golden butter glow, sweet nostalgic childhood fairy tale style, rough craft paper texture, soft vignette fading into paper, NOT watercolor, 300 dpi`
 * **여백 암시형 (Atmospheric Mode)**:
-  * 예: `Whimsical nostalgic storybook illustration, soft dreamy pastel textures, tender poetic impression, cozy ambient light, soft vignette fading into pure paper margin, tranquil childhood mood, 300 dpi`
+  * 예: `Whimsical nostalgic storybook illustration, soft dreamy chalk pastel dust textures, tender poetic impression, cozy ambient golden light, soft vignette fading into pure paper margin, tranquil childhood fairy tale mood, NOT watercolor, 300 dpi`

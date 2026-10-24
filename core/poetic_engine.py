@@ -11,6 +11,16 @@ import random
 import re
 from typing import Dict, List, Optional, Any
 
+from core.skill_pack import (
+    SKILL_POETIC_INTERVIEW,
+    SKILL_POETIC_COMPOSITION,
+    SKILL_POETIC_REFINEMENT,
+    get_art_style_prompt_bundle,
+    get_music_genre_bundle,
+    ART_STYLE_COMMON_RULES,
+    MUSIC_COMMON_RULES
+)
+
 
 class PoeticEngine:
     def __init__(self):
@@ -257,7 +267,7 @@ class PoeticEngine:
         body = "\n\n".join(["\n".join(s) for s in stanzas if s])
         return {"title": title, "body": body}
 
-    def refine_poem(self, current_body: str, style_mode: str) -> str:
+    def refine_poem(self, current_body: str, style_mode: str = "subdued") -> str:
         """기존 시를 퇴고/수정 (3행 압축, 절제, 운율 정돈)"""
         lines = [line.strip() for line in current_body.strip().split("\n") if line.strip()]
         if not lines:
@@ -434,10 +444,10 @@ class PoeticEngine:
             else:
                 guide_phrase = f", {cg}"
 
-        # [골든 프롬프트]: 핵심 모티프 최우선 + 화풍 디테일 + 공통 10% 페이드아웃 여백 & 300 DPI
+        # [골든 프롬프트]: 핵심 모티프 최우선 + 화풍 디테일 + 공통 5% 미세 페이드아웃 여백 & 300 DPI
         final_prompt = (
             f"{base_style_prefix} of {scene_motif}{guide_phrase}, {base_style_suffix}, "
-            "soft vignette fading into pure paper margin, 300 dpi"
+            "subtle 5% edge vignette fading gently into pure paper margin, full rich composition, 300 dpi"
         )
         return final_prompt
 
@@ -451,11 +461,13 @@ class PoeticEngine:
         art_style: str = "watercolor",
         custom_guide: str = "",
         api_key: Optional[str] = None,
-        reference_image_bytes: Optional[bytes] = None
+        reference_image_bytes: Optional[bytes] = None,
+        is_refining_existing: bool = False
     ) -> str:
         """
         Gemini 모델을 활용하여 시의 본질과 참조 사진(있을 경우)의 구도/피사체를 
         정밀 시각 분석하고 최적의 300DPI 출판용 서정 삽화 프롬프트를 생성합니다.
+        is_refining_existing=True인 경우 기존 그림의 인물, 구도, 화풍을 고정한 채 지시 사항만 부분 수정합니다.
         실패하거나 키가 없을 경우 내장 규칙 기반(Fallback) 엔진으로 안전하게 전환됩니다.
         """
         import os
@@ -477,33 +489,55 @@ class PoeticEngine:
             from google import genai
             client = genai.Client(api_key=key)
 
-            # 스타일 정의
-            style_desc_map = {
-                "watercolor": "Delicate Korean lyric transparent watercolor illustration, soft translucent washes, warm morning light, gentle paper texture",
-                "ink_wash": "Traditional Korean sumuk ink and wash painting, subtle expressive brushstrokes on textured hanji paper, meditative empty space",
-                "pastel": "Heartwarming storybook illustration, soft colored pencil and pastel crayon textures, warm nostalgic childhood memory",
-                "sketch": "Delicate lyrical manga sketch illustration with fine pen and ink lines, light earthy watercolor wash, gentle nostalgic slice-of-life aesthetic",
-                "oil_painting": "Rich impressionistic Korean oil painting, warm layered palette knife strokes"
-            }
-            art_style_str = style_desc_map.get(art_style, style_desc_map["watercolor"])
+            # 스킬팩 기반 화풍 번들 로드
+            style_bundle = get_art_style_prompt_bundle(art_style)
+            art_style_str = style_bundle["prefix"]
+            style_guidance = style_bundle["guidance"]
             mode_desc = "Intimate evocative still life and tranquil focus" if style_mode == "atmospheric" else "Detailed heartwarming rural landscape and rustic nostalgic context"
 
-            system_instruction = (
-                "You are an expert art director and visual prompter for traditional Korean lyric poetry books. "
-                "Analyze the provided Korean poem, title, memory, and any attached REFERENCE IMAGE, and craft a single concise, high-impact English image generation prompt (1-2 sentences). "
-                "CRITICAL: Carefully interpret Korean dialects, folklore, and childhood motifs: "
-                "- '따순굼턱' / '굼턱' means a cozy, sunlit earthen mound and sheltered hillside slope that blocks chilly winter winds—NEVER a dark cave, underground hole, tunnel, house, cabin, or cottage. It is an open, sunny outdoor spot at the foot of a protective earthen embankment. "
-                "- '빠끔살이' is the nostalgic traditional Korean dialect for sweet innocent children playing house together (소꿉놀이). When the poem describes 따순굼턱 or 빠끔살이, ALWAYS depict innocent Korean rural children (동무들) huddled warmly together on the dry ground at the sunny foot of the protective earthen mound, cheerfully playing house with smooth seashore pebbles ('몽돌'), abalone and sea snail shells ('소라/전복 껍데기'), and little twigs in the bright warm sunshine using mud-stained small hands. Do NOT leave out the children! Do NOT draw dark caves or holes. "
-                "- '갱본' means rustic seashore or pebble beach margin where children collected shells. "
-                "- IF A REFERENCE IMAGE IS ATTACHED: Strictly analyze its actual visual composition, object arrangement, perspective, and lighting, and describe the scene recreating the reference photo's layout into the desired artistic watercolor/ink-wash style! "
-                "- Focus on the concrete, authentic Korean subject (e.g., if the poem is about acorn jelly '도토리묵', describe neatly sliced brown acorn jelly in a rustic dish; if about children's memory, depict the heartwarming children). "
-                "MANDATORY PUBLISHING STANDARDS: "
-                "1) Pure visual artwork only: strictly no letters, words, hangul, hanja, calligraphy, signatures, artist seals, frames, borders, or cabins. "
-                "2) Soft 12% edge fade: ensure the prompt specifies 'soft vignette fading into pure paper margin' so the outer edges fade seamlessly into the book page with zero rectangular borders. "
-                "3) Vertical portrait orientation (3:4 tall aspect ratio). "
-                "4) Always append '300 dpi' at the end. "
-                "Output ONLY the English prompt without quotes, markdown, or greetings."
-            )
+            # 사용자의 커스텀 디렉터 메모 최우선 규칙
+            custom_override_str = ""
+            if custom_guide and custom_guide.strip():
+                custom_override_str = (
+                    f"\n[★ CRITICAL - DIRECTOR'S HIGHEST OVERRIDE DIRECTIVE ★]:\n"
+                    f"The human author has explicitly commanded the following artistic preference:\n"
+                    f"\"{custom_guide.strip()}\"\n"
+                    f"You MUST strictly prioritize and vividly incorporate this specific direction (e.g. character clothing, special props, distinct color accent, camera distance, weather) into the prompt over generic defaults.\n"
+                )
+
+            if is_refining_existing and reference_image_bytes:
+                # [★ 연속 편집 모드 (Image-to-Image Refinement) ★]
+                # 기존 그림의 구도, 인물 생김새, 배경을 잠그고(Lock) 지시문만 정밀 수정
+                system_instruction = (
+                    "You are an expert art director executing precision image-to-image refinement and visual inpainting. "
+                    "The attached image is the CURRENT BASE ILLUSTRATION created earlier. The author wants to keep this scene intact but modify a specific detail.\n"
+                    f"Director's Modification Command: \"{custom_guide.strip()}\"\n\n"
+                    "RULES FOR CONTINUITY & EDITING:\n"
+                    "1. STRICTLY LOCK & PRESERVE all established elements from the attached base image: the character's facial features, hair, skin tone, general posture, camera perspective, distance, landscape, ground, water, rain/weather, and overall color palette.\n"
+                    "2. PRESERVE THE EXACT ART STYLE: " + art_style_str + "\n"
+                    "3. CHANGE ONLY what was commanded by the director (e.g. modify clothing to white sleeveless undershirt and shorts, ensure shoes are matching black rubber gomusin, adjust a specific prop).\n"
+                    "4. Output a single cohesive, highly descriptive English prompt (1-2 sentences) depicting the final edited scene seamlessly matching the base artwork.\n"
+                    f"\n[PUBLISHING STANDARDS]\n{ART_STYLE_COMMON_RULES}\n"
+                    "Output ONLY the English prompt without quotes, markdown, or greetings."
+                )
+            else:
+                system_instruction = (
+                    "You are an expert art director and visual prompter for traditional Korean lyric poetry books. "
+                    "Analyze the provided Korean poem, title, memory, and any attached REFERENCE IMAGE, and craft a single concise, high-impact English image generation prompt (1-2 sentences). "
+                    f"\n\n[ART STYLE SPECIFICATION ({style_bundle['name']})]\n"
+                    f"- Style Characteristic: {art_style_str}\n"
+                    f"- Aesthetic Guidance: {style_guidance}\n"
+                    f"- Excluded / Negative: {style_bundle['negative']}\n"
+                    f"{custom_override_str}"
+                    "\n[CULTURAL & MOTIF INTERPRETATION]:\n"
+                    "- '따순굼턱' / '굼턱' means a cozy, sunlit earthen mound and sheltered hillside slope that blocks chilly winter winds—NEVER a dark cave, underground hole, tunnel, house, cabin, or cottage. It is an open, sunny outdoor spot at the foot of a protective earthen embankment. "
+                    "- '빠끔살이' is the nostalgic traditional Korean dialect for sweet innocent children playing house together (소꿉놀이). When the poem describes 따순굼턱 or 빠끔살이, ALWAYS depict innocent Korean rural children (동무들) huddled warmly together on the dry ground at the sunny foot of the protective earthen mound, cheerfully playing house with smooth seashore pebbles ('몽돌'), abalone and sea snail shells ('소라/전복 껍데기'), and little twigs in the bright warm sunshine using mud-stained small hands. Do NOT leave out the children! Do NOT draw dark caves or holes. "
+                    "- '갱본' means rustic seashore or pebble beach margin where children collected shells. "
+                    "- IF A REFERENCE IMAGE IS ATTACHED: Strictly analyze its actual visual composition, object arrangement, perspective, and lighting, and describe the scene recreating the reference photo's layout into the desired artistic watercolor/ink-wash style! "
+                    "- Focus on the concrete, authentic Korean subject (e.g., if the poem is about acorn jelly '도토리묵', describe neatly sliced brown acorn jelly in a rustic dish; if about children's memory, depict the heartwarming children). "
+                    f"\n\n[PUBLISHING STANDARDS]\n{ART_STYLE_COMMON_RULES}\n"
+                    "Output ONLY the English prompt without quotes, markdown, or greetings."
+                )
 
             ref_note = "A reference photograph is attached. Faithfully reflect its composition, layout, and subject placement in the prompt." if reference_image_bytes else "No reference image attached."
 
@@ -515,8 +549,8 @@ class PoeticEngine:
                 f"Art Style: {art_style_str}\n"
                 f"Composition Mode: {mode_desc}\n"
                 f"Reference Image Status: {ref_note}\n"
-                f"Additional Director's Guide: {custom_guide or 'None'}\n\n"
-                "Please compose the optimal English illustration prompt now:"
+                f"★ Author's Personal Director Guide: {custom_guide.strip() if custom_guide and custom_guide.strip() else 'None'}\n\n"
+                "Please compose the optimal English illustration prompt now, honoring the author's custom guide to the fullest:"
             )
 
             content_payload = [system_instruction, prompt_input]
@@ -652,7 +686,7 @@ class PoeticEngine:
                     "   - '따순굼턱': 어두운 굴(동굴)이나 땅구멍이 절대 아닙니다! 찬 바람을 막아주는 양지바른 언덕 비탈 밑의 아늑한 '흙 둔덕'입니다. 북풍을 막아주는 흙 둔덕 아래 따스한 햇볕이 쏟아지는 야외 흙터입니다.\n"
                     "   - '빠끔살이': 그 양지바른 흙 둔덕 아래에서 순박한 시골 아이들(동무들) 3~4명이 옹기종기 모여 앉아 조약돌(몽돌)과 소라·전복 껍데기, 풀잎으로 소꿉놀이를 하는 천진난만하고 따스한 유년의 정경. 결코 아이들을 빼놓지 마세요.\n"
                     "   - '도토리묵': 시골 툇마루나 소반 위 투박한 질그릇에 정갈하게 담긴 도토리묵과 막걸리 사발.\n"
-                    "2. 스타일: 3:4 세로형 구도, 외곽 10% 순백 종이 여백 페이드아웃, 글자/낙관 배제.\n"
+                    "2. 스타일: 3:4 세로형 구도, 중심 인물과 사물이 95% 온전히 표현되는 외곽 5% 미세 여백 페이드아웃, 글자/낙관 배제.\n"
                     "3. 오직 1~2문장의 간결하고 아름다운 한국어 연출 지시문만 출력하세요 (설명이나 따옴표 없이)."
                 )
                 user_msg = f"시 제목: {title}\n시 본문:\n{poem_body}\n기억: {core_memory}\n화풍: {chosen_style}\n추가연출: {custom_guide or '없음'}"
@@ -883,6 +917,252 @@ class PoeticEngine:
             "music_prompt": flavor.get("style_prompt", ""),
             "lyrics": full_lyrics
         }
+
+    def conduct_interview_with_gemini(
+        self,
+        conversation_history: List[Dict[str, str]],
+        new_message: str,
+        api_key: Optional[str] = None
+    ) -> str:
+        """[poetic-interview 스킬 장착] 사용자의 옛 기억에서 오감과 구체적 사물, 육성을 발굴하는 문학 인터뷰를 진행합니다."""
+        import os
+        key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not key:
+            # 키 부재 시 내장 규칙 기반 기본 질문 반환
+            return "그때 문득 코끝을 스치던 냄새나, 어머니 손에 쥐여 있던 작은 사물은 어떤 모습이었나요?"
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=key)
+
+            context_str = ""
+            for item in conversation_history[-6:]:
+                role = "사용자" if item.get("role") in ["user", "human"] else "인터뷰어"
+                context_str += f"{role}: {item.get('text', '')}\n"
+
+            user_prompt = (
+                f"[이전 대화 맥락]\n{context_str}\n"
+                f"[사용자의 새로운 답변]\n{new_message}\n\n"
+                "위 규칙(poetic-interview)에 따라 공감과 함께 구체적 오감/사물을 환기하는 1~2개의 질문을 건네주세요:"
+            )
+
+            active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            response = client.models.generate_content(
+                model=active_model,
+                contents=user_prompt,
+                config={"system_instruction": SKILL_POETIC_INTERVIEW}
+            )
+            return response.text.strip() if response and response.text else "그때의 정경을 조금 더 자세히 들려주시겠어요?"
+        except Exception as e:
+            return f"그때 기억 속에 남아 있는 가장 선명한 사물 하나를 들려주세요. (알림: {str(e)})"
+
+    def compose_poem_with_gemini(
+        self,
+        core_memory: str,
+        sensory_details: str = "",
+        spoken_words: str = "",
+        title_hint: str = "",
+        api_key: Optional[str] = None
+    ) -> Dict[str, str]:
+        """[poetic-composition 스킬 장착] 발굴된 기억을 바탕으로 한국 정통 서정시를 작시합니다."""
+        import os
+        key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not key:
+            # 룰 기반 엔진 Fallback
+            drafts = self.compose_dual_drafts(core_memory, sensory_details, spoken_words)
+            draft = drafts.get("draft_a", {"title": "기억의 한 켠", "body": ""})
+            return {"title": draft["title"], "body": draft["body"], "notes": "내장 규칙 기반 초안"}
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=key)
+
+            user_prompt = (
+                f"[사용자의 핵심 기억]: {core_memory}\n"
+                f"[구체적 사물 및 오감]: {sensory_details}\n"
+                f"[그때 들었던 말/육성]: {spoken_words}\n"
+                f"[희망 제목(참고)]: {title_hint or '없음'}\n\n"
+                "위의 서정 작시 지침(poetic-composition)에 따라, 감정의 직접 표출을 배제하고 "
+                "객관적 상관물과 3·4조 호흡을 살린 3~4연의 완성도 높은 서정시를 지어주세요.\n"
+                "반드시 첫 줄에 '[제목: ...]' 형식으로 제목을 명시하고, 빈 줄 후 본문을 작성해 주세요."
+            )
+
+            active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            response = client.models.generate_content(
+                model=active_model,
+                contents=user_prompt,
+                config={"system_instruction": SKILL_POETIC_COMPOSITION}
+            )
+
+            raw_text = response.text.strip() if response and response.text else ""
+            lines = raw_text.split("\n")
+            title = title_hint or "노을빛 기억"
+            body_lines = []
+
+            for line in lines:
+                m = re.match(r'^\[?제목[:\s]+(.*?)\]?$', line.strip())
+                if m:
+                    title = m.group(1).strip()
+                else:
+                    body_lines.append(line)
+
+            body = "\n".join(body_lines).strip()
+            return {"title": title, "body": body, "notes": "Gemini 서정 작시 스킬 기반 창작"}
+        except Exception as e:
+            drafts = self.compose_dual_drafts(core_memory, sensory_details, spoken_words)
+            draft = drafts.get("draft_a", {"title": "기억의 한 켠", "body": ""})
+            return {"title": draft["title"], "body": draft["body"], "notes": f"Fallback 전환 ({str(e)})"}
+
+    def refine_poem_with_gemini(
+        self,
+        title: str,
+        poem_body: str,
+        mode: str = "custom",
+        custom_instruction: str = "",
+        api_key: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """[poetic-refinement 스킬 장착] 사용자의 자유 수정 요청 또는 원클릭 모드에 맞춰 시를 정밀 퇴고/윤문합니다."""
+        import os
+        key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not key:
+            refined = self.refine_poem(poem_body)
+            return {"title": title, "refined_body": refined, "commentary": "내장 규칙 기반 퇴고 완료"}
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=key)
+
+            # 모드별 및 사용자 지시문 조립
+            mode_guides = {
+                "subdued": "과장되거나 직설적인 감정 표현을 줄이고, 사물과 풍경 중심의 여백의 미를 살리도록 담담하게 절제해 주세요.",
+                "shorten": "시의 가장 핵심적인 정서와 묵직한 울림만 남겨 3행의 압축 서정시로 정제해 주세요.",
+                "rhythm": "기존 연 구성을 보존하면서, 낭송 호흡과 행간 쉼표, 리듬감에 맞춰 자연스럽게 운율을 정돈해 주세요."
+            }
+            guide_text = mode_guides.get(mode, "")
+            
+            instruction_block = ""
+            if custom_instruction and custom_instruction.strip():
+                instruction_block = (
+                    f"\n[★ 시인의 최우선 수정 요청 지시사항 ★]:\n"
+                    f"\"{custom_instruction.strip()}\"\n"
+                    f"시인이 요청한 위 사항을 가장 엄격하고 섬세하게 반영하여 시를 고쳐주세요.\n"
+                )
+            elif guide_text:
+                instruction_block = f"\n[퇴고 방향]: {guide_text}\n"
+
+            user_prompt = (
+                f"[시 제목]: {title}\n"
+                f"[현재 시 본문]:\n{poem_body}\n"
+                f"{instruction_block}\n"
+                "위의 시적 퇴고 지침(poetic-refinement)에 따라 상투어를 걷어내고, "
+                "시인의 수정 요청을 완벽히 구현한 정제된 시를 완성해 주세요.\n\n"
+                "출력 형식:\n"
+                "[정제된 시]\n(정제된 본문만 작성)\n\n"
+                "[편집자 메모]\n- (수정 및 개선 사항 요약 1~2줄)"
+            )
+
+            active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            response = client.models.generate_content(
+                model=active_model,
+                contents=user_prompt,
+                config={"system_instruction": SKILL_POETIC_REFINEMENT}
+            )
+
+            raw_text = response.text.strip() if response and response.text else ""
+            parts = re.split(r'\[편집자 메모\]', raw_text, flags=re.IGNORECASE)
+            refined_part = parts[0].replace("[정제된 시]", "").strip()
+            commentary = parts[1].strip() if len(parts) > 1 else "시인 요청 사항 반영 및 서정적 행간 정돈"
+
+            return {
+                "title": title,
+                "refined_body": refined_part or poem_body,
+                "commentary": commentary
+            }
+        except Exception as e:
+            refined = self.refine_poem(poem_body)
+            return {"title": title, "refined_body": refined, "commentary": f"Fallback 전환 ({str(e)})"}
+
+    def generate_song_lyrics_and_prompt_with_gemini(
+        self,
+        title: str,
+        poem_body: str,
+        genre_key: str = "folk",
+        custom_guide: str = "",
+        api_key: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """[music-genre-* 스킬 장착] 시를 음악적 운율(Verse/Chorus)로 개사하고 Suno/YuE 최적 프롬프트를 생성합니다."""
+        import os
+        genre_bundle = get_music_genre_bundle(genre_key)
+        key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not key:
+            return self.generate_song_lyrics(title, poem_body, genre=genre_key)
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=key)
+
+            # 사용자 커스텀 음악 연출 메모 최우선 규칙
+            music_override_str = ""
+            if custom_guide and custom_guide.strip():
+                music_override_str = (
+                    f"\n[★ CRITICAL - DIRECTOR'S HIGHEST OVERRIDE DIRECTIVE ★]:\n"
+                    f"The author/composer specifically requested this artistic preference:\n"
+                    f"\"{custom_guide.strip()}\"\n"
+                    f"You MUST strictly follow this preference (e.g. specific solo instrument, vocal emotion/delivery, tempo feel, refrain theme) in BOTH the [GENRE_PROMPT] and the [LYRICS].\n"
+                )
+
+            system_instruction = (
+                "You are an acclaimed songwriter, composer, and music director specializing in adapting traditional Korean lyric poetry into heartfelt songs. "
+                f"\n\n[MUSIC GENRE SPECIFICATION ({genre_bundle['name']})]\n"
+                f"- Musical Prompt: {genre_bundle['prompt']}\n"
+                f"- Recommended Tempo: {genre_bundle['bpm']}\n"
+                f"- Instruments: {genre_bundle['instruments']}\n"
+                f"- Vocal Style: {genre_bundle['vocal']}\n"
+                f"{music_override_str}"
+                f"\n[PRODUCTION PRINCIPLES]\n{MUSIC_COMMON_RULES}\n"
+                "Output Format:\n"
+                "[GENRE_PROMPT]\n(Single-line English style & instrumentation prompt for Suno/YuE)\n\n"
+                "[LYRICS]\n(Full Korean lyrics with [Intro], [Verse 1], [Chorus], [Verse 2], [Chorus], [Outro - Fade Out])"
+            )
+
+            user_prompt = (
+                f"Poem Title: {title}\n"
+                f"Poem Body:\n{poem_body}\n"
+                f"Target Genre: {genre_bundle['name']}\n"
+                f"★ Author's Musical Direction: {custom_guide.strip() if custom_guide and custom_guide.strip() else 'None'}\n\n"
+                "Please adapt this poem into a complete song with structured tags and generate the optimal English sound prompt, faithfully honoring the author's custom musical direction:"
+            )
+
+            active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            response = client.models.generate_content(
+                model=active_model,
+                contents=user_prompt,
+                config={"system_instruction": system_instruction}
+            )
+
+            raw_text = response.text.strip() if response and response.text else ""
+            music_prompt = genre_bundle["prompt"]
+            lyrics = ""
+
+            if "[LYRICS]" in raw_text:
+                parts = raw_text.split("[LYRICS]")
+                prompt_section = parts[0].replace("[GENRE_PROMPT]", "").strip()
+                if prompt_section:
+                    music_prompt = prompt_section
+                lyrics = parts[1].strip()
+            else:
+                lyrics = raw_text
+
+            return {
+                "title": f"{title} ({genre_bundle['name']})",
+                "genre": genre_key,
+                "genre_name": genre_bundle["name"],
+                "music_prompt": music_prompt,
+                "lyrics": lyrics or poem_body
+            }
+        except Exception:
+            return self.generate_song_lyrics(title, poem_body, genre=genre_key)
 
 
 poetic_engine = PoeticEngine()

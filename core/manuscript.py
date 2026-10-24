@@ -13,7 +13,9 @@ class PoemWork:
     image_file: str          # 예: "images/01_새벽대청.jpg"
     art_direction: str       # 예: "호롱불 아래 어머니의 뒷모습 (한국적 서정 수채화)"
     poem_body: str           # 시 본문 전체 텍스트
-    audio_file: str = ""     # 예: "music/01_새벽대청.mp3"
+    audio_file: str = ""     # 통합/하위호환 음원 (예: "music/01_새벽대청.mp3")
+    recite_file: str = ""    # 시인의 육성 낭송 음원 (예: "images/01_낭송.webm")
+    music_file: str = ""     # 서정 노래/작곡 음원 (예: "music/01_음원.mp3")
     lyrics: str = ""         # 노랫말/가사 전체 텍스트
     chapter: str = ""        # 큰 주제별 묶음(부/챕터). 예: "제1부 흙과 솜꽃"
     author: str = ""         # 개별 시인/필자 (예: "어머니 김영희", "윤동주", 비워둘 시 대표 저자)
@@ -74,8 +76,36 @@ class ManuscriptManager:
             image_match = re.search(r'-\s*\*\*삽화 파일\*\*:[ \t]*`?([^`\r\n]+)`?', section)
             image_file = image_match.group(1).strip() if image_match else ""
 
+            recite_match = re.search(r'-\s*\*\*낭송 음원\*\*:[ \t]*`?([^`\r\n]+)`?', section)
+            recite_file = recite_match.group(1).strip() if recite_match else ""
+
+            music_match = re.search(r'-\s*\*\*노래 음원\*\*:[ \t]*`?([^`\r\n]+)`?', section)
+            music_file = music_match.group(1).strip() if music_match else ""
+
             audio_match = re.search(r'-\s*\*\*음원 파일\*\*:[ \t]*`?([^`\r\n]+)`?', section)
             audio_file = audio_match.group(1).strip() if audio_match else ""
+
+            # 디스크 파일시스템 자동 감지: 낭송/노래 파일이 디스크에 존재하면 자동 연결
+            proj_music_dir = self.file_path.parent / "music"
+            if not recite_file and proj_music_dir.exists():
+                for cand in [f"{ep_num}_낭송.wav", f"{ep_num}_낭송.webm", f"{int(ep_num)}_낭송.wav"]:
+                    if (proj_music_dir / cand).exists():
+                        recite_file = f"music/{cand}"
+                        break
+            if not music_file and proj_music_dir.exists():
+                for cand in [f"{ep_num}_음원.mp3", f"{ep_num}_음원.m4a", f"{ep_num}_음원.wav", f"{int(ep_num)}_음원.mp3"]:
+                    if (proj_music_dir / cand).exists():
+                        music_file = f"music/{cand}"
+                        break
+
+            # 하위 호환 매핑: 기존 데이터에 audio_file만 있는 경우 자동 분기
+            if audio_file:
+                if ("낭송" in audio_file or audio_file.endswith(".webm")) and not recite_file:
+                    recite_file = audio_file
+                elif not music_file and not recite_file:
+                    music_file = audio_file
+            if not audio_file:
+                audio_file = music_file or recite_file
 
             art_match = re.search(r'-\s*\*\*그림 방향\*\*:[ \t]*([^\r\n]+)', section)
             art_direction = art_match.group(1).strip() if art_match else ""
@@ -130,6 +160,8 @@ class ManuscriptManager:
                 art_direction=art_direction,
                 poem_body=poem_body,
                 audio_file=audio_file,
+                recite_file=recite_file,
+                music_file=music_file,
                 lyrics=lyrics,
                 chapter=chapter,
                 author=author,
@@ -145,6 +177,16 @@ class ManuscriptManager:
         """완성된 작품 개수 카운트"""
         works = self.load_works()
         return sum(1 for w in works if "완성" in w.status)
+
+    def get_work_by_episode(self, episode_no: str) -> Optional[PoemWork]:
+        """회차 번호(예: '제01화', '01화', '01', 1)로 특정 작품 객체 반환"""
+        clean_num = re.sub(r'[^0-9]', '', str(episode_no)).zfill(2) if re.search(r'\d+', str(episode_no)) else ""
+        works = self.load_works()
+        for w in works:
+            w_clean = re.sub(r'[^0-9]', '', str(w.episode_no)).zfill(2) if re.search(r'\d+', str(w.episode_no)) else ""
+            if w.episode_no == episode_no or (clean_num and clean_num == w_clean):
+                return w
+        return None
 
     def _write_works_to_file(self, works: List[PoemWork]) -> None:
         """작품 리스트를 받아 마크다운 파일로 영구 저장"""
@@ -175,7 +217,11 @@ class ManuscriptManager:
                 lines.append(f"- **조판 설정**: `{json.dumps(w.layout_config, ensure_ascii=False)}`")
             lines.append(f"- **기억의 중심**: {w.memory_anchor}")
             lines.append(f"- **삽화 파일**: `{w.image_file}`")
-            if getattr(w, 'audio_file', ''):
+            if getattr(w, 'recite_file', ''):
+                lines.append(f"- **낭송 음원**: `{w.recite_file}`")
+            if getattr(w, 'music_file', ''):
+                lines.append(f"- **노래 음원**: `{w.music_file}`")
+            if getattr(w, 'audio_file', '') and not getattr(w, 'recite_file', '') and not getattr(w, 'music_file', ''):
                 lines.append(f"- **음원 파일**: `{w.audio_file}`")
             lines.append(f"- **그림 방향**: {w.art_direction}")
             lines.append("")

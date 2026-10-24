@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryBook Studio 공식 사용 설명서 (큰 글씨)</title>
+  <style>
+    :root {
+      --bg-page: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --primary-brown: #643E19;
+      --primary-dark: #3F2305;
+      --accent-gold: #C68B59;
+      --accent-soft: #F4EAD4;
+      --text-main: #2C2520;
+      --text-muted: #665F57;
+      --border-color: #EBDCCB;
+      --quote-bg: #F8F3EC;
+      --base-font-size: 17px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-family: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+      font-size: var(--base-font-size);
+      line-height: 1.85;
+      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 상단 고정 제어 바 */
+    .manual-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 2px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(100, 62, 25, 0.06);
+    }
+
+    .manual-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .manual-brand-icon {
+      font-size: 1.6rem;
+    }
+
+    .manual-brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      letter-spacing: -0.3px;
+    }
+
+    .manual-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-ctrl {
+      padding: 8px 14px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      border: 1.5px solid var(--border-color);
+      background: #FFFFFF;
+      color: var(--primary-brown);
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-ctrl:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent-gold);
+    }
+
+    .btn-ctrl.btn-primary {
+      background: var(--primary-brown);
+      color: #FFFFFF;
+      border-color: var(--primary-brown);
+    }
+
+    .btn-ctrl.btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    /* 본문 레이아웃 */
+    .manual-container {
+      max-width: 900px;
+      margin: 36px auto;
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px 56px;
+      box-shadow: 0 4px 20px rgba(100, 62, 25, 0.05);
+    }
+
+    @media (max-width: 768px) {
+      .manual-container {
+        margin: 16px;
+        padding: 24px 20px;
+      }
+      .manual-topbar {
+        padding: 10px 14px;
+      }
+    }
+
+    /* 글자 크기 모드 */
+    body.font-large {
+      --base-font-size: 19px;
+    }
+    body.font-xlarge {
+      --base-font-size: 21px;
+    }
+
+    /* 제목 스타일 */
+    .manual-h1 {
+      font-size: 2rem;
+      color: var(--primary-dark);
+      font-weight: 800;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 3px solid var(--primary-brown);
+      letter-spacing: -0.5px;
+      line-height: 1.35;
+    }
+
+    .manual-h2 {
+      font-size: 1.55rem;
+      color: var(--primary-brown);
+      font-weight: 700;
+      margin-top: 40px;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    .manual-h3 {
+      font-size: 1.25rem;
+      color: #4A3525;
+      font-weight: 700;
+      margin-top: 28px;
+      margin-bottom: 12px;
+      line-height: 1.45;
+    }
+
+    .manual-h4 {
+      font-size: 1.08rem;
+      color: var(--primary-brown);
+      font-weight: 700;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    /* 본문 문단 */
+    .manual-p {
+      font-size: 1em;
+      color: var(--text-main);
+      margin-bottom: 16px;
+      word-break: keep-all;
+    }
+
+    .manual-spacer {
+      height: 10px;
+    }
+
+    .manual-divider {
+      border: none;
+      height: 1.5px;
+      background: var(--border-color);
+      margin: 36px 0;
+    }
+
+    /* 인용구 및 하이라이트 박스 */
+    .manual-quote {
+      background: var(--quote-bg);
+      border-left: 5px solid var(--accent-gold);
+      padding: 16px 20px;
+      border-radius: 0 10px 10px 0;
+      margin: 20px 0;
+      font-size: 1.02em;
+      color: #4A3525;
+      font-weight: 500;
+      line-height: 1.75;
+    }
+
+    /* 목록 스타일 */
+    .manual-li {
+      list-style-type: none;
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 10px;
+      color: var(--text-main);
+      word-break: keep-all;
+    }
+
+    .manual-li::before {
+      content: "•";
+      color: var(--accent-gold);
+      font-size: 1.4em;
+      position: absolute;
+      left: 6px;
+      top: -3px;
+    }
+
+    /* 번호형 아이템 */
+    .manual-num-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      word-break: keep-all;
+    }
+
+    .num-badge {
+      background: var(--accent-soft);
+      color: var(--primary-brown);
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .num-content {
+      flex: 1;
+    }
+
+    /* 코드 및 강조 블록 */
+    .manual-box-wrapper {
+      margin: 22px 0;
+    }
+
+    .manual-box {
+      background: #FDFBF7;
+      border: 1.5px solid #E6D7C3;
+      border-radius: 10px;
+      padding: 18px 20px;
+      font-family: inherit;
+      font-size: 0.93em;
+      line-height: 1.7;
+      color: #3C3026;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    code {
+      background: #F5EDE0;
+      color: #8C4303;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 0.92em;
+      font-family: inherit;
+      font-weight: 600;
+    }
+
+    strong {
+      color: #1A1410;
+      font-weight: 700;
+    }
+
+    .manual-link {
+      color: var(--primary-brown);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    /* 표(Table) 스타일 */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 24px 0;
+      border-radius: 10px;
+      border: 1.5px solid var(--border-color);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .manual-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94em;
+      background: #FFFFFF;
+    }
+
+    .manual-table th {
+      background: #F5ECE0;
+      color: var(--primary-dark);
+      padding: 14px 16px;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-color);
+      text-align: left;
+    }
+
+    .manual-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #F0E6D8;
+      color: var(--text-main);
+      vertical-align: top;
+      line-height: 1.7;
+    }
+
+    .manual-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .manual-table tr:nth-child(even) {
+      background: #FCFAF6;
+    }
+
+    /* 인쇄 최적화 */
+    @media print {
+      .manual-topbar {
+        display: none !important;
+      }
+      body {
+        background: #FFFFFF;
+        color: #000000;
+      }
+      .manual-container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 제어 바 -->
+  <header class="manual-topbar">
+    <div class="manual-brand">
+      <span class="manual-brand-icon">📖</span>
+      <span class="manual-brand-title">StoryBook Studio 공식 사용 설명서</span>
+    </div>
+    <div class="manual-controls">
+      <button type="button" class="btn-ctrl" onclick="cycleFontSize()" title="어르신을 위한 글자 크기 변경">
+        <span>🔍 글자 크기: <strong id="fontSizeLabel">보통 (17px)</strong></span>
+      </button>
+      <button type="button" class="btn-ctrl" onclick="window.print()" title="설명서 종이 인쇄하기">
+        <span>🖨️ 인쇄하기</span>
+      </button>
+      <button type="button" class="btn-ctrl btn-primary" onclick="window.close()" title="설명서 창 닫기">
+        <span>닫기 ✕</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 본문 컨테이너 -->
+  <main class="manual-container">
+    <h1 class='manual-h1'>📖 StoryBook Studio (스토리북 스튜디오) 다정한 사용 설명서</h1>
+<blockquote class='manual-quote'><strong>사랑하는 부모님께, 그리고 삶의 소중한 기억을 시와 노래로 남기고자 하시는 모든 분들께 바칩니다.</strong></blockquote>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<blockquote class='manual-quote'><strong>“어머니, 아버지. 지나온 세월 속의 작은 기억 하나, 그때 들었던 따스한 말 한마디가 세상에서 가장 깊고 아름다운 문학이자 예술입니다.”</strong></blockquote>
+<p class='manual-p'>></p>
+<blockquote class='manual-quote'>컴퓨터가 낯설어도, 타자가 서툴러도, 시를 한 번도 써본 적이 없으셔도 아무 걱정하지 마세요.</blockquote>
+<blockquote class='manual-quote'>StoryBook Studio(스토리북 스튜디오)는 마이크에 대고 편안하게 옛날이야기를 들려주시기만 하면,</blockquote>
+<blockquote class='manual-quote'>고운 <strong>서정시 한 편</strong>, 물빛 번지는 <strong>수채화 그림 한 장</strong>, 가슴을 울리는 <strong>맑은 노래 한 곡</strong>으로 정성스레 빚어내어,</blockquote>
+<blockquote class='manual-quote'>마침내 내 이름이 적힌 <strong>진짜 종이책(시화집)</strong>으로 세상에 내놓을 수 있도록 손을 꼭 잡고 도와드리는 따뜻한 디지털 공방입니다.</blockquote>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>📑 목차: 천천히 따라 하는 7가지 발걸음</h2>
+<div class='manual-spacer'></div>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong><a href="#들어가며-부모님을-위한-3가지-약속" class="manual-link">들어가며: 부모님을 위한 3가지 약속</a></strong></div></div>
+<li class='manual-li'>🌟 [필독] 디자인 도구(Canva)를 몰라도 종이책까지 100% 완성됩니다!</li>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong><a href="#제1장-첫-번째-발걸음-프로그램-열기와-화면-둘러보기" class="manual-link">첫 번째 발걸음: 프로그램 열기와 화면 둘러보기</a></strong></div></div>
+<li class='manual-li'>1.1. 바탕화면에서 원클릭으로 켜기 (<code>시집만들기.bat</code>)</li>
+<li class='manual-li'>1.2. 한눈에 들어오는 화면 구성</li>
+<li class='manual-li'>1.3. 마우스를 올리면 친절하게 알려주는 '스마트 말풍선'</li>
+<li class='manual-li'>1.4. 내 소중한 시집을 안전하게 지켜주는 간편 로그인</li>
+<li class='manual-li'>1.5. 100% 무료 구글 AI 키(열쇠) 30초 만에 꽂기</li>
+<li class='manual-li'>1.6. 기다리는 동안 안심할 수 있는 '모래시계 & 원형 회전' 마우스 신호</li>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong><a href="#제2장-두-번째-발걸음-내-시집-서재-만들기" class="manual-link">두 번째 발걸음: 내 시집 서재 만들기</a></strong></div></div>
+<li class='manual-li'>2.1. 시집 고르기와 새 시집 개설하기 (시화집 vs 일반 시집)</li>
+<li class='manual-li'>2.2. 시집 제목과 시인(지은이) 내 이름 넣기</li>
+<li class='manual-li'>2.3. 컴퓨터에 써둔 시가 많을 때 한 번에 통째로 불러오기</li>
+<li class='manual-li'>2.4. 소중한 원고 컴퓨터에 안전하게 백업(ZIP)하기</li>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'><strong><a href="#제3장-세-번째-발걸음-나만의-시그림노래-빚기-창작-스튜디오" class="manual-link">세 번째 발걸음: 나만의 시·그림·노래 빚기 (창작 스튜디오)</a></strong></div></div>
+<li class='manual-li'>3.1. [말하기] 타자 대신 마이크에 편하게 이야기하기 (음성 구술)</li>
+<li class='manual-li'>3.2. [기억 지키기] 거짓말 없는 내 진짜 기억만 담기 (사실 잠금)</li>
+<li class='manual-li'>3.3. [시 고르기] 마음에 드는 시 2편 중 하나 고르기 (담백한 시 vs 아련한 시)</li>
+<li class='manual-li'>3.4. [시 다듬기] AI 대화창 맞춤 퇴고와 성우 낭송 플레이어 듣기</li>
+<li class='manual-li'>3.5. [그림 얹기] 맑고 은은한 수묵 수채화 삽화와 정밀 연속 수정</li>
+<li class='manual-li'>3.6. [노래 만들기] 노랫말 정서 맞춤 다채로운 악기 편곡과 3대 음악 AI</li>
+<li class='manual-li'>3.7. [저장하기] 안심하고 원고 저장하기</li>
+<div class='manual-num-item'><span class='num-badge'>5.</span><div class='num-content'><strong><a href="#제4장-네-번째-발걸음-차례목차와-순서-예쁘게-엮기" class="manual-link">네 번째 발걸음: 차례(목차)와 순서 예쁘게 엮기</a></strong></div></div>
+<li class='manual-li'>4.1. 1부, 2부, 3부 큰 주제별로 묶어보기</li>
+<li class='manual-li'>4.2. 시 순서 위아래로 바꾸기 (<code>제01화</code>, <code>제02화</code> 자동 번호)</li>
+<div class='manual-num-item'><span class='num-badge'>6.</span><div class='num-content'><strong><a href="#제5장-다섯-번째-발걸음-종이책-안착-점검-조판-편집실" class="manual-link">다섯 번째 발걸음: 종이책 안착 점검 (조판 편집실)</a></strong></div></div>
+<li class='manual-li'>5.1. 실제 책장 넘기듯 미리보기 (초록불 <code>✅ 1페이지 안착</code> 확인)</li>
+<li class='manual-li'>5.2. 글자가 넘칠 때 누르는 2가지 마법 버튼 (글씨 줄이기, 한 페이지 압축)</li>
+<li class='manual-li'>5.3. 글과 그림 자유 배치 (2페이지 마주보기, 4페이지 펼침)</li>
+<div class='manual-num-item'><span class='num-badge'>7.</span><div class='num-content'><strong><a href="#제6장-여섯-번째-발걸음-내-이름이-박힌-종이책-출판하기" class="manual-link">여섯 번째 발걸음: 내 이름이 박힌 종이책 출판하기</a></strong></div></div>
+<li class='manual-li'>6.1. 인쇄소/부크크 제출용 완제본 PDF 원클릭 다운로드</li>
+<li class='manual-li'>6.2. 책등(두께)과 표지 자동 계산</li>
+<li class='manual-li'>6.3. 부크크(Bookk)에 파일 올리고 실물 종이책 택배로 받아보기</li>
+<div class='manual-num-item'><span class='num-badge'>8.</span><div class='num-content'><strong><a href="#부록-어르신들이-자주-물어보시는-질문faq과-안심-해결책" class="manual-link">부록: 어르신들이 자주 물어보시는 질문(FAQ)과 안심 해결책</a></strong></div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>들어가며: 부모님을 위한 3가지 약속</h2>
+<div class='manual-spacer'></div>
+<p class='manual-p'>컴퓨터 앞에서 괜히 긴장되거나 내가 무언가 잘못 누를까 봐 걱정되시지요?</p>
+<p class='manual-p'>StoryBook Studio는 부모님께서 편안하게 미소 지으실 수 있도록 다음 세 가지를 굳게 약속드립니다:</p>
+<div class='manual-spacer'></div>
+<div class='manual-box-wrapper'><pre class='manual-box'>
+[부모님을 위한 StoryBook Studio의 3대 약속]
+1. 거짓말을 보태지 않습니다 (진짜 기억 보존) : 
+   인공지능이 엉뚱한 거짓말을 지어내지 않고, 들려주신 실제 삶의 순간만 시로 빚습니다.
+2. 타자를 못 쳐도 괜찮습니다 (말씀 구술) : 
+   마이크 단추를 누르고 옛이야기하듯 말씀만 하시면 글자가 저절로 적힙니다.
+3. 잘못 눌러도 고장 나지 않습니다 (안심 설계) : 
+   모든 원고는 안전하게 보관되며, 언제든 이전 상태로 되돌릴 수 있습니다.
+</pre></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>🌟 [필독] 디자인 프로그램(Canva)을 전혀 몰라도 종이책까지 100% 완성됩니다!</h3>
+<div class='manual-spacer'></div>
+<blockquote class='manual-quote'><strong>“디자인이나 컴퓨터를 잘 모르는데, 정말 제 이름으로 된 진짜 책이 나오나요?”</strong></blockquote>
+<blockquote class='manual-quote'><strong>“네, 어머니 아버지! 버튼 하나만 누르면 책 표지부터 맨 뒷장까지 인쇄소 규격에 딱 맞춘 책 파일(PDF)이 저절로 만들어집니다.”</strong></blockquote>
+<div class='manual-spacer'></div>
+<p class='manual-p'>복잡한 디자인 도구(Canva 등)를 배울 필요가 전혀 없습니다.</p>
+<p class='manual-p'>우리는 <strong>2가지 길</strong>을 열어두었으니, 편하신 길을 고르시면 됩니다:</p>
+<div class='manual-spacer'></div>
+<div class='manual-box-wrapper'><pre class='manual-box'>
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    어르신을 위한 2가지 출판 경로 안내                           │
+├────────────────────────────────────────┬────────────────────────────────────────┤
+│    경로 1. 프로그램 하나로 100% 끝내기 │     경로 2. 손맛을 더하는 자유 디자인  │
+│        ★ [어르신/초보자 적극 추천]     │             (Canva 사용 가능자)        │
+├────────────────────────────────────────┼────────────────────────────────────────┤
+│ • 다른 프로그램 공부할 필요가 전혀 없음!│ • 젊은 자녀나 손주가 도와줄 때 권장   │
+│ • [출판 데이터] 탭에서 버튼 하나만 꾹! │ • 글자 위치나 글꼴을 마우스로 직접 꾸밈│
+│   - [📘 부크크 내지 완제본 PDF 다운]   │ • 스토리북에서 [본문데이터.csv] 내려받아│
+│   - [🎨 부크크 표지 펼침면 PDF 다운]   │   Canva 대량 제작으로 3초 만에 쏙!     │
+│ • 그대로 인쇄 사이트(부크크)에 올리면  │ • 나만의 알록달록 스티커와 손맛 완성!  │
+│   며칠 뒤 진짜 종이책이 집으로 배송!   │                                        │
+└────────────────────────────────────────┴────────────────────────────────────────┘
+</pre></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제1장. 첫 번째 발걸음: 프로그램 열기와 화면 둘러보기</h2>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.1. 바탕화면에서 원클릭으로 켜기 (<code>시집만들기.bat</code> 및 <code>설치용_설명서.txt</code>)</h3>
+<li class='manual-li'>처음 내려받으신 배포판 압축 파일(<code>StoryBook_Studio.zip</code>)의 압축을 풀면, 폴더 안에 메모장으로 가볍게 훑어보실 수 있는 <strong><code>설치용_설명서.txt</code></strong> 파일이 함께 들어있습니다.</li>
+<li class='manual-li'>컴퓨터를 켜신 뒤, 폴더 안(또는 바탕화면)에 있는 <strong><code>시집만들기.bat</code></strong> 아이콘을 마우스로 두 번 톡톡(더블클릭) 누르세요.</li>
+<li class='manual-li'>까만 창이 잠시 지나가며 인터넷 창이 저절로 활짝 열립니다.</li>
+<li class='manual-li'>주소창에 <code>http://localhost:8000</code>이라고 적히며 고운 한지 빛깔의 스토리북 스튜디오 집필실이 나타납니다.</li>
+<li class='manual-li'><em>(참고: 지금 보고 계신 이 웹 설명서는 <code>설치용_설명서.txt</code>의 요약 내용을 바탕으로, 부모님의 눈높이에 맞춰 큰 글씨와 그림 서식으로 풍성하게 풀어낸 공식 완전판입니다.)</em></li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.2. 한눈에 들어오는 화면 구성</h3>
+<p class='manual-p'>화면은 어르신의 눈이 피로하지 않도록 큼직하고 따뜻한 색감으로 정돈되어 있습니다:</p>
+<div class='manual-spacer'></div>
+<div class='table-responsive'><table class='manual-table'>
+<thead><tr>
+<th>화면 위치</th>
+<th>무엇이 있나요?</th>
+<th>부모님을 위한 쉬운 쓰임새</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>왼쪽 기둥 (사이드바)</strong></td>
+<td>📚 집필 시집 & 🧭 작업 공간</td>
+<td>내가 짓고 있는 시집을 고르고, <strong><code>시화 창작</code> · <code>조판 편집</code> · <code>출판 데이터</code></strong> 3개 방을 오가는 곳입니다. 맨 아래에는 언제든 보실 수 있는 <strong><code>[📖 큰 글씨 사용 설명서]</code></strong> 단추가 있습니다.</td>
+</tr>
+<tr>
+<td><strong>가운데 윗줄 (시집 띠)</strong></td>
+<td>🏷️ 현재 시집 이름과 시인명</td>
+<td>지금 작업 중인 시집 제목(예: 「노을빛 기억」)과 내 이름(예: 「김서정 시인 지음」)이 든든하게 적혀 있습니다.</td>
+</tr>
+<tr>
+<td><strong>가운데 너른 마당</strong></td>
+<td>✍️ 진짜 창작 공간</td>
+<td>시를 짓고 다듬으며, 그림과 노래를 얹는 가장 신나고 즐거운 공간입니다.</td>
+</tr>
+</tbody>
+</table></div>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.3. 마우스를 올리면 친절하게 알려주는 '스마트 말풍선'</h3>
+<li class='manual-li'>어떤 버튼이든 용도가 아리송할 때는 <strong>마우스 화살표를 버튼 위에 가만히 1초만 얹어두세요.</strong></li>
+<li class='manual-li'>눈이 편안한 짙은 갈색 바탕에 큼직한 글씨로 <strong>"이 단추가 무엇을 하는 단추인지, 어떻게 누르면 좋은지"</strong> 친절한 설명 상자가 뿅 나타납니다. 외우실 필요가 전혀 없습니다!</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.4. 내 소중한 시집을 안전하게 지켜주는 간편 로그인</h3>
+<li class='manual-li'><strong>처음엔 그냥 둘러보셔도 됩니다 (게스트 모드)</strong>: 회원가입 없이도 시를 짓고 그림을 그리는 모든 기능을 자유롭게 시험해 보실 수 있습니다.</li>
+<li class='manual-li'><strong>구글 1초 로그인</strong>: 화면 위쪽의 <strong><code>[구글로 시작하기]</code></strong>를 누르면, 복잡한 비밀번호 입력 없이 평소 쓰시던 구글 아이디로 1초 만에 안전하게 로그인됩니다.</li>
+<li class='manual-li'><strong>안심 자동 보관</strong>: 게스트 상태에서 써두셨던 시집도 로그인하는 순간 <strong>내 계정의 서재로 쏙 안전하게 자동 보관</strong>되므로, 쓴 글이 사라질까 봐 절대 걱정하지 않으셔도 됩니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.5. 100% 무료 구글 AI 키(열쇠) 30초 만에 꽂기</h3>
+<p class='manual-p'>스토리북 스튜디오는 컴퓨터 혼자서도 작동하지만, 구글에서 전 세계에 무료로 제공하는 <strong><code>Gemini API 키(인공지능 열쇠)</code></strong>를 꽂아두면 훨씬 깊이 있고 가슴 뭉클한 시를 지어줍니다.</p>
+<div class='manual-spacer'></div>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>비용</strong>: 신용카드 등록이 전혀 필요 없으며, <strong>평생 100% 완전 무료</strong>입니다. (하루에 1,500번이나 시를 지을 수 있어 차고 넘칩니다!)</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>열쇠 받는 방법 (딱 3단계)</strong>:</div></div>
+<li class='manual-li'>인터넷 창에서 <strong><a href="https://aistudio.google.com/app/apikey" class="manual-link">구글 AI 스튜디오 열쇠 발급 사이트 (aistudio.google.com/app/apikey)</a></strong>를 엽니다.</li>
+<li class='manual-li'>파란색 <strong><code>[Create API key]</code></strong> 버튼을 꾹 누릅니다.</li>
+<li class='manual-li'>길쭉한 영어 암호(<code>AIzaSy...</code>) 옆에 있는 <strong>복사 아이콘(네모 두 개 겹친 모양)</strong>을 누릅니다.</li>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong>스토리북에 꽂기</strong>:</div></div>
+<li class='manual-li'>스토리북 화면 윗줄의 <strong><code>[🔑 무료 AI 키 설정]</code></strong> 단추를 누릅니다.</li>
+<li class='manual-li'>빈칸에 마우스 오른쪽 버튼을 누르고 <strong><code>붙여넣기</code> (또는 키보드 자판의 <code>Ctrl + V</code>)</strong>를 누릅니다.</li>
+<li class='manual-li'><strong><code>[💾 저장 및 즉시 활성화]</code></strong>를 누르면 끝! 이제 최고 실력의 문학 인공지능이 든든하게 대기합니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>1.6. 기다리는 동안 안심할 수 있는 '모래시계 & 원형 회전' 마우스 신호</h3>
+<li class='manual-li'>시를 짓거나, 그림을 그리거나, 노래를 편곡할 때 몇 초 동안 컴퓨터가 멈춘 것처럼 느껴져 답답하셨지요?</li>
+<li class='manual-li'>이제 아무 걱정하지 마세요! 컴퓨터가 열심히 작업 중일 때는 <strong>마우스 화살표 옆에 빙글빙글 도는 고운 원형 회전 스피너와 모래시계(⏳) 뱃지</strong>(<code>시 다듬는 중...</code>, <code>삽화 그리는 중...</code>, <code>노래 작곡 중...</code>)가 마우스를 졸졸 따라다니며 실시간으로 안내합니다.</li>
+<li class='manual-li'>이 신호가 돌고 있을 때는 멈춘 것이 아니라 인공지능이 정성을 다해 연산 중인 상태이니, 편안한 마음으로 잠시만 기다려 주시면 마술처럼 결과가 나타납니다.</li>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제2장. 두 번째 발걸음: 내 시집 서재 만들기</h2>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>2.1. 시집 고르기와 새 시집 개설하기</h3>
+<li class='manual-li'>왼쪽 기둥에서 <strong><code>[➕ 새 시집 추가]</code></strong>를 누르면 나만의 새로운 시집 책장을 열 수 있습니다.</li>
+<li class='manual-li'><strong>도서 형태 고르기</strong>:</li>
+<li class='manual-li'><strong>🎨 서정 시화집</strong>: 왼쪽 면에는 은은한 수채화 그림, 오른쪽 면에는 시가 나란히 실리는 가장 인기 있는 책 형태입니다. (시 35편 기준 약 80쪽)</li>
+<li class='manual-li'><strong>📖 일반 시집</strong>: 그림 없이 정갈한 시 글씨만 오롯이 담기는 문학 시집 형태입니다. (시 35편 기준 약 48쪽)</li>
+<li class='manual-li'><strong>시집 제목과 부제</strong>: 마음에 품어둔 제목(예: 「어머니의 된장국」, 「유월의 골목길」)을 적어 넣으세요.</li>
+<li class='manual-li'><strong>시인(지은이)</strong>: 부모님의 성함(예: 「김영희 시인」, 「아버지 홍길동 지음」)을 당당하게 적어 넣으세요.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>2.2. 컴퓨터에 써둔 시가 많을 때 한 번에 통째로 불러오기</h3>
+<p class='manual-p'>예전에 한글이나 메모장에 써둔 시가 10편, 30편씩 있으시다면 하나씩 옮겨 적으실 필요가 없습니다!</p>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'>왼쪽 기둥에서 <strong><code>[📑 완성본 불러오기]</code></strong> 단추를 누릅니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'>큰 네모 상자 안에 써두셨던 글 전체를 한 번에 붙여넣습니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong><code>[🔍 원고 분석 및 미리보기]</code></strong>를 누르면, 컴퓨터가 제1화, 제2화 제목과 시를 알아서 척척 분리해 줍니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'><strong><code>[🚀 이 원고로 전체 등록하기]</code></strong>를 누르면 단 3초 만에 35편 전편이 시집으로 등록됩니다!</div></div>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>2.3. 소중한 원고 컴퓨터에 안전하게 백업(ZIP)하기</h3>
+<li class='manual-li'>화면 윗줄의 <strong><code>[📦 ZIP 백업]</code></strong> 단추를 누르면, 내가 쓴 모든 시와 고운 수채화 그림, 노래 파일까지 하나의 튼튼한 보따리(압축 파일)로 내 컴퓨터 [다운로드] 폴더에 안전하게 저장됩니다.</li>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제3장. 세 번째 발걸음: 나만의 시·그림·노래 빚기 (창작 스튜디오)</h2>
+<div class='manual-spacer'></div>
+<p class='manual-p'>이곳이 바로 스토리북 스튜디오의 심장인 <strong>[시화 창작실]</strong>입니다.</p>
+<p class='manual-p'>왼쪽에서는 <strong>시를 짓고 다듬고</strong>, 오른쪽에서는 <strong>그림을 그리고 노래를 만듭니다.</strong></p>
+<div class='manual-spacer'></div>
+<div class='manual-box-wrapper'><pre class='manual-box'>
+┌──────────────────────────────────────┬──────────────────────────────────────┐
+│       [왼쪽: 시를 짓고 다듬는 곳]     │       [오른쪽: 그림과 노래를 얹는 곳] │
+├──────────────────────────────────────┼──────────────────────────────────────┤
+│ 1. 🎤 마이크로 옛이야기 들려주기     │ 1. 🎨 수채화 삽화 만들기 (5% 여백)   │
+│ 2. 📝 시안 2개 중 마음에 드는 것 선택│ 2. 🎵 내 시를 노래로 만들기 (Suno AI) │
+│ 3. 📖 고운 우리말로 다듬기 (퇴고)   │ 3. 🎙️ 완성된 노래 음원 등록하기      │
+│ 4. 🔊 낭송 목소리로 귀로 들어보기    │ 4. 💾 원고 최종 저장하기             │
+└──────────────────────────────────────┴──────────────────────────────────────┘
+</pre></div>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.1. [말하기] 타자 대신 마이크에 편하게 이야기하기 (음성 구술)</h3>
+<li class='manual-li'>키보드 자판을 독수리 타법으로 하나씩 치지 않으셔도 됩니다!</li>
+<li class='manual-li'>입력창 옆의 <strong><code>[🎤 마이크]</code></strong> 단추를 누르신 뒤, 마치 자식에게 옛날이야기를 들려주듯 편안하게 말씀하세요:</li>
+<blockquote class='manual-quote'><em>"내가 열두 살 적에 말이다, 비가 억수같이 쏟아지던 여름날이었는데, 어머니가 부엌에서 감자를 찌고 계셨어. 그 구수한 냄새와 빗소리가 아직도 귀에 선해..."</em></blockquote>
+<li class='manual-li'>말씀이 끝나고 마이크 단추를 다시 누르면, 컴퓨터가 한글로 또박또박 받아 적어줍니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.2. [기억 지키기] 거짓말 없는 내 진짜 기억만 담기 (사실 잠금)</h3>
+<li class='manual-li'>인공지능이 멋대로 겪지도 않은 거짓말이나 허구를 지어내면 내 시가 아니지요.</li>
+<li class='manual-li'>스토리북 스튜디오는 <strong><code>사실 잠금(Fact-Lock)</code></strong> 원칙이 작동하여, <strong>부모님이 말씀해 주신 진짜 장소, 사람, 감각(냄새, 소리, 빛깔)만 시의 재료로 사용</strong>합니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.3. [시 고르기] 마음에 드는 시 2편 중 하나 고르기</h3>
+<li class='manual-li'>이야기를 다 넣으신 뒤 <strong><code>[✨ 시 짓기]</code></strong> 단추를 누르면, 인공지능이 2편의 서로 다른 고운 시를 선물합니다:</li>
+<li class='manual-li'><strong><code>A안 (담백한 정경 시)</code></strong>: 박목월 시인처럼 눈앞에 풍경이 그림처럼 그려지는 담담하고 맑은 시</li>
+<li class='manual-li'><strong><code>B안 (아련한 내면 시)</code></strong>: 백석이나 정지용 시인처럼 가슴 깊은 곳의 그리움과 여운을 울리는 애틋한 시</li>
+<li class='manual-li'>두 편을 천천히 읽어보시고, 내 마음에 더 와닿는 시 아래의 <strong><code>[선택]</code></strong> 단추를 콕 누르시면 됩니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.4. [시 다듬기] AI 대화창 맞춤 퇴고와 성우 낭송 플레이어 듣기</h3>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>💬 1. 말로 하거나 적는 'AI 시 수정 대화창' (맞춤 퇴고)</h4>
+<li class='manual-li'>시 본문 바로 위에 길쭉한 <strong><code>[💬 AI 시 수정 대화창]</code></strong>이 마련되어 있습니다.</li>
+<li class='manual-li'>"내가 원하는 방향"을 자식이나 친구에게 이야기하듯 편안하게 적어보세요:</li>
+<blockquote class='manual-quote'><em>"2연에 고무신을 잃어버리고 울던 슬픈 마음을 조금 더 강조해줘"</em></blockquote>
+<blockquote class='manual-quote'><em>"마지막 연을 붉은 저녁 노을 풍경으로 잔잔하게 마무리해줘"</em></blockquote>
+<blockquote class='manual-quote'><em>"시골 사투리의 구수한 맛을 더 살려줘"</em></blockquote>
+<li class='manual-li'>타자가 서투르실 때는 대화창 우측의 <strong><code>[🎙️ 마이크]</code></strong> 단추를 누르고 말씀만 하셔도 글자가 쏙 적힙니다.</li>
+<li class='manual-li'>글을 넣으신 뒤 키보드의 <strong><code>Enter</code> 키</strong>나 오른쪽 끝의 <strong>갈색 동그라미 화살표(<code>➔</code>)</strong>를 콕 누르시면, 인공지능이 내 뜻을 100% 헤아려 시를 정성껏 다듬어줍니다.</li>
+<li class='manual-li'><strong><code>[↩️ 수정 전 복원]</code> 단추</strong>: 만약 다듬어진 결과보다 이전 시가 더 마음에 드신다면, 언제든 대화창 위의 <code>[↩️ 수정 전 복원]</code> 단추를 누르시면 직전 시로 감쪽같이 되돌아옵니다.</li>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🌿 2. 원클릭 빠른 다듬기 3총사</h4>
+<li class='manual-li'>대화창 아래에는 버튼 한 번으로 시의 품격을 높여주는 3가지 요술 단추가 있습니다:</li>
+<li class='manual-li'><strong><code>[🌿 담담하게 절제]</code></strong>: 과장되거나 직설적인 감정을 덜어내고, 풍경과 여백 중심의 깊은 서정시로 정돈합니다.</li>
+<li class='manual-li'><strong><code>[🍂 3행 압축]</code></strong>: 시의 가장 핵심적인 울림만 남겨 3행의 묵직한 압축 서정시로 정제합니다.</li>
+<li class='manual-li'><strong><code>[🎵 연/운율 정돈]</code></strong>: 기존 연 구성을 지키며 낭송 호흡과 행간 쉼표, 3·4조 리듬에 맞춰 곱게 정돈합니다.</li>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>📖 3. 시어 감각 사전</h4>
+<li class='manual-li'>시 본문에서 단어를 바꾸고 싶을 때 <strong><code>[📖 시어 감각 사전]</code></strong>을 누르시면, 우리말의 정서적 온도(먹먹함/애잔/토속/방언)에 맞춘 아름다운 전통 고유어들을 풍성하게 탐색하고 교체할 수 있습니다.</li>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🎧 4. 전문 성우 낭송 듣기와 [시 낭송 등록됨] 플레이어 자동 연동</h4>
+<li class='manual-li'>시를 눈으로만 읽지 마시고 귀로도 꼭 들어보세요!</li>
+<li class='manual-li'><strong><code>[성우 선택]</code></strong> 목록에서 마음에 드는 목소리(예: <code>남성 담백</code>, <code>여성 온화</code>, <code>청년 맑음</code> 등)를 고른 뒤 <strong><code>[🎧 시 낭송 듣기]</code></strong> 단추를 누릅니다.</li>
+<li class='manual-li'>전문 성우의 기품 있는 목소리로 시가 낭독되며, 본문 바로 위에 <strong><code>[🎙️ 시 낭송 등록됨: XX_낭송.wav]</code> 전용 오디오 플레이어 바</strong>가 자동으로 생겨납니다.</li>
+<li class='manual-li'>언제든 재생 단추(<code>▶</code>)를 눌러 다시 들으실 수 있으며, 이 낭송 파일은 내 시집의 공식 오디오로 안전하게 보존됩니다. (내가 직접 목소리를 녹음하고 싶으실 땐 옆의 <code>[🎙️ 내 목소리 낭송 녹음]</code>을 누르시면 됩니다.)</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.5. [그림 얹기] 맑고 은은한 수묵 수채화 삽화와 정밀 연속 수정</h3>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🎨 1. 시 한 편에 그림 한 장</h4>
+<li class='manual-li'>오른쪽의 <strong><code>[🎨 삽화 생성]</code></strong> 단추를 누르면, 내가 쓴 시의 감성에 꼭 맞는 맑은 수채화 그림이 눈앞에 펼쳐집니다.</li>
+<li class='manual-li'><strong>5대 전통 화풍 선택</strong>: 수채화뿐만 아니라 전통 먹빛 수묵담채화, 포근한 파스텔 동화, 서정 만화 스케치, 따뜻한 유화 등 원하는 화풍을 자유롭게 고르실 수 있습니다.</li>
+<li class='manual-li'><strong>5% 미세 여백 기술</strong>: 그림의 가장자리가 5% 정도 부드러운 물빛으로 은은하게 번져나가(페이드아웃), 종이책 인쇄 시 한지 종이와 그림이 한 몸처럼 자연스럽게 어우러집니다. 중요한 인물이나 물건이 잘리지 않도록 세심하게 조절되어 있습니다.</li>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🔄 2. 마음에 안 드는 부분만 콕 집어 고치는 '삽화 연속 수정'</h4>
+<li class='manual-li'>그림을 그렸는데 아이의 옷이나 특정 사물이 마음에 안 드실 때가 있지요?</li>
+<li class='manual-li'>전체 그림을 다 버리고 처음부터 다시 그릴 필요가 전혀 없습니다!</li>
+<li class='manual-li'>그림 아래의 <strong><code>[설명 및 추가 연출 가이드]</code></strong> 상자에 고치고 싶은 점을 편하게 적으세요:</li>
+<blockquote class='manual-quote'><em>"어린이 복장을 반바지에 하얀 런닝셔츠 입은 모습으로 바꿔줘"</em></blockquote>
+<blockquote class='manual-quote'><em>"물에 떠내려가는 신발을 검정 고무신으로 바꿔줘"</em></blockquote>
+<blockquote class='manual-quote'><em>"초가집 뒤편으로 붉은 저녁 노을을 조금 더 짙게 물들여줘"</em></blockquote>
+<li class='manual-li'>글을 적으신 뒤 <strong><code>[다시 생성]</code></strong> 단추를 누르시면, 인공지능이 <strong>이전 그림의 전체 구도와 주인공의 모습, 따스한 화풍을 그대로 이어받아 마음에 걸리는 부분만 족집게처럼 정밀하게 수정</strong>해 줍니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>3.6. [노래 만들기] 내 시를 노래로 만들기 (노랫말 정서 맞춤 다채로운 악기 편곡)</h3>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🎼 1. 노랫말에 따라 매번 달라지는 '감성 맞춤 악기 편곡'</h4>
+<li class='manual-li'>내가 지은 시에 아름다운 가락이 붙어 전문 가수가 부르는 진짜 노래가 됩니다!</li>
+<li class='manual-li'><strong><code>[✨ 시 본문으로 노랫말(가사) 운율화]</code></strong> 단추를 누르시면, 시 본문이 4·4조 운율과 [Verse], [Chorus] 구조의 고운 노랫말로 탈바꿈합니다.</li>
+<li class='manual-li'><strong>다채로운 악기 변주</strong>: 같은 포크나 민요 장르라도 모든 곡이 똑같이 나오지 않습니다!</li>
+<li class='manual-li'>인공지능이 내 시의 노랫말을 읽고 <strong>슬픔/눈물/어머니/상여/고무신</strong> 같은 애잔한 시에는 <em>애절한 첼로, 눈물 어린 하모니카, 구슬픈 해금 독주</em>를 맞춤 편성하고,</li>
+<li class='manual-li'><strong>봄바람/꽃/햇살/시냇물</strong> 같은 밝은 시에는 <em>맑은 플루트, 틴 휘슬, 펠트 피아노, 실로폰</em>을 얹어줍니다.</li>
+<li class='manual-li'>완성된 가사 상단에 <strong><code>[🎼 애잔하고 쓸쓸한 회상 (Fingerstyle Nylon Guitar 등)]</code></strong>처럼 이번 곡에 배정된 감성 테마 뱃지가 예쁘게 표시됩니다.</li>
+<li class='manual-li'>같은 시라도 이 단추를 다시 누르실 때마다 악기 조합과 템포가 조금씩 신선하게 바뀌므로, 가장 마음에 드는 조합을 골라보세요.</li>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>🎧 2. 3대 음악 AI 작곡 도구 선택</h4>
+<p class='manual-p'>스토리북 스튜디오는 취향과 상황에 맞추어 자유롭게 선택하실 수 있도록 <strong>3대 음악 인공지능 탭</strong>을 정갈하게 제공합니다:</p>
+<div class='manual-spacer'></div>
+<div class='table-responsive'><table class='manual-table'>
+<thead><tr>
+<th>탭 번호</th>
+<th>작곡 도구</th>
+<th>주요 특징 및 추천 장르</th>
+<th>무료 이용 및 다운로드 혜택</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>1번 탭</strong></td>
+<td><strong>🎵 Suno AI</strong> <em>(감성 1위)</em></td>
+<td>• 한국어 자음·모음과 서정 보컬의 가슴 뭉클한 감동 전 세계 1위<br>• 애잔한 발라드, 현대 서정시 추천</td>
+<td>• 매일 50 크레딧(하루 10곡) 무료 생성 지원<br>• 매일 아침 09:00 자동 충전 (필요 시 소장 결제)</td>
+</tr>
+<tr>
+<td><strong>2번 탭</strong></td>
+<td><strong>🎼 Udio AI</strong> <em>(무료 MP3)</em></td>
+<td>• 클래식 가곡(성악 발성), 7080 통기타 포크송의 웅장하고 깊은 울림<br>• <strong>웹 화면에서 결제 없이 MP3 바로 무료 다운로드!</strong></td>
+<td>• 매월 무료 크레딧 제공<br>• <strong>Download Audio (.mp3)</strong>로 내 PC에 100% 무료 저장</td>
+</tr>
+<tr>
+<td><strong>3번 탭</strong></td>
+<td><strong>🚀 YuE2 AI</strong> <em>(오픈소스)</em></td>
+<td>• 복잡한 Colab 설치나 사양 걱정 없는 24GB 전용 서버 웹 스튜디오<br>• 남도/경기 서정 민요조, 한국 전통 국악 악기 추천</td>
+<td>• 오픈소스 기반 전용 서버 완전 무료 이용<br>• 웹 스튜디오에서 완성곡 즉시 무료 다운로드</td>
+</tr>
+</tbody>
+</table></div>
+<div class='manual-spacer'></div>
+<div class='manual-box-wrapper'><pre class='manual-box'>
+┌────────────────────────────────────────────────────────────────────────┐
+│ ✨ [전체 한 번에 복사하기] (Suno용: 이것만 누르고 가사 칸에 붙여넣으세요)      │
+├───────────────────────────────────┬────────────────────────────────────┤
+│   🎵 1. 스타일 복사 (Prompt 칸용)   │    📋 2. 가사 복사 (Lyrics 칸용)    │
+└───────────────────────────────────┴────────────────────────────────────┘
+</pre></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>💡 1번 탭: Suno AI 초간단 3단계 (감성 품질 1위)</h4>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>재료 복사</strong>: 팝업창에서 맨 윗줄의 큼직한 <strong><code>[✨ 전체 한 번에 복사하기]</code></strong> 단추를 꾹 누릅니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>사이트 열기</strong>: <strong><code>[🚀 Suno AI 사이트 열기]</code></strong>를 누릅니다. (이미 열려 있다면 기존 탭으로 쏙 이동하며 새 탭이 지저분하게 늘어나지 않습니다)</div></div>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong>붙여넣고 만들기</strong>: Suno 화면 왼쪽의 <strong><code>Create</code></strong> ➔ 상단 <strong><code>[Custom]</code></strong> 버튼을 켠 뒤, <strong><code>Lyrics</code>(가사 칸)</strong>에 마우스를 대고 <strong><code>Ctrl + V</code></strong>로 붙여넣고 주황색 <strong><code>Create</code></strong> 버튼을 누르면 1분 만에 2곡이 완성됩니다!</div></div>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'><strong>가져오기 & 무제한 꿀팁</strong>:</div></div>
+<li class='manual-li'><strong>기본 다운로드</strong>: 마음에 드는 곡 옆의 <strong>점 세 개(⋯)</strong>를 눌러 <strong><code>[Download] ➔ [Audio]</code></strong>로 저장 후, 스튜디오의 <strong><code>[클릭하여 음원 파일 가져오기]</code></strong>에 등록하세요. (최초 약 7곡 무료 제공)</li>
+<li class='manual-li'><strong>무료 다운로드 한도(7회 초과 시) 100% 무료 해결책</strong>:</li>
+<p class='manual-p'>1) 크롬 웹스토어에서 무료 확장도구인 <strong><code>[Web Audio Recorder]</code></strong>를 설치합니다.</p>
+<p class='manual-p'>2) Suno 곡을 재생하기 직전 <strong><code>Shift + R</code></strong> (녹음 시작)을 누르고 노래를 재생합니다.</p>
+<p class='manual-p'>3) 노래가 끝나면 <strong><code>Shift + S</code></strong> (녹음 중지 및 MP3 다운로드)를 누르면 컴퓨터에 즉시 MP3로 저장됩니다.</p>
+<p class='manual-p'>4) 다운로드된 파일을 스튜디오의 <strong><code>[클릭하여 음원 파일 가져오기]</code></strong> 상자에 넣으시면 끝!</p>
+<li class='manual-li'><strong>✨ 안실장 자동 최적화 탑재</strong>:</li>
+<li class='manual-li'>녹음할 때 앞뒤로 들어간 빈 침묵(무음 구간)은 물론, <strong>정지가 늦어 꼬리처럼 딸려 들어온 '다음 곡 전주 침범 구간'까지 안실장이 0.1초 만에 스스로 감지하여 싹둑 잘라내고 본 곡만 예쁘게 페이드아웃 처리</strong>하여 등록합니다.</li>
+<li class='manual-li'>언제든 플레이어 아래의 <strong><code>[✂️ 구간 미세 다듬기]</code></strong> 버튼을 눌러 원하는 끝 시간을 마우스 클릭 한 번으로 미세 조절하실 수도 있습니다.</li>
+<li class='manual-li'><span style="color: #78716c;">※ 참고: 보조 구글 계정을 새로 만들어도 기기/IP 인식 및 무료 다운로드 0회 정책으로 인해 다운로드가 차단되므로, 위 Web Audio Recorder 녹음 방식을 이용하시는 것이 가장 확실합니다.</span></li>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>💡 2번 탭: Udio AI 초간단 5단계 (무료 MP3 다운로드 적극 추천!)</h4>
+<p class='manual-p'>Udio는 한국 가곡과 서정 포크의 예술적 깊이가 뛰어나며, <strong>결제 팝업 없이 웹 화면에서 내 컴퓨터로 MP3 무료 다운로드</strong>가 가능하여 어르신들께 가장 실속 있는 도구입니다!</p>
+<div class='manual-spacer'></div>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>재료 복사</strong>: 가이드 팝업에서 <strong><code>[🎵 1. 스타일 복사]</code></strong>와 <strong><code>[📋 2. 가사 복사]</code></strong>를 확인합니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>사이트 열기</strong>: <strong><code>[🚀 Udio AI 사이트 열기]</code></strong> 단추를 누릅니다. (구글 계정으로 간편 로그인)</div></div>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong>[Custom] 스위치 켜기</strong>: Udio 화면 맨 위 입력창 바로 아래의 <strong><code>[Custom]</code></strong> 버튼을 콕 누릅니다. (스타일 칸과 가사 칸이 분리되어 열립니다)</div></div>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'><strong>붙여넣고 만들기</strong>:</div></div>
+<li class='manual-li'>윗칸 <strong><code>Prompt</code></strong>에 마우스를 대고 <strong><code>Ctrl + V</code></strong>로 [1. 스타일] 붙여넣기</li>
+<li class='manual-li'>아래의 <strong><code>Custom Lyrics</code></strong> 동그라미를 누르고, 네모 칸에 <strong><code>Ctrl + V</code></strong>로 [2. 가사] 붙여넣기</li>
+<li class='manual-li'>오른쪽 보라색 <strong><code>Create</code> (생성)</strong> 버튼 클릭!</li>
+<div class='manual-num-item'><span class='num-badge'>5.</span><div class='num-content'><strong>무료 MP3 다운로드</strong>: 곡 제목 옆 <strong>다운로드 아이콘(↓)</strong> 또는 점 3개(⋯) ➔ <strong><code>Download Audio</code></strong>를 누르면 내 컴퓨터 [다운로드] 폴더에 <strong><code>.mp3</code> 파일이 100% 무료로 쏙 저장</strong>됩니다!</div></div>
+<div class='manual-num-item'><span class='num-badge'>6.</span><div class='num-content'><strong>스튜디오 등록</strong>: 스토리북 스튜디오의 <strong><code>[클릭하여 음원 파일 가져오기]</code></strong>를 누르고 방금 받은 MP3를 선택하시면 끝!</div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>💡 3번 탭: YuE2 고성능 웹 스튜디오 (오픈소스 무설치)</h4>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>첫째</strong>: 가이드에서 <strong><code>[🎵 1. 스타일 복사]</code></strong>와 <strong><code>[📋 2. 가사 복사]</code></strong>를 확인하고 <strong><code>[🚀 YuE2 공식 스튜디오 열기]</code></strong>를 누릅니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>둘째</strong>: 윗칸 <code>Song description</code>에 [스타일]을 붙여넣고, 아랫칸 <code>Lyrics</code>에 [가사]를 붙여넣은 뒤 보라색 <strong><code>Generate</code></strong> 버튼을 누릅니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong>셋째</strong>: 완곡이 생성되면 다운로드 아이콘(↓)으로 받아 스튜디오에 등록합니다.</div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제4장. 네 번째 발걸음: 차례(목차)와 순서 예쁘게 엮기</h2>
+<div class='manual-spacer'></div>
+<p class='manual-p'>시는 쓴 순서대로만 실리는 것이 아닙니다.</p>
+<p class='manual-p'>인생의 사계절처럼, 큰 주제(부/챕터)별로 묶고 순서를 매만져야 품격 있는 한 권의 시집이 됩니다.</p>
+<div class='manual-spacer'></div>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>목차 편집기 열기</strong>: 화면의 <strong><code>[📑 시집 목차 편집기]</code></strong> 단추를 누릅니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>큰 주제별로 묶기</strong>:</div></div>
+<li class='manual-li'><code>제1부: 유년의 뜰 (고향과 부모님)</code></li>
+<li class='manual-li'><code>제2부: 청춘의 강 (사랑과 일터)</code></li>
+<li class='manual-li'><code>제3부: 황혼의 노을 (삶의 관조와 감사)</code></li>
+<li class='manual-li'>원하는 부(Chapter)를 만들고 시들을 알맞게 배정하세요.</li>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'><strong>위아래 순서 바꾸기</strong>: 시 제목 옆의 <strong><code>[▲ 위로]</code></strong>, <strong><code>[▼ 아래로]</code></strong> 단추를 누르면 원하는 순서로 척척 이동합니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'><strong>회차 번호 자동 정리</strong>: 순서를 바꾸어도 <strong><code>제01화</code>, <code>제02화</code> 번호가 저절로 처음부터 끝까지 예쁘게 다시 매겨지므로</strong> 번호가 꼬일 염려가 없습니다.</div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제5장. 다섯 번째 발걸음: 종이책 안착 점검 (조판 편집실)</h2>
+<div class='manual-spacer'></div>
+<p class='manual-p'>화면 왼쪽 기둥에서 <strong><code>[📖 시화집 조판 편집]</code></strong> 탭을 누르면, 실제 종이책의 인쇄 판형(A5 규격)을 그대로 옮겨놓은 <strong>'출판 조판실'</strong>로 이동합니다.</p>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>5.1. 실제 책장 넘기듯 미리보기</h3>
+<li class='manual-li'>화면에 스크롤바가 없는 진짜 종이책 캔버스가 펼쳐집니다.</li>
+<li class='manual-li'>왼쪽 면에는 수채화 그림, 오른쪽 면에는 시 본문이 단정하게 앉아 있습니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>5.2. 초록불 안착 배지 확인하기</h3>
+<li class='manual-li'>각 작품 상단에 <strong><code>✅ 1페이지 안착 (인쇄 적합)</code></strong>이라는 초록색 배지가 떠 있다면, 글자가 책 밖으로 삐져나가지 않고 완벽하게 자리를 잡았다는 뜻입니다. 안심하셔도 좋습니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>5.3. 혹시 글자가 넘쳤을 때 (<code>⚠️ 본문 넘침</code>) 해결하는 2가지 마법 버튼</h3>
+<p class='manual-p'>시가 조금 길어서 노란색 <code>⚠️ 본문 넘침</code> 경고가 떴다면 당황하지 마세요:</p>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'><strong>글씨 크기 줄이기 (<code>A-</code> 단추)</strong>: 조판실 상단의 <code>[A-]</code> 단추를 1~2번 누르면 시의 글자 크기가 살짝 작아지며 한 페이지 안으로 쏙 들어옵니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><strong>자유 조판 설정 (<code>⚙ 조판 설정</code>)</strong>: 시가 아주 길다면 <strong><code>[2페이지 연속 조판]</code></strong>을 선택하세요. 억지로 줄이지 않고 넉넉하게 두 면에 걸쳐 시가 흐르도록 배치해 줍니다.</div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>제6장. 여섯 번째 발걸음: 내 이름이 박힌 종이책 출판하기</h2>
+<div class='manual-spacer'></div>
+<p class='manual-p'>이제 대망의 마지막 단계입니다!</p>
+<p class='manual-p'>왼쪽 기둥에서 <strong><code>[📑 출판 데이터]</code></strong> 탭을 누르세요.</p>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>6.1. 인쇄소/부크크 제출용 완제본 PDF 원클릭 다운로드</h3>
+<li class='manual-li'><strong><code>[📘 부크크 내지 완제본 PDF 다운로드]</code></strong> 단추를 꾹 누르세요.</li>
+<li class='manual-li'>표지, 서문, 목차, 시 35편의 글과 그림, 그리고 맨 뒤 판권지까지 <strong>인쇄소 기계가 좋아하는 300 DPI 초고해상도 완제본 책 파일</strong>이 1초 만에 만들어집니다.</li>
+<li class='manual-li'>인쇄소에서 요구하는 까다로운 사방 3mm 여백(도련)과 책 안쪽 제본선(20mm)이 컴퓨터 안에서 이미 완벽하게 계산되어 있으므로, 부모님께서는 아무런 서식 걱정을 하실 필요가 없습니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>6.2. 책 표지와 책등(두께) 자동 계산</h3>
+<li class='manual-li'>시가 총 몇 쪽인지에 따라 책의 두께(책등, 세네카)가 달라집니다.</li>
+<li class='manual-li'>스토리북 스튜디오의 <strong><code>[📐 책등 계산기]</code></strong>가 종이 두께를 0.1mm 단위로 정밀하게 자동 계산하여, 앞표지·책등·뒤표지가 하나로 이어진 완벽한 <strong><code>[🎨 부크크 표지 펼침면 PDF]</code></strong>를 만들어 드립니다.</li>
+<div class='manual-spacer'></div>
+<h3 class='manual-h3'>6.3. 부크크(Bookk)에 파일 올리고 실물 종이책 택배로 받아보기</h3>
+<div class='manual-num-item'><span class='num-badge'>1.</span><div class='num-content'>국내 1위 자가출판 사이트인 <strong><a href="https://bookk.co.kr" class="manual-link">부크크(bookk.co.kr)</a></strong>에 접속합니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>2.</span><div class='num-content'><code>[도서 만들기]</code> ➔ <code>[원고 등록]</code>을 누르고, 방금 다운로드한 <strong><code>내지 PDF</code></strong>와 <strong><code>표지 PDF</code></strong> 두 개를 그대로 올려놓습니다.</div></div>
+<div class='manual-num-item'><span class='num-badge'>3.</span><div class='num-content'>2~3일 뒤 심사가 통과되면, 교보문고와 예스24에 내 시집이 정식 등록되며, <strong>우리 집 안방으로 내 이름 석 자가 박힌 따끈따끈한 실물 종이책이 택배로 배달</strong>됩니다!</div></div>
+<div class='manual-num-item'><span class='num-badge'>4.</span><div class='num-content'>자녀들과 손주들에게 한 권씩 선물하며 평생의 긍지와 감동을 나누세요.</div></div>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<h2 class='manual-h2'>부록: 어르신들이 자주 물어보시는 질문(FAQ)과 안심 해결책</h2>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q1. 컴퓨터를 끄면 제가 쓴 시나 그림이 날아가지 않나요?</h4>
+<blockquote class='manual-quote'><strong>A. 절대 날아가지 않습니다.</strong></blockquote>
+<blockquote class='manual-quote'>시를 다듬거나 그림을 만든 뒤에는 화면 우측 하단의 <strong><code>[💾 최종 저장]</code></strong> 버튼을 눌러주시면 내 컴퓨터 하드디스크에 안전한 영구 파일로 저장됩니다. 다음 날 프로그램을 켜도 그 자리 그대로 남아있습니다.</blockquote>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q2. 영어로 된 단어가 나오면 가슴이 덜컥 내려앉아요.</h4>
+<blockquote class='manual-quote'><strong>A. 걱정하지 마세요.</strong></blockquote>
+<blockquote class='manual-quote'>스토리북 스튜디오는 모든 메뉴가 고운 우리말로 적혀 있습니다. 음악 만들 때 들어가는 외국 사이트(Suno)의 필수 영어 단어도 딱 3개뿐입니다:</blockquote>
+<blockquote class='manual-quote'>- <code>Create</code> = 만들기</blockquote>
+<blockquote class='manual-quote'>- <code>Lyrics</code> = 가사</blockquote>
+<blockquote class='manual-quote'>- <code>Download</code> = 내 컴퓨터로 가져오기</blockquote>
+<blockquote class='manual-quote'>이것만 기억하시면 손주보다 더 능숙하게 노래를 만드실 수 있습니다!</blockquote>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q3. 책을 만드는 데 돈이 많이 드나요?</h4>
+<blockquote class='manual-quote'><strong>A. 스토리북 스튜디오 프로그램과 구글 AI는 100% 완전 무료입니다.</strong></blockquote>
+<blockquote class='manual-quote'>프로그램을 쓰시는 동안 단 1원의 요금도 청구되지 않습니다. 나중에 부크크에서 종이책을 내실 때도 출판 등록비는 0원이며, 내가 직접 소장할 책(예: 5권, 10권)의 실물 인쇄비(권당 약 8,000원~12,000원 선)만 결제하시면 됩니다.</blockquote>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q4. 글씨가 너무 작아서 눈이 침침해요.</h4>
+<blockquote class='manual-quote'><strong>A. 상단의 [🔍 글자 크기] 버튼을 누르세요.</strong></blockquote>
+<blockquote class='manual-quote'>지금 보고 계신 설명서 창 맨 위에 있는 <strong><code>[🔍 글자 크기]</code></strong> 단추를 누르실 때마다 <strong>보통(17px) ➔ 크게(19px) ➔ 아주 크게(21px)</strong>로 글씨가 시원하게 커집니다. 종이로 시원하게 뽑아보고 싶으실 때는 <strong><code>[🖨️ 인쇄하기]</code></strong>를 누르시면 됩니다.</blockquote>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q5. 음악 도구가 3개나 있는데, 어떤 것을 고르면 가장 좋나요?</h4>
+<blockquote class='manual-quote'><strong>A. 취향과 목적에 따라 가장 마음에 드는 도구를 편안하게 선택하세요:</strong></blockquote>
+<blockquote class='manual-quote'>- <strong>1번 탭 (Suno AI)</strong>: 한국어 발음과 자음·모음, 가슴 뭉클한 서정 보컬의 감동을 가장 완벽하게 살리고 싶으실 때 추천합니다. (매일 10곡 무료 생성)</blockquote>
+<blockquote class='manual-quote'>- <strong>2번 탭 (Udio AI)</strong>: 웅장한 예술 가곡(성악 발성)이나 통기타 서정 포크송을 좋아하시며, <strong>결제 팝업 없이 웹에서 내 컴퓨터로 MP3 파일을 즉시 무료 다운로드</strong>받고 싶으실 때 가장 실속 있고 강력 추천합니다.</blockquote>
+<blockquote class='manual-quote'>- <strong>3번 탭 (YuE2 AI)</strong>: 국악기(가야금, 해금, 대금)가 어우러진 민요조 음악이나 오픈소스 무설치 웹 스튜디오를 자유롭게 경험해보고 싶으실 때 추천합니다.</blockquote>
+<div class='manual-spacer'></div>
+<h4 class='manual-h4'>Q6. Udio에서 만든 노래는 어떻게 내 컴퓨터로 무료 다운로드하나요?</h4>
+<blockquote class='manual-quote'><strong>A. 곡 제목 옆 점 세 개(⋯) 또는 다운로드(↓) 아이콘을 누르시면 됩니다.</strong></blockquote>
+<blockquote class='manual-quote'>Udio 화면에서 노래가 완성되면, 곡 제목 오른쪽 끝에 있는 <strong>다운로드 화살표 아이콘(↓)</strong>이나 <strong>점 3개(⋯)</strong>를 클릭하신 뒤 <strong><code>Download Audio</code></strong>를 선택하세요. 결제 팝업이나 카드 입력 없이 <strong>내 컴퓨터 [다운로드] 폴더에 <code>.mp3</code> 파일이 100% 무료로 쏙 저장</strong>됩니다!</blockquote>
+<div class='manual-spacer'></div>
+<hr class='manual-divider'>
+<div class='manual-spacer'></div>
+<blockquote class='manual-quote'>**“당신의 삶은 그 자체로 한 편의 깊고 아름다운 시입니다.</blockquote>
+<blockquote class='manual-quote'>StoryBook Studio는 언제나 부모님의 고운 기억 곁에 다정하게 머물겠습니다.”**</blockquote>
+<blockquote class='manual-quote'>— StoryBook Studio 임직원 및 AI 안실장 올림</blockquote>
+  </main>
+
+  <script>
+    let currentFontSizeIdx = 0;
+    const fontSizes = [
+      { name: "보통 (17px)", cls: "" },
+      { name: "크게 (19px)", cls: "font-large" },
+      { name: "아주 크게 (21px)", cls: "font-xlarge" }
+    ];
+
+    function cycleFontSize() {
+      currentFontSizeIdx = (currentFontSizeIdx + 1) % fontSizes.length;
+      const target = fontSizes[currentFontSizeIdx];
+      
+      document.body.classList.remove("font-large", "font-xlarge");
+      if (target.cls) {
+        document.body.classList.add(target.cls);
+      }
+      document.getElementById("fontSizeLabel").innerText = target.name;
+    }
+  </script>
+</body>
+</html>

@@ -70,8 +70,8 @@ BOOKK_FORMATS = {
 class BookkPDFBuilder:
     """부크크 인쇄 검수 100% 통과를 위한 정밀 PDF 빌더 클래스"""
 
-    def __init__(self, format_key: str = "b6_mod", paper_type: str = "white_100g"):
-        self.format_key = format_key if format_key in BOOKK_FORMATS else "b6_mod"
+    def __init__(self, format_key: str = "a5", paper_type: str = "white_100g"):
+        self.format_key = format_key if format_key in BOOKK_FORMATS else "a5"
         self.spec = BOOKK_FORMATS[self.format_key]
         self.paper_type = paper_type
 
@@ -199,34 +199,59 @@ class BookkPDFBuilder:
         c.setLineWidth(0.8)
         c.line(m3["left"], self.canvas_h_pt - m3["top"] - 12, self.canvas_w_pt - m3["right"], self.canvas_h_pt - m3["top"] - 12)
 
-        c.setFont(FONT_NAME, 9.8)
+        # 서문 텍스트: project_info.prologue가 있으면 사용, 없으면 품격 있는 기본 서문
+        author_role = "엮음" if getattr(project_info, 'author_type', 'single') == "collab" else "지음"
+        default_prologue = f"""가장 개인적인 기억이 가장 깊은 문학이자 예술이 된다.
+
+이 시화집은 화려하게 꾸며낸 허구를 담지 않았습니다.
+마음속 깊은 곳에 오래 고여 있던 찰나의 순간,
+차갑게 식어가던 툇마루의 새벽과 그 시절 들었던 다정한 말 한마디를
+온전한 나의 목소리와 수채의 빛깔로 빚어낸 삶의 기록입니다.
+
+책장을 넘길 때마다 그날의 서정적 온기가
+그리운 당신의 마음에 가만히 가닿기를 소망합니다.
+
+
+― {project_info.author} {author_role}"""
+
+        prologue_content = getattr(project_info, 'prologue', '').strip() or default_prologue
+        prologue_lines = [l.rstrip() for l in prologue_content.split("\n")]
+
+        p_font = 9.2 if len(prologue_lines) > 16 else 9.8
+        p_line_h = 16.0 if len(prologue_lines) > 16 else 18.0
+        c.setFont(FONT_NAME, p_font)
         c.setFillColorRGB(0.25, 0.23, 0.22)
-        intro_lines = [
-            "가장 개인적인 기억이 가장 깊은 문학이자 예술이 된다.",
-            "",
-            "이 시화집은 화려하게 꾸며낸 허구를 담지 않았습니다.",
-            "마음속 깊은 곳에 오래 고여 있던 찰나의 순간,",
-            "차갑게 식어가던 툇마루의 새벽과 그 시절 들었던 다정한 말 한마디를",
-            "온전한 나의 목소리와 수채의 빛깔로 빚어낸 삶의 기록입니다.",
-            "",
-            "책장을 넘길 때마다 그날의 서정적 온기가",
-            "그리운 당신의 마음에 가만히 가닿기를 소망합니다.",
-            "",
-            "",
-            f"― {project_info.author} 엮음"
-        ]
-        curr_y = self.canvas_h_pt - m3["top"] - 50
-        for line in intro_lines:
+
+        curr_y = self.canvas_h_pt - m3["top"] - 45
+        for line in prologue_lines:
             c.drawString(m3["left"], curr_y, line)
-            curr_y -= 18
+            curr_y -= p_line_h
 
         self._draw_page_number(c, current_page, m3)
         c.showPage()
         current_page += 1
 
         # -------------------------------------------------------------------------
-        # 4. 목차 (Contents) - Page 4 (짝수)
+        # 4. 목차 (Contents) - Page 4 (및 작품 수에 따른 Page 5 확장)
         # -------------------------------------------------------------------------
+        # 각 작품의 실제 본문 시작 페이지 사전 계산 (Page 6부터 시작)
+        # 목차가 1페이지(15편 이하)면 Page 6 시작, 2페이지(16편 이상)여도 Page 6 시작
+        work_pages = []
+        body_start_p = 6
+        accum_p = body_start_p
+        for w in works:
+            cfg = getattr(w, 'layout_config', None)
+            lines_cnt = len((w.poem_body or "").split("\n"))
+            if cfg and isinstance(cfg, dict) and "slots" in cfg and cfg.get("slots"):
+                p_span = cfg.get("page_count", 2)
+            elif getattr(w, 'layout_mode', 'compact') == "multi_page" and lines_cnt > 16:
+                p_span = 4
+            else:
+                p_span = 2
+            work_pages.append((w, accum_p))
+            accum_p += p_span
+
+        # 4-1) 목차 1페이지 (Page 4)
         m4 = self.get_page_margins(current_page)
         self._draw_page_background(c)
 
@@ -241,29 +266,84 @@ class BookkPDFBuilder:
         curr_y = self.canvas_h_pt - m4["top"] - 45
         c.setFont(FONT_NAME, 9.2)
 
-        preview_page = 6
-        for idx, work in enumerate(works[:15]):
-            c.setFillColorRGB(0.5, 0.38, 0.3)
-            c.drawString(m4["left"], curr_y, f"{work.episode_no}")
+        page1_works = work_pages[:16]
+        page2_works = work_pages[16:]
 
-            work_author = getattr(work, 'author', '').strip()
-            display_title = f"{work.title} ({work_author})" if work_author else work.title
+        for w, start_p in page1_works:
+            c.setFillColorRGB(0.5, 0.38, 0.3)
+            c.drawString(m4["left"], curr_y, f"{w.episode_no}")
+
+            work_author = getattr(w, 'author', '').strip()
+            display_title = f"{w.title} ({work_author})" if work_author else w.title
 
             c.setFillColorRGB(0.22, 0.2, 0.19)
-            c.drawString(m4["left"] + 35, curr_y, display_title)
+            c.drawString(m4["left"] + 38, curr_y, display_title)
 
             # 점선 연결
-            c.setFillColorRGB(0.65, 0.62, 0.58)
-            dots = ". " * int((m4["content_w"] - 120) / 7)
-            c.drawString(m4["left"] + 35 + c.stringWidth(display_title, FONT_NAME, 9.2) + 8, curr_y, dots)
+            c.setFillColorRGB(0.72, 0.68, 0.64)
+            title_w = c.stringWidth(display_title, FONT_NAME, 9.2)
+            dots_x = m4["left"] + 42 + title_w
+            target_x = self.canvas_w_pt - m4["right"] - 25
+            if target_x > dots_x + 10:
+                dots = ". " * int((target_x - dots_x) / 7.5)
+                c.drawString(dots_x, curr_y, dots)
 
-            c.drawRightString(self.canvas_w_pt - m4["right"], curr_y, str(preview_page))
-            preview_page += 2
+            c.drawRightString(self.canvas_w_pt - m4["right"], curr_y, str(start_p))
             curr_y -= 17.5
-            if curr_y < m4["bottom"] + 25:
-                break
 
         self._draw_page_number(c, current_page, m4)
+        c.showPage()
+        current_page += 1
+
+        # 4-2) Page 5 (목차 2페이지 또는 서정 여백면)
+        m5 = self.get_page_margins(current_page)
+        self._draw_page_background(c)
+
+        if page2_works:
+            # 목차가 16편 이상이어서 2페이지로 이어짐
+            c.setFillColorRGB(0.2, 0.18, 0.17)
+            c.setFont(FONT_BOLD_NAME, 15)
+            c.drawString(m5["left"], self.canvas_h_pt - m5["top"], "차 례 (이어서)")
+
+            c.setStrokeColorRGB(0.85, 0.8, 0.75)
+            c.setLineWidth(0.8)
+            c.line(m5["left"], self.canvas_h_pt - m5["top"] - 12, self.canvas_w_pt - m5["right"], self.canvas_h_pt - m5["top"] - 12)
+
+            curr_y = self.canvas_h_pt - m5["top"] - 45
+            c.setFont(FONT_NAME, 9.2)
+
+            for w, start_p in page2_works[:16]:
+                c.setFillColorRGB(0.5, 0.38, 0.3)
+                c.drawString(m5["left"], curr_y, f"{w.episode_no}")
+
+                work_author = getattr(w, 'author', '').strip()
+                display_title = f"{w.title} ({work_author})" if work_author else w.title
+
+                c.setFillColorRGB(0.22, 0.2, 0.19)
+                c.drawString(m5["left"] + 38, curr_y, display_title)
+
+                c.setFillColorRGB(0.72, 0.68, 0.64)
+                title_w = c.stringWidth(display_title, FONT_NAME, 9.2)
+                dots_x = m5["left"] + 42 + title_w
+                target_x = self.canvas_w_pt - m5["right"] - 25
+                if target_x > dots_x + 10:
+                    dots = ". " * int((target_x - dots_x) / 7.5)
+                    c.drawString(dots_x, curr_y, dots)
+
+                c.drawRightString(self.canvas_w_pt - m5["right"], curr_y, str(start_p))
+                curr_y -= 17.5
+        else:
+            # 목차가 15편 이하인 경우: 서정적 문학 심볼과 여백의 미
+            center_x = m5["left"] + (m5["content_w"] / 2)
+            center_y = self.canvas_h_pt / 2
+            c.setFillColorRGB(0.75, 0.7, 0.65)
+            c.setFont(FONT_NAME, 20)
+            c.drawCentredString(center_x, center_y + 10, "❦")
+            c.setFont(FONT_NAME, 9.0)
+            c.setFillColorRGB(0.55, 0.52, 0.48)
+            c.drawCentredString(center_x, center_y - 20, "기억의 문을 열며")
+
+        self._draw_page_number(c, current_page, m5)
         c.showPage()
         current_page += 1
 
@@ -611,11 +691,62 @@ class BookkPDFBuilder:
                 c.showPage()
                 current_page += 1
 
+        # -------------------------------------------------------------------------
+        # 6. 맺음말 (에필로그 / Epilogue)
+        # -------------------------------------------------------------------------
+        # 본문이 홀수면 짝수 페이지로 백면을 넘기고 다음 면에서 정갈하게 시작
+        if current_page % 2 == 0:
+            self._draw_page_background(c)
+            c.showPage()
+            current_page += 1
+
+        m_epi = self.get_page_margins(current_page)
+        self._draw_page_background(c)
+
+        c.setFillColorRGB(0.2, 0.18, 0.17)
+        c.setFont(FONT_BOLD_NAME, 16)
+        c.drawString(m_epi["left"], self.canvas_h_pt - m_epi["top"], "맺음말")
+
+        c.setStrokeColorRGB(0.85, 0.8, 0.75)
+        c.setLineWidth(0.8)
+        c.line(m_epi["left"], self.canvas_h_pt - m_epi["top"] - 12, self.canvas_w_pt - m_epi["right"], self.canvas_h_pt - m_epi["top"] - 12)
+
+        default_epilogue = f"""기억을 더듬어 한 줄의 시를 빚고
+그 곁에 따스한 그림을 얹는 동안,
+나는 몇 번이고 지나온 계절 속을 다시 걸었습니다.
+
+잊힌 줄로만 알았던 어머니의 밥 짓는 냄새와
+바람에 흔들리던 고향 마당의 감나무,
+그리고 묵묵히 곁을 지켜준 소중한 이들의 숨결이
+이 작은 책갈피마다 살아 숨 쉬고 있음을 깨닫습니다.
+
+이 시집을 손에 쥐어주신 모든 분께,
+그리고 각자의 그리움을 품고 살아가는 모든 다정한 이들에게
+작은 위로와 평안이 깃들기를 빕니다.
+
+
+어느 맑은 날, {project_info.author} 삼가 적음"""
+
+        epilogue_content = getattr(project_info, 'epilogue', '').strip() or default_epilogue
+        epilogue_lines = [l.rstrip() for l in epilogue_content.split("\n")]
+
+        e_font = 9.2 if len(epilogue_lines) > 16 else 9.8
+        e_line_h = 16.0 if len(epilogue_lines) > 16 else 18.0
+        c.setFont(FONT_NAME, e_font)
+        c.setFillColorRGB(0.25, 0.23, 0.22)
+
+        curr_y = self.canvas_h_pt - m_epi["top"] - 45
+        for line in epilogue_lines:
+            c.drawString(m_epi["left"], curr_y, line)
+            curr_y -= e_line_h
+
+        self._draw_page_number(c, current_page, m_epi)
+        c.showPage()
+        current_page += 1
 
         # -------------------------------------------------------------------------
-        # 6. 판권지 (부크크 검수 필수 항목)
+        # 7. 판권지 (Colophon - 부크크 검수 필수 규격)
         # -------------------------------------------------------------------------
-        # 홀수 페이지에서 끝나도록 페이지 수 조정
         if current_page % 2 == 0:
             self._draw_page_background(c)
             c.showPage()
@@ -624,32 +755,50 @@ class BookkPDFBuilder:
         m_col = self.get_page_margins(current_page)
         self._draw_page_background(c)
 
-        col_box_y = m_col["bottom"] + 40
+        col_box_y = m_col["bottom"] + 30
+        col_box_h = 200
         c.setStrokeColorRGB(0.82, 0.78, 0.72)
         c.setLineWidth(0.8)
-        c.rect(m_col["left"], col_box_y, m_col["content_w"], 180, fill=0, stroke=1)
+        c.rect(m_col["left"], col_box_y, m_col["content_w"], col_box_h, fill=0, stroke=1)
 
         c.setFillColorRGB(0.2, 0.18, 0.17)
         c.setFont(FONT_BOLD_NAME, 13)
-        c.drawString(m_col["left"] + 20, col_box_y + 150, project_info.name)
+        c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 28, project_info.name)
+
+        if project_info.subtitle:
+            c.setFont(FONT_NAME, 9.0)
+            c.setFillColorRGB(0.45, 0.42, 0.38)
+            c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 44, project_info.subtitle)
+
+        c.setStrokeColorRGB(0.88, 0.85, 0.8)
+        c.line(m_col["left"] + 20, col_box_y + col_box_h - 52, m_col["left"] + m_col["content_w"] - 20, col_box_y + col_box_h - 52)
 
         c.setFont(FONT_NAME, 8.8)
         c.setFillColorRGB(0.35, 0.32, 0.3)
         author_type = getattr(project_info, 'author_type', 'single')
         author_field_name = "엮 은 이" if author_type == "collab" else "지 은 이"
+        publisher_name = getattr(project_info, 'publisher', '부크크 (Bookk) 자가출판')
+        published_date = getattr(project_info, 'published_date', '2026년')
+        price_val = getattr(project_info, 'price', '13,000원')
+        isbn_val = getattr(project_info, 'isbn', '').strip()
+
         col_lines = [
             f"{author_field_name} : {project_info.author}",
-            "펴 낸 곳 : 부크크 (Bookk) 자가출판",
+            f"펴 낸 곳 : {publisher_name}",
+            f"초판발행 : {published_date}",
+            f"정    가 : {price_val}",
             "제작지원 : StoryBook Studio 독립출판 엔진",
-            "초판인쇄 : 2026년",
             "출판형태 : POD (Publish On Demand) 주문형 종이책",
-            "",
-            "ⓒ 저작권자와의 협의에 의해 본 도서의 무단 전재 및 복제를 금합니다."
         ]
-        text_y = col_box_y + 125
+        if isbn_val:
+            col_lines.append(f"I S B N  : {isbn_val}")
+        col_lines.append("")
+        col_lines.append("ⓒ 저작권자와의 협의에 의해 본 도서의 무단 전재 및 복제를 금합니다.")
+
+        text_y = col_box_y + col_box_h - 70
         for line in col_lines:
             c.drawString(m_col["left"] + 20, text_y, line)
-            text_y -= 15
+            text_y -= 14
 
         c.showPage()
         total_pages = current_page
@@ -676,7 +825,8 @@ class BookkPDFBuilder:
         self,
         output_path: Path,
         total_pages: int,
-        project_info: Optional[ProjectInfo] = None
+        project_info: Optional[ProjectInfo] = None,
+        images_dir: Optional[Path] = None
     ) -> Dict[str, Any]:
         """
         부크크 표지 펼침면 PDF 생성 (뒤표지 + 책등 + 앞표지 + 사방 3mm 도련)
@@ -684,6 +834,8 @@ class BookkPDFBuilder:
         """
         if project_info is None:
             project_info = project_manager.get_active_project_info()
+        if images_dir is None:
+            images_dir = project_manager.get_active_images_dir()
 
         # 책등(세네카) 두께 계산
         sheets = total_pages / 2
@@ -708,60 +860,133 @@ class BookkPDFBuilder:
         c.setFillColorRGB(0.97, 0.95, 0.92)
         c.rect(0, 0, cover_w_pt, cover_h_pt, fill=1, stroke=0)
 
-        # 2) 책등(세네카) 영역 점선 가이드 및 제목
+        # 2) 책등(세네카) 영역 점선 가이드 및 시집제목 · 저자 · 출판사 정밀 인쇄
         spine_x1 = bleed_pt + front_w_pt
         spine_x2 = spine_x1 + spine_w_pt
         spine_center_x = spine_x1 + (spine_w_pt / 2)
 
-        # 책등 테두리 음영
+        # 책등 테두리 음영 (인쇄 재단선 가이드)
         c.setFillColorRGB(0.95, 0.93, 0.89)
         c.rect(spine_x1, bleed_pt, spine_w_pt, self.spec["trim_h_mm"] * MM_TO_PT, fill=1, stroke=0)
 
-        # 책등 제목 (세로쓰기 또는 작은 폰트 가로 회전)
-        if spine_w_mm >= 4.0:
-            c.setFillColorRGB(0.25, 0.22, 0.2)
-            c.setFont(FONT_NAME, 8.5)
-            # 책등 중앙 세로 정렬
-            spine_title = f"{project_info.name}  |  {project_info.author}"
+        # 책등 정보 인쇄: 시집 제목(상단) + 저자(중앙) + 출판사(하단)
+        if spine_w_mm >= 2.0:
+            spine_font_size = min(max(spine_w_mm * 1.8, 5.5), 8.5)
             c.saveState()
-            c.translate(spine_center_x + 3, cover_h_pt / 2)
+            c.translate(spine_center_x, cover_h_pt / 2)
             c.rotate(270)
-            c.drawCentredString(0, 0, spine_title)
+
+            v_offset = -spine_font_size * 0.35
+            c.setFillColorRGB(0.2, 0.18, 0.16)
+
+            # [1] 상단부: 시집 제목 (볼드)
+            c.setFont(FONT_BOLD_NAME, spine_font_size)
+            c.drawCentredString(-(cover_h_pt * 0.22), v_offset, project_info.name)
+
+            # [2] 중앙부: 저자 (지은이 / 엮은이)
+            author_type = getattr(project_info, 'author_type', 'single')
+            author_role = "엮은이" if author_type == "collab" else "지은이"
+            author_text = project_info.author
+            if not any(k in author_text for k in ["지은이", "엮은이", "엮음", "지음"]):
+                spine_author = f"{author_role} {author_text}"
+            else:
+                spine_author = author_text
+            c.setFont(FONT_NAME, spine_font_size * 0.92)
+            c.drawCentredString(10, v_offset, spine_author)
+
+            # [3] 하단부: 출판사
+            pub_raw = getattr(project_info, 'publisher', '부크크').strip()
+            # 괄호나 부가설명 분리하여 간결한 출판사명 추출 (예: '부크크 (Bookk) 자가출판' -> '부크크')
+            pub_clean = pub_raw.split("(")[0].strip() or pub_raw
+            if not pub_clean:
+                pub_clean = "부크크"
+            c.setFont(FONT_NAME, spine_font_size * 0.85)
+            c.drawCentredString(cover_h_pt * 0.32, v_offset, pub_clean)
+
             c.restoreState()
 
         # 3) 앞표지 (우측 영역)
         front_center_x = spine_x2 + (front_w_pt / 2)
-        c.setFillColorRGB(0.18, 0.16, 0.15)
-        c.setFont(FONT_BOLD_NAME, 24)
-        c.drawCentredString(front_center_x, (cover_h_pt / 2) + 70, project_info.name)
+        top_y = cover_h_pt - bleed_pt
 
-        if project_info.subtitle:
-            c.setFillColorRGB(0.42, 0.38, 0.35)
-            c.setFont(FONT_NAME, 11)
-            c.drawCentredString(front_center_x, (cover_h_pt / 2) + 35, project_info.subtitle)
+        cover_img_file = getattr(project_info, 'cover_image', '').strip()
+        has_cover_image = False
+        cand_img = None
+        if cover_img_file and images_dir:
+            cand = images_dir / Path(cover_img_file).name
+            if cand.exists() and cand.is_file():
+                has_cover_image = True
+                cand_img = cand
 
-        c.setStrokeColorRGB(0.75, 0.65, 0.55)
-        c.setLineWidth(1)
-        c.line(front_center_x - 35, (cover_h_pt / 2) + 15, front_center_x + 35, (cover_h_pt / 2) + 15)
+        if has_cover_image:
+            # [A] 대표 삽화가 있는 경우: 상단 제목 -> 구분선 -> 중앙 삽화 -> 하단 저자
+            title_y = top_y - (36 * MM_TO_PT)
+            c.setFillColorRGB(0.18, 0.16, 0.15)
+            c.setFont(FONT_BOLD_NAME, 22)
+            c.drawCentredString(front_center_x, title_y, project_info.name)
 
+            curr_y = title_y
+            if project_info.subtitle:
+                curr_y -= 20
+                c.setFillColorRGB(0.42, 0.38, 0.35)
+                c.setFont(FONT_NAME, 10.5)
+                c.drawCentredString(front_center_x, curr_y, project_info.subtitle)
+
+            curr_y -= 14
+            c.setStrokeColorRGB(0.75, 0.65, 0.55)
+            c.setLineWidth(0.8)
+            c.line(front_center_x - 30, curr_y, front_center_x + 30, curr_y)
+
+            # 대표 삽화 배치 (가로 65mm x 세로 65mm)
+            img_w = 65 * MM_TO_PT
+            img_h = 65 * MM_TO_PT
+            img_x = front_center_x - (img_w / 2)
+            img_y = curr_y - 16 - img_h
+            try:
+                c.drawImage(str(cand_img), img_x, img_y, width=img_w, height=img_h, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        else:
+            # [B] 삽화가 없는 경우: 단아한 타이포그래피 중심 표지
+            mid_y = cover_h_pt / 2
+            title_y = mid_y + (30 * MM_TO_PT)
+            c.setFillColorRGB(0.18, 0.16, 0.15)
+            c.setFont(FONT_BOLD_NAME, 24)
+            c.drawCentredString(front_center_x, title_y, project_info.name)
+
+            curr_y = title_y
+            if project_info.subtitle:
+                curr_y -= 24
+                c.setFillColorRGB(0.42, 0.38, 0.35)
+                c.setFont(FONT_NAME, 11)
+                c.drawCentredString(front_center_x, curr_y, project_info.subtitle)
+
+            curr_y -= 16
+            c.setStrokeColorRGB(0.75, 0.65, 0.55)
+            c.setLineWidth(1)
+            c.line(front_center_x - 35, curr_y, front_center_x + 35, curr_y)
+
+        # 하단 저자 및 출판사
         c.setFillColorRGB(0.3, 0.28, 0.26)
-        c.setFont(FONT_NAME, 11)
+        c.setFont(FONT_NAME, 10.5)
         author_type = getattr(project_info, 'author_type', 'single')
         author_role = "엮은이" if author_type == "collab" else "지은이"
         author_text = project_info.author
         if not any(k in author_text for k in ["지은이", "엮은이", "엮음", "지음"]):
             author_text = f"{author_role}  {author_text}"
-        c.drawCentredString(front_center_x, (cover_h_pt / 2) - 20, author_text)
+        c.drawCentredString(front_center_x, bleed_pt + (32 * MM_TO_PT), author_text)
 
         c.setFillColorRGB(0.5, 0.45, 0.4)
         c.setFont(FONT_NAME, 9)
-        c.drawCentredString(front_center_x, bleed_pt + 40, "부크크 (Bookk) 자가출판 시화집")
+        pub_name = getattr(project_info, 'publisher', '부크크 (Bookk) 자가출판')
+        c.drawCentredString(front_center_x, bleed_pt + (16 * MM_TO_PT), f"{pub_name} 시화집")
 
         # 4) 뒤표지 (좌측 영역) - 책 소개문 및 바코드 영역
         back_center_x = bleed_pt + (front_w_pt / 2)
         c.setFillColorRGB(0.3, 0.28, 0.26)
         c.setFont(FONT_NAME, 9.5)
-        blurb_lines = [
+
+        default_blurb = [
             "“가장 개인적인 기억이",
             "가장 깊은 문학이자 예술이 된다.”",
             "",
@@ -769,8 +994,11 @@ class BookkPDFBuilder:
             "마음속 깊이 간직해 온 찰나의 순간들을",
             "서정적인 시와 맑은 수채화로 엮었습니다."
         ]
-        blurb_y = (cover_h_pt / 2) + 40
-        for b_line in blurb_lines:
+        blurb_raw = getattr(project_info, 'back_cover_blurb', '').strip()
+        blurb_lines = [l.rstrip() for l in blurb_raw.split("\n")] if blurb_raw else default_blurb
+
+        blurb_y = (cover_h_pt / 2) + 45
+        for b_line in blurb_lines[:9]:
             c.drawCentredString(back_center_x, blurb_y, b_line)
             blurb_y -= 18
 
