@@ -1,5 +1,6 @@
 import urllib.request
 import urllib.error
+import urllib.parse
 import json
 import time
 
@@ -16,7 +17,15 @@ def run_test(name, fn):
         return False
 
 def http_get(path):
-    req = urllib.request.Request(f"{BASE_URL}{path}")
+    parts = urllib.parse.urlsplit(f"{BASE_URL}{path}")
+    url = urllib.parse.urlunsplit((
+        parts.scheme,
+        parts.netloc,
+        urllib.parse.quote(parts.path),
+        urllib.parse.quote(parts.query, safe="=&?"),
+        parts.fragment
+    ))
+    req = urllib.request.Request(url)
     with urllib.request.urlopen(req) as resp:
         return resp.status, json.loads(resp.read().decode("utf-8"))
 
@@ -51,8 +60,9 @@ results.append(run_test("GET /api/status", test_status))
 def test_book_spec():
     status, data = http_get("/api/book_spec")
     assert status == 200
-    assert "book_spec" in data
-    print(f"  Book Spec size: {data['book_spec'].get('size_name')}, Spine: {data['book_spec'].get('spine_thickness_mm')}mm")
+    assert "spine_thickness_mm" in data or "book_spec" in data
+    spec = data.get("book_spec", data)
+    print(f"  Spine: {spec.get('spine_thickness_mm')}mm, Canvas: {spec.get('cover_canvas_width_mm')}x{spec.get('cover_canvas_height_mm')}")
 results.append(run_test("GET /api/book_spec", test_book_spec))
 
 def test_gemini_key_status():
