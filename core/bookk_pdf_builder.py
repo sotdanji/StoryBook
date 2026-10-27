@@ -362,10 +362,10 @@ class BookkPDFBuilder:
                 slots = cfg.get("slots", [])[:page_count]
                 img_settings = cfg.get("image_settings", {})
 
-                # 텍스트 슬롯 인덱스 & 개수 계산
-                text_slot_indices = [idx for idx, s in enumerate(slots) if s == "text"]
+                # 텍스트 슬롯 인덱스 & 개수 계산 (순수 텍스트 및 상하 혼합 슬롯 포함)
+                text_slot_indices = [idx for idx, s in enumerate(slots) if s in ("text", "image_top", "image_bottom", "mixed_top", "mixed_bottom")]
                 text_count = len(text_slot_indices)
-                chunks = self._split_poem_into_n_chunks(lines, text_count)
+                chunks = self._split_poem_into_n_chunks(lines, max(1, text_count))
                 chunk_map = {slot_idx: i for i, slot_idx in enumerate(text_slot_indices)}
 
                 for slot_idx, slot_type in enumerate(slots):
@@ -416,8 +416,121 @@ class BookkPDFBuilder:
                             next_p = page_in_work + 1
                             c.drawRightString(self.canvas_w_pt - m["right"], m["bottom"] + 15, f"(다음 {next_p}면에 계속 ➔)")
 
+                    elif slot_type in ("image_top", "mixed_top"):
+                        # [상단 그림 + 하단 시 본문 (엽서형 / 첫머리형)]
+                        img_cfg = img_settings.get(f"page_{page_in_work}", {})
+                        img_file = img_cfg.get("file", work.image_file if page_in_work == 1 else getattr(work, 'image_file_2', ''))
+
+                        avail_h = self.canvas_h_pt - (m["top"] + m["bottom"] + 20)
+                        img_h = avail_h * 0.42
+                        img_y = self.canvas_h_pt - m["top"] - img_h
+
+                        # 1) 상단 삽화 배치
+                        if img_file:
+                            self._draw_artwork(c, work, images_dir, m["left"], img_y, m["content_w"], img_h, img_override_file=img_file)
+
+                        # 2) 하단 시 본문 배치
+                        c_idx = chunk_map.get(slot_idx, 0)
+                        chunk_lines = chunks[c_idx] if c_idx < len(chunks) else []
+                        is_first = (c_idx == 0)
+                        is_last = (c_idx == text_count - 1)
+
+                        top_y = img_y - 16
+                        if is_first:
+                            c.setFillColorRGB(0.18, 0.16, 0.15)
+                            c.setFont(FONT_BOLD_NAME, 13.5)
+                            c.drawString(m["left"], top_y, work.title)
+
+                            work_author = getattr(work, 'author', '').strip()
+                            if work_author:
+                                c.setFont(FONT_NAME, 8.5)
+                                c.setFillColorRGB(0.48, 0.42, 0.38)
+                                c.drawRightString(self.canvas_w_pt - m["right"], top_y + 1, f"― {work_author}")
+
+                            c.setStrokeColorRGB(0.86, 0.82, 0.78)
+                            c.setLineWidth(0.6)
+                            c.line(m["left"], top_y - 7, self.canvas_w_pt - m["right"], top_y - 7)
+                            curr_y = top_y - 20
+                        else:
+                            c.setFillColorRGB(0.55, 0.50, 0.45)
+                            c.setFont(FONT_NAME, 7.5)
+                            c.drawString(m["left"], top_y - 5, f"({slot_idx}면에 이어짐 ➔ {page_in_work}면 본문)")
+                            curr_y = top_y - 18
+
+                        p_font_size, line_h = 8.5, 14.5
+                        c.setFillColorRGB(0.24, 0.22, 0.21)
+                        c.setFont(FONT_NAME, p_font_size)
+                        for line in chunk_lines:
+                            if curr_y < m["bottom"] + 15:
+                                break
+                            c.drawString(m["left"], curr_y, line)
+                            curr_y -= line_h
+
+                        if not is_last:
+                            c.setFillColorRGB(0.55, 0.50, 0.45)
+                            c.setFont(FONT_NAME, 7.5)
+                            next_p = page_in_work + 1
+                            c.drawRightString(self.canvas_w_pt - m["right"], m["bottom"] + 12, f"(다음 {next_p}면에 계속 ➔)")
+
+                    elif slot_type in ("image_bottom", "mixed_bottom"):
+                        # [상단 시 본문 + 하단 그림 (여운형)]
+                        img_cfg = img_settings.get(f"page_{page_in_work}", {})
+                        img_file = img_cfg.get("file", work.image_file if page_in_work == 1 else getattr(work, 'image_file_2', ''))
+
+                        avail_h = self.canvas_h_pt - (m["top"] + m["bottom"] + 20)
+                        img_h = avail_h * 0.40
+                        img_y = m["bottom"] + 18
+                        text_limit_y = img_y + img_h + 12
+
+                        # 1) 상단 시 본문 배치
+                        c_idx = chunk_map.get(slot_idx, 0)
+                        chunk_lines = chunks[c_idx] if c_idx < len(chunks) else []
+                        is_first = (c_idx == 0)
+                        is_last = (c_idx == text_count - 1)
+
+                        top_y = self.canvas_h_pt - m["top"]
+                        if is_first:
+                            c.setFillColorRGB(0.18, 0.16, 0.15)
+                            c.setFont(FONT_BOLD_NAME, 13.5)
+                            c.drawString(m["left"], top_y, work.title)
+
+                            work_author = getattr(work, 'author', '').strip()
+                            if work_author:
+                                c.setFont(FONT_NAME, 8.5)
+                                c.setFillColorRGB(0.48, 0.42, 0.38)
+                                c.drawRightString(self.canvas_w_pt - m["right"], top_y + 1, f"― {work_author}")
+
+                            c.setStrokeColorRGB(0.86, 0.82, 0.78)
+                            c.setLineWidth(0.6)
+                            c.line(m["left"], top_y - 7, self.canvas_w_pt - m["right"], top_y - 7)
+                            curr_y = top_y - 20
+                        else:
+                            c.setFillColorRGB(0.55, 0.50, 0.45)
+                            c.setFont(FONT_NAME, 7.5)
+                            c.drawString(m["left"], top_y - 5, f"({slot_idx}면에 이어짐 ➔ {page_in_work}면 본문)")
+                            curr_y = top_y - 18
+
+                        p_font_size, line_h = 8.5, 14.5
+                        c.setFillColorRGB(0.24, 0.22, 0.21)
+                        c.setFont(FONT_NAME, p_font_size)
+                        for line in chunk_lines:
+                            if curr_y < text_limit_y:
+                                break
+                            c.drawString(m["left"], curr_y, line)
+                            curr_y -= line_h
+
+                        # 2) 하단 삽화 배치
+                        if img_file:
+                            self._draw_artwork(c, work, images_dir, m["left"], img_y, m["content_w"], img_h, img_override_file=img_file)
+
+                        if not is_last:
+                            c.setFillColorRGB(0.55, 0.50, 0.45)
+                            c.setFont(FONT_NAME, 7.5)
+                            next_p = page_in_work + 1
+                            c.drawRightString(self.canvas_w_pt - m["right"], m["bottom"] + 12, f"(다음 {next_p}면에 계속 ➔)")
+
                     else:
-                        # image 슬롯
+                        # image 슬롯 (전면 100% 삽화)
                         img_cfg = img_settings.get(f"page_{page_in_work}", {})
                         mode = img_cfg.get("mode", "image" if page_in_work == 1 else "motif_symbol")
                         img_file = img_cfg.get("file", work.image_file if page_in_work == 1 else getattr(work, 'image_file_2', ''))

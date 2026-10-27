@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "meta": {
+    "episodeNo": "제03화",
+    "title": "마지막 상여",
+    "mode": "music",
+    "aspectRatio": "16:9",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "durationInFrames": 9121,
+    "durationInSeconds": 304.05,
+    "subtitlesEnabled": false
+  },
+  "assets": {
+    "image": "d:/AG/StoryBook/projects/노을빛_기억/images/03_마지막상여.jpg",
+    "audio": "d:/AG/StoryBook/projects/노을빛_기억/music/03_음원.mp3"
+  },
+  "visuals": {
+    "style": "Korean Lyrical Watercolor / Ink & Wash",
+    "vignette": true,
+    "ambientParticles": true,
+    "scenes": [
+      {
+        "sceneId": "scene_intro",
+        "name": "도입부 대청마루/풍경 원경 패닝",
+        "startFrame": 0,
+        "endFrame": 1641,
+        "camera": {
+          "startScale": 1.0,
+          "endScale": 1.06,
+          "panX": -2.0,
+          "panY": 1.0
+        },
+        "transition": "crossfade"
+      },
+      {
+        "sceneId": "scene_verse",
+        "name": "전개부 핵심 피사체(인물/사물) 클로즈업",
+        "startFrame": 1641,
+        "endFrame": 3648,
+        "camera": {
+          "startScale": 1.15,
+          "endScale": 1.25,
+          "panX": 2.5,
+          "panY": -1.5
+        },
+        "transition": "crossfade"
+      },
+      {
+        "sceneId": "scene_chorus",
+        "name": "절정부 감성 피사체 딥 포커스",
+        "startFrame": 3648,
+        "endFrame": 6840,
+        "camera": {
+          "startScale": 1.2,
+          "endScale": 1.1,
+          "panX": -1.5,
+          "panY": 2.0
+        },
+        "transition": "crossfade"
+      },
+      {
+        "sceneId": "scene_outro",
+        "name": "여운 물빛 번짐 원경 페이드아웃",
+        "startFrame": 6840,
+        "endFrame": 9121,
+        "camera": {
+          "startScale": 1.1,
+          "endScale": 1.0,
+          "panX": 0.0,
+          "panY": 0.0
+        },
+        "transition": "fade_to_black"
+      }
+    ]
+  },
+  "typography": {
+    "fontFamily": "Nanum Myeongjo",
+    "captions": []
+  }
+}

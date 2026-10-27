@@ -93,6 +93,10 @@ class LyricsGenerateRequest(BaseModel):
     genre: Optional[str] = "minyo"
     custom_guide: Optional[str] = ""
 
+class UpdateLyricsRequest(BaseModel):
+    episode_no: str
+    lyrics: str
+
 class ColabNotebookRequest(BaseModel):
     episode_no: str
     title: str
@@ -114,7 +118,16 @@ class SpeakPoemRequest(BaseModel):
     title: str
     poem_body: str
     episode_no: Optional[str] = "제01화"
-    voice: Optional[str] = "Aoede"  # Aoede(여성 서정), Charon(남성 중저음), Kore(여성 차분), Puck(남성 담백), Fenrir(원로 중후)
+    voice: Optional[str] = "Aoede"  # Aoede, Charon, Kore, Puck, Fenrir 또는 Edge-TTS 성우명
+    engine: Optional[str] = "auto"   # auto, gemini, edge
+
+# 🎙️ TTS 엔진 상태 및 크레딧 만료 추적 전역 상태
+TTS_STATE = {
+    "engine": "gemini",            # 'gemini' | 'edge'
+    "gemini_credit_expired": False, # 크레딧 만료 여부
+    "last_error": None,
+    "error_type": None
+}
 
 class ImportSunoRequest(BaseModel):
     url: str
@@ -665,6 +678,19 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 else:
                     music_f = old_a
 
+            # 🎵 실제 파일 시스템의 낭송/노래 자동 탐색 (누락 방지)
+            import re
+            ep_digits = re.sub(r'[^0-9]', '', w.episode_no or '').zfill(2)
+            proj_dir = project_manager.get_project_dir(pid)
+            if not recite_f and ep_digits:
+                candidate_rec = proj_dir / "music" / f"{ep_digits}_낭송.wav"
+                if candidate_rec.exists():
+                    recite_f = f"music/{ep_digits}_낭송.wav"
+            if not music_f and ep_digits:
+                candidate_mus = proj_dir / "music" / f"{ep_digits}_음원.mp3"
+                if candidate_mus.exists():
+                    music_f = f"music/{ep_digits}_음원.mp3"
+
             def _clean_audio_url(f_path):
                 if not f_path:
                     return ""
@@ -699,6 +725,84 @@ async def get_gallery_data(project_id: Optional[str] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+class RenderVideoRequest(BaseModel):
+    project_id: Optional[str] = None
+    episode_no: str
+    title: str
+    image_file: str
+    audio_file: Optional[str] = None
+    aspect_ratio: str = "16:9"  # "16:9" | "9:16"
+    mode: str = "music"         # "music" | "recite" | "bgm"
+
+@app.get("/api/videos")
+async def api_list_videos(project_id: Optional[str] = None):
+    """현재 활성 프로젝트의 렌더링된 비디오 목록을 반환합니다."""
+    try:
+        from core.video_renderer import VideoRenderer
+        pid = project_id or project_manager.get_active_project_id()
+        pdir = project_manager.get_project_dir(pid)
+        renderer = VideoRenderer(pdir)
+        videos = renderer.list_rendered_videos()
+        return {"success": True, "videos": videos}
+    except Exception as e:
+        return {"success": False, "error": str(e), "videos": []}
+
+@app.post("/api/videos/render")
+async def api_render_video(req: RenderVideoRequest):
+    """지정된 회차의 고화질 시네마틱 MP4 비디오 렌더링을 실행합니다."""
+    try:
+        from core.video_renderer import VideoRenderer
+        pid = req.project_id or project_manager.get_active_project_id()
+        pdir = project_manager.get_project_dir(pid)
+        renderer = VideoRenderer(pdir)
+
+        # 이미지 경로 보정
+        img_f = req.image_file.replace("./", "").lstrip("/")
+        if not img_f.startswith("images/"):
+            img_f = f"images/{img_f}"
+
+        # 오디오 경로 보정
+        audio_f = None
+        if req.audio_file:
+            audio_f = req.audio_file.replace("./", "").lstrip("/")
+            if not audio_f.startswith("music/") and not audio_f.startswith("images/"):
+                audio_f = f"music/{audio_f}"
+
+        out_path = renderer.render_episode_video(
+            episode_no=req.episode_no,
+            title=req.title,
+            image_path=img_f,
+            audio_path=audio_f,
+            aspect_ratio=req.aspect_ratio,
+            mode=req.mode
+        )
+        return {
+            "success": True,
+            "filename": out_path.name,
+            "path": str(out_path).replace("\\", "/"),
+            "sizeMb": round(out_path.stat().st_size / (1024 * 1024), 2)
+        }
+    except Exception as e:
+        print(f"[api_render_video 에러]: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/videos/download/{filename}")
+async def api_download_video(filename: str, project_id: Optional[str] = None):
+    """렌더링된 비디오 파일을 스트리밍 또는 다운로드합니다."""
+    try:
+        pid = project_id or project_manager.get_active_project_id()
+        pdir = project_manager.get_project_dir(pid)
+        vpath = pdir / "videos" / filename
+        if not vpath.exists():
+            raise HTTPException(status_code=404, detail="비디오 파일을 찾을 수 없습니다.")
+        return FileResponse(
+            path=str(vpath),
+            filename=filename,
+            media_type="video/mp4"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @app.get("/api/settings/gemini_key")
 async def get_gemini_key_api():
@@ -963,6 +1067,25 @@ async def generate_lyrics_endpoint(req: LyricsGenerateRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.post("/api/update_lyrics")
+async def update_lyrics_endpoint(req: UpdateLyricsRequest):
+    """갤러리 또는 스튜디오에서 특정 회차의 노래 가사만 즉시 수정 및 원고 동기화"""
+    try:
+        mgr = project_manager.get_active_manuscript_manager()
+        work = mgr.get_work_by_episode(req.episode_no)
+        if not work:
+            clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
+            target_ep = f"제{clean_ep}화"
+            work = mgr.get_work_by_episode(target_ep)
+        if not work:
+            raise HTTPException(status_code=404, detail=f"해당 회차({req.episode_no})를 찾을 수 없습니다.")
+        work.lyrics = req.lyrics.strip()
+        mgr.save_work(work)
+        print(f"[노랫말 실시간 수정 완료] {work.episode_no} lyrics 갱신 ({len(work.lyrics)}자)")
+        return {"success": True, "episode_no": work.episode_no, "lyrics": work.lyrics}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/generate_image_prompt")
 async def generate_image_prompt_endpoint(req: ImagePromptRequest):
     """다듬어진 시 제목과 본문을 분석하여 300 DPI 서정 삽화 프롬프트 생성 (모듈러 블록 아키텍처)"""
@@ -1201,10 +1324,11 @@ async def reorder_works_endpoint(req: ReorderWorksRequest):
 @app.post("/api/upload_audio")
 async def upload_audio_endpoint(
     audio_file: UploadFile = File(...),
-    episode_no: str = Form(...)
+    episode_no: str = Form(...),
+    lyrics: Optional[str] = Form(None)
 ):
     """사용자가 외부 AI(Colab YuE2, Suno 등)나 웹 녹음기에서 녹음한 오디오 파일을
-    앞뒤 무음 자동 검사/트리밍 및 320kbps MP3로 최적화하여 music/ 디렉토리에 저장"""
+    앞뒤 무음 자동 검사/트리밍 및 320kbps MP3로 최적화하여 music/ 디렉토리에 저장하고 가사 동기화"""
     temp_upload = None
     try:
         project_dir = project_manager.get_project_dir()
@@ -1228,13 +1352,15 @@ async def upload_audio_endpoint(
         active_id = project_manager.get_active_project_id()
         web_url = f"/projects/{active_id}/{rel_path}?t={int(time.time())}"
 
-        # 원고에도 music_file 경로 자동 업데이트 (기존 낭송 recite_file은 보존)
+        # 원고에도 music_file 경로 및 가사(lyrics) 자동 업데이트 (기존 낭송 recite_file은 보존)
         mgr = project_manager.get_active_manuscript_manager()
         work = mgr.get_work_by_episode(episode_no)
         if work:
             work.music_file = rel_path
             if not getattr(work, "audio_file", ""):
                 work.audio_file = rel_path
+            if lyrics is not None and lyrics.strip():
+                work.lyrics = lyrics.strip()
             mgr.save_work(work)
 
         return {
@@ -1365,124 +1491,332 @@ async def import_suno_url_endpoint(req: ImportSunoRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.post("/api/speak_poem")
-async def speak_poem_endpoint(req: SpeakPoemRequest):
+def build_poetic_recitation_script(title: str, poem_body: str) -> str:
     """
-    최신 Gemini TTS(gemini-3.8-flash-tts)를 활용하여 
-    시 본문을 서정적인 전문 성우 음성(audio/wav)으로 생성합니다.
+    [poetic-recitation 스킬 기반]
+    서정시 원문을 AI 성우(Gemini 3.8 Flash TTS)가 여유로운 호흡(분당 110~130음절)과 
+    깊은 침묵(Pause: 연간 1.5초, 행간 0.8초)을 두고 시답게 낭송하도록 시낭송 전용 대본으로 변환합니다.
     """
-    import base64
-    import time
+    clean_title = (title or "").strip()
+    norm_body = poem_body.replace('\r\n', '\n').strip()
+    
+    stanzas = [s.strip() for s in norm_body.split('\n\n') if s.strip()]
+    processed_stanzas = []
+    
+    for stanza in stanzas:
+        lines = [line.strip() for line in stanza.split('\n') if line.strip()]
+        processed_lines = []
+        for line in lines:
+            # 끝 구두점 체크
+            if not any(line.endswith(punct) for punct in ['.', '?', '!', '...', ',', '—', '~']):
+                # 구두점이 없으면 서정 호흡 쉼표/말줄임 보강
+                line = line + "..."
+            elif line.endswith('.'):
+                # 단절되는 마침표 대신 긴 여운의 말줄임표로 변환
+                line = line[:-1] + "..."
+            processed_lines.append(line)
+        # 행과 행 사이에 이중 줄바꿈으로 0.8초 숨고르기 부여
+        processed_stanzas.append('\n\n'.join(processed_lines))
+    
+    # 연과 연 사이에 삼중 줄바꿈으로 1.5초의 자연스러운 침묵 부여
+    script_body = '\n\n\n'.join(processed_stanzas)
+    
+    if clean_title and clean_title != "무제":
+        return f"{clean_title}...\n\n\n\n{script_body}"
+    return script_body
+
+
+class SetTtsEngineRequest(BaseModel):
+    engine: str
+
+@app.get("/api/tts/status")
+async def get_tts_status():
+    """현재 TTS 엔진 상태 및 Google 크레딧 만료 여부 반환"""
+    return {
+        "engine": TTS_STATE["engine"],
+        "gemini_credit_expired": TTS_STATE["gemini_credit_expired"],
+        "last_error": TTS_STATE["last_error"],
+        "error_type": TTS_STATE["error_type"]
+    }
+
+@app.post("/api/tts/set_engine")
+async def set_tts_engine(req: SetTtsEngineRequest):
+    """사용자가 직접 TTS 엔진을 전환 (gemini | edge)"""
+    if req.engine in ["gemini", "edge"]:
+        TTS_STATE["engine"] = req.engine
+        return {"success": True, "engine": TTS_STATE["engine"]}
+    raise HTTPException(status_code=400, detail="유효하지 않은 엔진입니다.")
+
+@app.post("/api/tts/check_google")
+async def check_google_tts():
+    """
+    Google Cloud 크레딧이 재충전되었는지 1글자 테스트 호출로 실시간 검증합니다.
+    재충전 확인 시 Google Gemini TTS 모드로 자동 원복합니다.
+    """
     from core.config import GEMINI_API_KEY
     key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
     if not key or not genai:
-        raise HTTPException(status_code=400, detail="Gemini API 키가 등록되지 않았습니다.")
+        return {"success": False, "message": "Gemini API 키가 등록되어 있지 않습니다."}
+    
+    try:
+        client = genai.Client(api_key=key)
+        res = client.models.generate_content(
+            model="gemini-3.8-flash-tts",
+            contents="달빛.",
+            config={
+                "response_modalities": ["AUDIO"],
+                "speech_config": {
+                    "voice_config": {
+                        "prebuilt_voice_config": {
+                            "voice_name": "Aoede"
+                        }
+                    }
+                }
+            }
+        )
+        if res and res.candidates and res.candidates[0].content:
+            TTS_STATE["engine"] = "gemini"
+            TTS_STATE["gemini_credit_expired"] = False
+            TTS_STATE["last_error"] = None
+            TTS_STATE["error_type"] = None
+            return {
+                "success": True,
+                "engine": "gemini",
+                "message": "🎉 Google API 크레딧 충전 및 연결이 정상 확인되었습니다! Google Gemini TTS로 복원되었습니다."
+            }
+        else:
+            raise Exception("응답 데이터가 비어 있습니다.")
+    except Exception as e:
+        err_msg = str(e)
+        is_credit_err = "402" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "credit" in err_msg.lower() or "quota" in err_msg.lower()
+        TTS_STATE["gemini_credit_expired"] = True
+        TTS_STATE["engine"] = "edge"
+        TTS_STATE["last_error"] = err_msg
+        TTS_STATE["error_type"] = "CREDIT_EXHAUSTED" if is_credit_err else "API_ERROR"
+        return {
+            "success": False,
+            "engine": "edge",
+            "gemini_credit_expired": True,
+            "error_type": TTS_STATE["error_type"],
+            "message": f"아직 Google API 크레딧이 충전되지 않았습니다: {err_msg[:120]}"
+        }
+
+@app.post("/api/speak_poem")
+async def speak_poem_endpoint(req: SpeakPoemRequest):
+    """
+    1. 기본: Google Gemini TTS(gemini-3.8-flash-tts)로 선택된 성우로 녹음.
+    2. Google API 크레딧 만료 시:
+       - 크레딧 만료 상태(gemini_credit_expired) 즉시 기록 및 응답 통지
+       - Microsoft Edge-TTS(고품질 신경망)로 자동 전환하여 성우 교체 및 음원 생성
+    3. 재충전 시 Google TTS로 원복 가능.
+    """
+    import sys, os
+    import base64
+    import time
+    import asyncio
+    import io, wave
+    from core.config import GEMINI_API_KEY
 
     clean_title = (req.title or "").strip()
     poem_text = req.poem_body.strip()
     if not poem_text:
         raise HTTPException(status_code=400, detail="낭송할 시 본문이 비어 있습니다.")
 
-    # 제목 낭송: '제목 : ' 같은 안내 라벨 없이, 순수 제목만 먼저 낭독하고 숨을 고른 뒤 본문으로 연결
-    if clean_title and clean_title != "무제":
-        full_recite_text = f"{clean_title}.\n\n{poem_text}"
-    else:
-        full_recite_text = poem_text
+    clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
+    project_dir = project_manager.get_project_dir()
+    music_dir = project_dir / "music"
+    music_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        client = genai.Client(api_key=key)
-        # 성우 프로필 설정 (Aoede, Charon, Kore, Puck, Fenrir)
-        voice_key = req.voice if req.voice in ["Aoede", "Charon", "Kore", "Puck", "Fenrir"] else "Aoede"
+    # 🎙️ poetic-recitation 스킬 기반 시낭송 호흡 대본(Script) 자동 생성
+    full_recite_text = build_poetic_recitation_script(clean_title, poem_text)
 
-        # Gemini 고품질 TTS 모델: 1순위 최신 gemini-3.8-flash-tts (초자연적 성우 음질)
-        # 주의: TTS 모델은 developer instruction(system_instruction) 전달 시 400 에러가 발생하므로 speech_config만 사용합니다.
-        models_to_try = ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]
-        audio_data = None
-        mime_type = "audio/wav"
+    audio_data = None
+    mime_type = "audio/wav"
+    recite_filename = f"{clean_ep}_낭송.wav"
+    provider_name = "Gemini 3.8 Flash"
+    engine_used = "gemini"
+    just_switched_to_edge = False
+    credit_notice = None
+    last_edge_err = ""
 
-        for m_name in models_to_try:
+    # 요청된 성우 식별 (Gemini 성우 vs Edge-TTS 성우)
+    raw_voice = req.voice or "Aoede"
+    is_edge_voice = raw_voice.startswith("ko-KR-")
+    
+    # 강제 Edge 모드이거나, 이미 크레딧 만료 상태이거나, 요청 엔진이 edge인 경우 Google 시도 건너뜀
+    target_engine = req.engine or "auto"
+    skip_gemini = (target_engine == "edge") or is_edge_voice or TTS_STATE["gemini_credit_expired"]
+
+    # 1. Google Gemini 3.8 Flash TTS 시도
+    if not skip_gemini:
+        key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
+        gemini_voice = raw_voice if raw_voice in ["Aoede", "Charon", "Kore", "Puck", "Fenrir"] else "Aoede"
+        if key and genai:
             try:
-                res = client.models.generate_content(
-                    model=m_name,
-                    contents=full_recite_text,
-                    config={
-                        "response_modalities": ["AUDIO"],
-                        "speech_config": {
-                            "voice_config": {
-                                "prebuilt_voice_config": {
-                                    "voice_name": voice_key
+                client = genai.Client(api_key=key)
+                models_to_try = ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]
+                for m_name in models_to_try:
+                    try:
+                        res = client.models.generate_content(
+                            model=m_name,
+                            contents=full_recite_text,
+                            config={
+                                "response_modalities": ["AUDIO"],
+                                "speech_config": {
+                                    "voice_config": {
+                                        "prebuilt_voice_config": {
+                                            "voice_name": gemini_voice
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                )
-                if res and res.candidates and res.candidates[0].content and res.candidates[0].content.parts:
-                    for part in res.candidates[0].content.parts:
-                        if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
-                            audio_data = part.inline_data.data
-                            mime_type = getattr(part.inline_data, "mime_type", "audio/wav")
-                            print(f"[Gemini 3.8 TTS 성공 (성우: {voice_key})] {m_name} 모델로 시 낭송 생성 완료 ({len(audio_data)} bytes)")
+                        )
+                        if res and res.candidates and res.candidates[0].content and res.candidates[0].content.parts:
+                            for part in res.candidates[0].content.parts:
+                                if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
+                                    audio_data = part.inline_data.data
+                                    mime_type = getattr(part.inline_data, "mime_type", "audio/wav")
+                                    provider_name = f"Google Gemini ({gemini_voice})"
+                                    engine_used = "gemini"
+                                    TTS_STATE["gemini_credit_expired"] = False
+                                    break
+                        if audio_data:
                             break
-                if audio_data:
-                    break
-            except Exception as tts_err:
-                print(f"[Gemini TTS {m_name} 성우={voice_key}] 시도 실패: {tts_err}")
-                continue
+                    except Exception as m_err:
+                        err_str = str(m_err)
+                        print(f"[Gemini TTS {m_name}] 오류: {err_str}")
+                        if "402" in err_str or "RESOURCE_EXHAUSTED" in err_str or "credit" in err_str.lower() or "quota" in err_str.lower():
+                            TTS_STATE["gemini_credit_expired"] = True
+                            TTS_STATE["engine"] = "edge"
+                            TTS_STATE["error_type"] = "CREDIT_EXHAUSTED"
+                            just_switched_to_edge = True
+                            credit_notice = "Google API 크레딧이 만료되어 Edge-TTS(무료 고음질 신경망) 성우로 자동 전환되었습니다. 재충전 시까지 Edge-TTS가 유지됩니다."
+                            break
+            except Exception as gemini_err:
+                print(f"[Gemini 1순위 시도 실패]: {gemini_err}")
 
-        if not audio_data:
-            raise RuntimeError("Gemini 음성 합성 응답에서 오디오 데이터를 찾을 수 없습니다.")
-
-        # Gemini TTS 원시 PCM 데이터를 표준 RIFF/WAV 규격으로 포장
-        if not audio_data.startswith(b"RIFF"):
-            import io, wave
-            wav_io = io.BytesIO()
-            with wave.open(wav_io, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(24000)
-                wf.writeframes(audio_data)
-            audio_data = wav_io.getvalue()
-            mime_type = "audio/wav"
-
-        b64_audio = base64.b64encode(audio_data).decode("utf-8")
-        data_uri = f"data:{mime_type};base64,{b64_audio}"
-
-        # 프로젝트 music 폴더에 자동 음원 저장
-        clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
-        project_dir = project_manager.get_project_dir()
-        music_dir = project_dir / "music"
-        music_dir.mkdir(parents=True, exist_ok=True)
-        recite_filename = f"{clean_ep}_낭송.wav"
-        recite_path = music_dir / recite_filename
-        with open(recite_path, "wb") as f:
-            f.write(audio_data)
-
-        # 원고(작품집_원고.md)에 낭송 음원(recite_file) 자동 동기화
+    # 2. Edge-TTS 신경망 성우로 생성 (크레딧 만료 또는 Edge 모드 시)
+    if not audio_data:
         try:
-            mgr = project_manager.get_active_manuscript_manager()
-            works = mgr.load_works()
-            target_ep = f"제{clean_ep}화"
-            target_work = next((w for w in works if w.episode_no == target_ep), None)
-            if target_work:
-                target_work.recite_file = f"music/{recite_filename}"
-                mgr.save_work(target_work)
-                print(f"[원고 낭송 동기화] {target_ep} recite_file = music/{recite_filename} 저장 완료")
-        except Exception as sync_err:
-            print(f"[원고 낭송 동기화 알림]: {sync_err}")
+            import edge_tts
+            import edge_tts.constants
+            import importlib
+            importlib.reload(edge_tts.constants)
+            importlib.reload(edge_tts)
+            engine_used = "edge"
+            
+            # 성우 매핑
+            if is_edge_voice:
+                edge_voice = raw_voice
+            elif raw_voice in ["Charon", "Fenrir"]:
+                edge_voice = "ko-KR-InJoonNeural"
+            elif raw_voice == "Puck":
+                edge_voice = "ko-KR-HyunsuMultilingualNeural"
+            else:
+                edge_voice = "ko-KR-SunHiNeural"
 
-        active_id = project_manager.get_active_project_id()
-        audio_url = f"/projects/{active_id}/music/{recite_filename}?t={int(time.time())}"
+            edge_rate = "-12%" if "InJoon" in edge_voice else "-10%"
 
-        return {
-            "success": True,
-            "data_uri": data_uri,
-            "audio_url": audio_url,
-            "filename": recite_filename,
-            "rel_path": f"music/{recite_filename}",
-            "message": "Gemini 3.8 고음질 서정 낭송이 생성되었습니다."
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini 음성 합성 오류: {str(e)}")
+            # 성우 친화적 이름 라벨링
+            voice_label = "선희 (서정 여성)" if "SunHi" in edge_voice else ("인준 (남성 중저음)" if "InJoon" in edge_voice else ("현수 (차분 청년)" if "Hyunsu" in edge_voice else "봉진 (원로 남성)"))
+
+            title_prefix = f"{clean_title}." if clean_title and clean_title != "무제" else ""
+            tts_plain = f"{title_prefix}\n\n{poem_text}"
+            recite_path = music_dir / recite_filename
+
+            print(f"[Edge-TTS 신경망 성우 낭송 시작]: {edge_voice} (속도: {edge_rate})")
+
+            # 🚀 uvicorn 비동기 소켓 충돌(403)을 피하기 위해 격리된 서브프로세스로 edge-tts 실행
+            import tempfile
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False) as tf:
+                tf.write(tts_plain)
+                tf_path = tf.name
+
+            import subprocess
+            def run_edge_tts_cli():
+                cmd = [
+                    sys.executable, "-m", "edge_tts",
+                    "--file", tf_path,
+                    "--voice", edge_voice,
+                    f"--rate={edge_rate}",
+                    "--write-media", str(recite_path)
+                ]
+                return subprocess.run(cmd, capture_output=True, text=True)
+
+            try:
+                res = await asyncio.to_thread(run_edge_tts_cli)
+                if res.returncode != 0:
+                    raise RuntimeError(f"Edge-TTS 프로세스 오류 (code {res.returncode}): {res.stderr}")
+            finally:
+                if os.path.exists(tf_path):
+                    try:
+                        os.unlink(tf_path)
+                    except Exception:
+                        pass
+
+            if recite_path.exists() and recite_path.stat().st_size > 0:
+                with open(recite_path, "rb") as f:
+                    audio_data = f.read()
+                mime_type = "audio/mp3"
+                provider_name = f"Edge-TTS 신경망 [{voice_label}]"
+                print(f"[Edge-TTS 성공]: {len(audio_data)} bytes ({recite_filename}) 생성 완료")
+        except Exception as edge_err:
+            last_edge_err = str(edge_err)
+            print(f"[Edge-TTS 실행 오류]: {edge_err}")
+
+    if not audio_data:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gemini 및 Edge 신경망 음성 합성 모두 실패했습니다: {last_edge_err}"
+        )
+
+    # Gemini 헤더 없는 PCM 처리
+    if mime_type == "audio/wav" and not audio_data.startswith(b"RIFF"):
+        wav_io = io.BytesIO()
+        with wave.open(wav_io, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(24000)
+            wf.writeframes(audio_data)
+        audio_data = wav_io.getvalue()
+
+    b64_audio = base64.b64encode(audio_data).decode("utf-8")
+    data_uri = f"data:{mime_type};base64,{b64_audio}"
+
+    # 프로젝트 music 폴더에 자동 음원 저장
+    recite_path = music_dir / recite_filename
+    with open(recite_path, "wb") as f:
+        f.write(audio_data)
+
+    # 원고(작품집_원고.md)에 낭송 음원(recite_file) 자동 동기화
+    try:
+        mgr = project_manager.get_active_manuscript_manager()
+        works = mgr.load_works()
+        target_ep = f"제{clean_ep}화"
+        target_work = next((w for w in works if w.episode_no == target_ep), None)
+        if target_work:
+            target_work.recite_file = f"music/{recite_filename}"
+            mgr.save_work(target_work)
+            print(f"[원고 낭송 동기화] {target_ep} recite_file = music/{recite_filename} 저장 완료")
+    except Exception as sync_err:
+        print(f"[원고 낭송 동기화 알림]: {sync_err}")
+
+    active_id = project_manager.get_active_project_id()
+    audio_url = f"/projects/{active_id}/music/{recite_filename}?t={int(time.time())}"
+
+    return {
+        "success": True,
+        "data_uri": data_uri,
+        "audio_url": audio_url,
+        "filename": recite_filename,
+        "rel_path": f"music/{recite_filename}",
+        "engine_used": engine_used,
+        "gemini_credit_expired": TTS_STATE["gemini_credit_expired"],
+        "just_switched": just_switched_to_edge,
+        "credit_notice": credit_notice,
+        "provider_name": provider_name,
+        "message": f"{provider_name} 고음질 서정 낭송이 생성되었습니다."
+    }
 
 @app.post("/api/import_suno_share")
 async def import_suno_share_endpoint(req: ImportSunoShareRequest):
@@ -2061,8 +2395,34 @@ async def select_image_candidate(req: SelectImageCandidateRequest):
             if is_part2:
                 w.image_file_2 = f"./images/{final_filename}"
                 w.part2_mode = "image"
+                w.layout_mode = "multi_page"
+                # 4P 레이아웃 설정이 있으면 슬롯과 3면 이미지 설정도 완벽히 동기화
+                cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {
+                    "page_count": 4,
+                    "slots": ["image", "text", "image", "text"],
+                    "image_settings": {
+                        "page_1": {"mode": "image", "file": w.image_file or ""},
+                        "page_3": {"mode": "image", "file": f"./images/{final_filename}"}
+                    }
+                }
+                cfg["page_count"] = 4
+                slots = list(cfg.get("slots", ["image", "text", "image", "text"]))
+                while len(slots) < 4:
+                    slots.append("image" if len(slots) % 2 == 0 else "text")
+                slots[2] = "image"
+                cfg["slots"] = slots
+                img_settings = dict(cfg.get("image_settings", {}))
+                img_settings["page_3"] = {"mode": "image", "file": f"./images/{final_filename}"}
+                cfg["image_settings"] = img_settings
+                w.layout_config = cfg
             else:
                 w.image_file = f"./images/{final_filename}"
+                if getattr(w, 'layout_config', None):
+                    cfg = dict(w.layout_config)
+                    img_settings = dict(cfg.get("image_settings", {}))
+                    img_settings["page_1"] = {"mode": "image", "file": f"./images/{final_filename}"}
+                    cfg["image_settings"] = img_settings
+                    w.layout_config = cfg
             mgr.save_work(w)
             break
 
@@ -2113,8 +2473,33 @@ async def upload_image(
                 if target_slot == "part2":
                     w.image_file_2 = f"./images/{filename}"
                     w.part2_mode = "image"
+                    w.layout_mode = "multi_page"
+                    cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {
+                        "page_count": 4,
+                        "slots": ["image", "text", "image", "text"],
+                        "image_settings": {
+                            "page_1": {"mode": "image", "file": w.image_file or ""},
+                            "page_3": {"mode": "image", "file": f"./images/{filename}"}
+                        }
+                    }
+                    cfg["page_count"] = 4
+                    slots = list(cfg.get("slots", ["image", "text", "image", "text"]))
+                    while len(slots) < 4:
+                        slots.append("image" if len(slots) % 2 == 0 else "text")
+                    slots[2] = "image"
+                    cfg["slots"] = slots
+                    img_settings = dict(cfg.get("image_settings", {}))
+                    img_settings["page_3"] = {"mode": "image", "file": f"./images/{filename}"}
+                    cfg["image_settings"] = img_settings
+                    w.layout_config = cfg
                 else:
                     w.image_file = f"./images/{filename}"
+                    if getattr(w, 'layout_config', None):
+                        cfg = dict(w.layout_config)
+                        img_settings = dict(cfg.get("image_settings", {}))
+                        img_settings["page_1"] = {"mode": "image", "file": f"./images/{filename}"}
+                        cfg["image_settings"] = img_settings
+                        w.layout_config = cfg
                 mgr.save_work(w)
                 break
         try:
@@ -2774,7 +3159,7 @@ class SaveWorkLayoutConfigRequest(BaseModel):
 @app.post("/api/save_work_layout_config")
 async def save_work_layout_config_api(req: SaveWorkLayoutConfigRequest):
     """작품별 2P/4P 모듈형 매트릭스 조판 설정을 영구 저장"""
-    mgr = ManuscriptManager()
+    mgr = project_manager.get_active_manuscript_manager()
     success = mgr.update_work_layout_config(req.episode_no, req.layout_config)
     if not success:
         raise HTTPException(status_code=404, detail=f"작품 '{req.episode_no}'을(를) 찾을 수 없습니다.")

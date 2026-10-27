@@ -910,6 +910,121 @@ body {
   position: relative;
   overflow: hidden;
   border: 1px solid #E3DCD3;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+/* 단독 1페이지 엽서/시화 모드도 항상 우아한 양면 펼침면(Double Page Spread) 기본 유지 */
+.book-spread.single-page-mode {
+  /* 양면 펼침 기본 유지 */
+}
+
+/* 책장 상단 인라인 조판 제어 바 (Canva형 퀵 컨트롤) */
+.page-inline-header {
+  position: absolute;
+  top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 30;
+  pointer-events: auto;
+}
+#pageInlineHeaderLeft {
+  left: 18px;
+  right: 20px;
+}
+#pageInlineHeaderRight {
+  left: 32px;
+  right: 20px;
+}
+.page-template-select {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(4px);
+  border: 1px solid #D5C2B0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4A3320;
+  padding: 4px 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: all 0.15s ease;
+}
+.page-template-select:hover {
+  border-color: #EA580C;
+  background: #FFFBF7;
+}
+.page-inline-tools {
+  display: flex;
+  gap: 6px;
+}
+.btn-page-inline {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(4px);
+  border: 1px solid #D5C2B0;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  color: #5A3E26;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+.btn-page-inline:hover {
+  background: #FFF7EE;
+  border-color: #EA580C;
+  color: #C2410C;
+}
+
+/* 상하 혼합 슬롯 (상단 그림형 / 하단 그림형) */
+.slot-mixed-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding-top: 1.2rem;
+}
+.slot-mixed-image {
+  width: 100%;
+  height: 42%;
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
+  background: #FAF8F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.slot-mixed-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.slot-mixed-text {
+  width: 100%;
+  height: 55%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  box-sizing: border-box;
+  padding-top: 12px;
+}
+.slot-mixed-text .poem-header-title {
+  font-size: 1.3rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 3px;
+}
+.slot-mixed-text .poem-display-body {
+  font-size: 0.88rem;
+  line-height: 1.65;
 }
 
 /* Center Crease (책등 접힘선) */
@@ -975,6 +1090,7 @@ body {
   height: 100%;
   box-sizing: border-box;
   overflow: hidden !important;
+  position: relative;
 }
 
 .poem-header-area {
@@ -3235,6 +3351,220 @@ body.is-app-busy * {
   0%, 100% { transform: scale(1); opacity: 0.9; }
   50% { transform: scale(1.15); opacity: 1; }
 }
+
+/* ========================================================== */
+/* [조판실] 책장 하단 양쪽 연속 페이지 넘김 바 (Page Turn Navigation) */
+/* ========================================================== */
+.book-page-turn-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 960px;
+  margin: 14px auto 0 auto;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.btn-page-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFDF9;
+  border: 1.5px solid #D4A373;
+  color: #643E19;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(100, 62, 25, 0.08);
+  user-select: none;
+}
+
+.btn-page-turn:hover:not(:disabled) {
+  background: #FDF4EB;
+  border-color: #C85A17;
+  color: #9A3412;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(200, 90, 23, 0.15);
+}
+
+.btn-page-turn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-page-turn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #E2D3C1;
+  color: #A89582;
+  box-shadow: none;
+}
+
+.btn-page-turn .turn-arrow {
+  font-size: 1.05rem;
+  color: #C85A17;
+  transition: transform 0.2s ease;
+}
+
+.btn-page-turn:hover:not(:disabled) .turn-arrow {
+  transform: scale(1.15);
+}
+
+.btn-page-turn:disabled .turn-arrow {
+  color: #A89582;
+}
+
+.page-turn-indicator {
+  font-size: 0.86rem;
+  color: #7C4A1E;
+  font-weight: 600;
+  background: #FAF6EE;
+  border: 1px solid #EADBCC;
+  padding: 6px 16px;
+  border-radius: 20px;
+  letter-spacing: -0.2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* ========================================================
+   🎨 상하 혼합 슬롯: 수채 그라데이션 블렌딩 마스크 (Soft Gradient Blend)
+   ======================================================== */
+.slot-mixed-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: transparent;
+}
+
+.slot-mixed-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+/* 상단/하단 그림 공통 컨테이너 */
+.slot-mixed-image {
+  width: 100%;
+  height: 42%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.slot-mixed-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* 🖼️ 상단 그림형: 아랫단 35%가 글자 쪽으로 수채 물빛처럼 스며들며 페이드아웃 */
+.slot-mixed-image.fade-bottom {
+  border-bottom: none;
+}
+
+.slot-mixed-image.fade-bottom img {
+  -webkit-mask-image: linear-gradient(to bottom, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+  mask-image: linear-gradient(to bottom, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+}
+
+/* 🖼️ 하단 그림형: 윗단 35%가 글자 쪽으로 은은하게 번지며 페이드인 */
+.slot-mixed-image.fade-top {
+  border-top: none;
+}
+
+.slot-mixed-image.fade-top img {
+  -webkit-mask-image: linear-gradient(to top, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+  mask-image: linear-gradient(to top, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+}
+
+/* 상하 혼합 본문 영역 (시 텍스트) */
+.slot-mixed-text {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0.8rem 2.2rem 1.6rem 2.2rem;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.slot-mixed-text.text-top {
+  padding-top: 1.8rem;
+  padding-bottom: 0.6rem;
+}
+
+.slot-mixed-text.text-bottom {
+  padding-top: 0.4rem;
+  padding-bottom: 1.6rem;
+}
+
+.slot-mixed-text .poem-header-area {
+  margin-bottom: 0.7rem;
+  text-align: left;
+}
+
+.slot-mixed-text .poem-header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #382414;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.slot-mixed-text .poem-display-body {
+  font-family: var(--font-myeongjo), 'Noto Serif KR', serif;
+  color: #2F241E;
+  text-align: left;
+  line-height: 1.65;
+}
+
+
+
+
 
 
 

@@ -347,7 +347,12 @@ class ManuscriptManager:
             if w.episode_no == episode_no or (target_num and w_num == target_num):
                 w.layout_config = layout_config
                 page_count = layout_config.get("page_count", 2)
-                w.layout_mode = "multi_page" if page_count == 4 else "compact"
+                if page_count == 4:
+                    w.layout_mode = "multi_page"
+                elif page_count == 1:
+                    w.layout_mode = "single_page"
+                else:
+                    w.layout_mode = "compact"
                 
                 # 4P 모드일 때 3면/4면 기반 part2_mode 유추
                 slots = layout_config.get("slots", [])

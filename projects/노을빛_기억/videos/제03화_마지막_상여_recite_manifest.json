@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "meta": {
+    "episodeNo": "제03화",
+    "title": "마지막 상여",
+    "mode": "recite",
+    "aspectRatio": "16:9",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "durationInFrames": 3600,
+    "durationInSeconds": 120.0
+  },
+  "assets": {
+    "image": "d:/AG/StoryBook/projects/노을빛_기억/images/03_마지막상여.jpg",
+    "audio": "d:/AG/StoryBook/projects/노을빛_기억/music/03_낭송.wav"
+  },
+  "visuals": {
+    "kenBurns": {
+      "enabled": true,
+      "startScale": 1.0,
+      "endScale": 1.15,
+      "panDirection": "subtle_zoom_in"
+    },
+    "vignette": true,
+    "particles": true,
+    "waveform": true
+  },
+  "typography": {
+    "fontFamily": "Nanum Myeongjo",
+    "fontSize": 48,
+    "captions": [
+      {
+        "index": 1,
+        "text": "목화, 이제는 전설이 된 이름.",
+        "startFrame": 45,
+        "endFrame": 1776,
+        "startTimeSec": 1.5,
+        "endTimeSec": 59.2
+      },
+      {
+        "index": 2,
+        "text": "모시, 이 또한 아득한 전설이다.",
+        "startFrame": 1785,
+        "endFrame": 3516,
+        "startTimeSec": 59.5,
+        "endTimeSec": 117.2
+      }
+    ]
+  }
+}

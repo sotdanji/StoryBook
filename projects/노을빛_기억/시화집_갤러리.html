@@ -229,12 +229,13 @@
       font-size: 13px;
       background: #fff4d6;
       color: #9c6c00;
-      padding: 3px 8px;
-      border-radius: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
       font-weight: 700;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 3px;
+      justify-content: center;
+      line-height: 1.2;
     }
 
     /* 명령 버튼 & 제어 패널 */
@@ -246,60 +247,70 @@
       gap: 14px;
     }
 
-    /* 그림 포함 슬라이드 토글 스위치 */
-    .toggle-row {
+    /* 본문 가독성 조절 패널 (글자 크기 & 줄 간격) */
+    .reading-ctrl-card {
+      background: #ffffff;
+      border: 1px solid var(--sidebar-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+    }
+    .reading-ctrl-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: #ffffff;
-      border-radius: 10px;
-      border: 1px solid var(--sidebar-border);
     }
-    .toggle-label {
-      font-size: 16px;
+    .reading-ctrl-label {
+      font-size: 14.5px;
       font-weight: 700;
-      color: #423d38;
+      color: #52473c;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 52px;
+    .reading-btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #faf7f2;
+      border: 1px solid #e2d9cd;
+      border-radius: 7px;
+      padding: 2px 4px;
+    }
+    .btn-reading-adj {
+      background: #ffffff;
+      border: 1px solid #dcd4c8;
+      border-radius: 5px;
+      color: #4a3e31;
+      font-size: 14px;
+      font-weight: 700;
+      width: 32px;
       height: 28px;
-    }
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #ccc6bd;
-      transition: .24s;
-      border-radius: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 22px;
-      width: 22px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .24s;
-      border-radius: 50%;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    .btn-reading-adj:hover {
+      background: #f0e9dc;
+      color: #2b1f13;
+      border-color: #c4b5a2;
     }
-    input:checked + .slider {
-      background-color: var(--accent-brown);
+    .btn-reading-adj:active {
+      transform: scale(0.96);
     }
-    input:checked + .slider:before {
-      transform: translateX(24px);
+    .reading-val-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6d4b29;
+      min-width: 44px;
+      text-align: center;
+      user-select: none;
     }
 
     /* 앞으로 / 뒤로 네비게이션 버튼 */
@@ -468,7 +479,7 @@
       justify-content: center;
       align-items: center;
       position: relative;
-      cursor: pointer;
+      user-select: none;
     }
     .image-wrapper img {
       max-width: 100%;
@@ -476,22 +487,7 @@
       object-fit: contain;
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
-      transition: transform 0.25s ease;
-    }
-    .image-wrapper:hover img {
-      transform: scale(1.018);
-    }
-    .zoom-tooltip {
-      position: absolute;
-      bottom: 12px;
-      right: 14px;
-      background: rgba(0,0,0,0.65);
-      color: #fff;
-      font-size: 11.5px;
-      padding: 5px 9px;
-      border-radius: 6px;
-      pointer-events: none;
-      backdrop-filter: blur(4px);
+      transform-origin: center center;
     }
 
     /* 시 본문 칼럼 (Right Side of Book) */
@@ -535,14 +531,9 @@
       font-family: 'Nanum Myeongjo', serif;
       font-size: 34px;
       font-weight: 800;
-      color: #27211b;
+      color: #000000;
       letter-spacing: -0.5px;
-      margin-bottom: 10px;
-    }
-    .poem-memory {
-      font-size: 16px;
-      color: #72685e;
-      line-height: 1.6;
+      margin-bottom: 0;
     }
 
     /* 시 텍스트 영역 (독립 스크롤) */
@@ -566,7 +557,11 @@
       font-family: 'Nanum Myeongjo', serif;
       font-size: 22px;
       line-height: 2.35;
-      color: #2d2722;
+      color: #000000;
+      white-space: pre-wrap;
+      word-break: keep-all;
+      transition: font-size 0.15s ease, line-height 0.15s ease;
+    }
       white-space: pre-wrap;
       word-break: keep-all;
     }
@@ -618,36 +613,17 @@
     }
     .music-action-bar {
       display: flex;
-      gap: 8px;
+      justify-content: flex-end;
       align-items: center;
-    }
-    .btn-lyrics-toggle {
-      flex: 1;
-      background: #8b5a2b;
-      color: #ffffff;
-      border: none;
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.2s;
-      text-align: center;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-    .btn-lyrics-toggle:hover {
-      background: #6c411a;
+      margin-top: 4px;
     }
     .btn-music-close {
       background: #f0ebe2;
       color: #643e19;
       border: 1.5px solid #d5c8b7;
-      padding: 12px 18px;
+      padding: 8px 16px;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -685,51 +661,6 @@
       color: #3b220c;
       transform: translateY(-1px);
       box-shadow: 0 3px 8px rgba(100, 62, 25, 0.08);
-    }
-    .lyrics-drawer {
-      display: none;
-      margin-top: 12px;
-      max-height: 200px;
-      overflow-y: auto;
-      background: #ffffff;
-      border: 1px dashed #d5cbbe;
-      border-radius: 8px;
-      padding: 14px;
-      font-size: 16px;
-      line-height: 1.95;
-      color: #4b4239;
-      white-space: pre-wrap;
-    }
-
-    /* ========================================================
-       4. 모달 라이트박스 (이미지 확대 팝업)
-       ======================================================== */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.88);
-      justify-content: center;
-      align-items: center;
-      padding: 24px;
-      backdrop-filter: blur(5px);
-    }
-    .modal.active { display: flex; }
-    .modal img {
-      max-width: 92vw;
-      max-height: 92vh;
-      border-radius: 8px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    }
-    .modal-close {
-      position: absolute;
-      top: 24px;
-      right: 36px;
-      color: #ffffff;
-      font-size: 38px;
-      font-weight: bold;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -775,15 +706,28 @@
 
     <!-- 명령 제어 스위치 & 버튼 -->
     <div class="controls-panel">
-      <!-- 그림 포함 토글 스위치 -->
-      <div class="toggle-row">
-        <span class="toggle-label">
-          <span>🖼️</span> 그림 포함
-        </span>
-        <label class="switch">
-          <input type="checkbox" id="imageToggle" checked>
-          <span class="slider"></span>
-        </label>
+      <!-- 본문 가독성 조절 (글자 크기 & 줄 간격) -->
+      <div class="reading-ctrl-card">
+        <div class="reading-ctrl-row">
+          <span class="reading-ctrl-label">
+            <span>🔤</span> 글자 크기
+          </span>
+          <div class="reading-btn-group">
+            <button type="button" class="btn-reading-adj" onclick="changeFontSize(-1)" title="글자 작게">－</button>
+            <span class="reading-val-tag" id="fontSizeTag">22px</span>
+            <button type="button" class="btn-reading-adj" onclick="changeFontSize(1)" title="글자 크게">＋</button>
+          </div>
+        </div>
+        <div class="reading-ctrl-row">
+          <span class="reading-ctrl-label">
+            <span>↕️</span> 줄 간격
+          </span>
+          <div class="reading-btn-group">
+            <button type="button" class="btn-reading-adj" onclick="changeLineHeight(-0.1)" title="줄 간격 좁게">－</button>
+            <span class="reading-val-tag" id="lineHeightTag">2.4</span>
+            <button type="button" class="btn-reading-adj" onclick="changeLineHeight(0.1)" title="줄 간격 넓게">＋</button>
+          </div>
+        </div>
       </div>
 
       <!-- 앞으로 / 뒤로 네비게이션 버튼 -->
@@ -821,9 +765,8 @@
       
       <!-- 1. 좌측: 고화질 그림 영역 -->
       <section class="col-image" id="colImage">
-        <div class="image-wrapper" onclick="openModal()">
+        <div class="image-wrapper" id="imageWrapper">
           <img id="mainImage" src="" alt="시화 삽화">
-          <span class="zoom-tooltip">🔍 클릭하여 원본 확대</span>
         </div>
       </section>
 
@@ -833,7 +776,6 @@
         <div class="poem-header">
           <span class="poem-badge" id="poemBadge">제01화</span>
           <h2 class="poem-title" id="poemTitle">제목</h2>
-          <div class="poem-memory" id="poemMemory">기억의 중심</div>
         </div>
 
         <!-- 시 본문 독립 스크롤 -->
@@ -862,15 +804,9 @@
             </div>
           </div>
           <div class="music-action-bar" id="musicActionBar">
-            <button type="button" class="btn-lyrics-toggle" id="btnLyricsToggle" onclick="toggleLyrics()">
-              📜 노랫말(가사) 보기
+            <button type="button" class="btn-music-close" id="btnMusicClose" onclick="closeAudioPlayer()" title="플레이어를 닫고 오디오 재생을 멈춥니다">
+              ✕ 오디오 닫기
             </button>
-            <button type="button" class="btn-music-close" id="btnMusicClose" onclick="closeAudioPlayer()" title="플레이어를 닫고 음악 재생을 멈춥니다">
-              ✕ 닫기
-            </button>
-          </div>
-          <div class="lyrics-drawer" id="lyricsDrawer">
-            <!-- 가사 내용 동적 주입 -->
           </div>
         </div>
 
@@ -885,11 +821,6 @@
     </div>
   </main>
 
-  <!-- 이미지 확대 모달 -->
-  <div id="imageModal" class="modal" onclick="closeModal()">
-    <span class="modal-close">&times;</span>
-    <img id="modalImg" src="" alt="확대 이미지">
-  </div>
 
   <!-- ========================================================
        스크립트: 데이터 로직 및 인터랙션
@@ -1263,19 +1194,32 @@
     // 백엔드 원고 자동 동기화 (창작된 새 회차가 있으면 갤러리에 즉시 자동 반영)
     async function syncEpisodesFromBackend() {
       try {
+        // 1순위: /api/gallery_data (스마트 매핑 적용된 갤러리 전용 API)
+        const gRes = await fetch('/api/gallery_data');
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          if (gData && gData.success && gData.episodes && gData.episodes.length > 0) {
+            EPISODES.length = 0;
+            gData.episodes.forEach(ep => EPISODES.push(ep));
+            console.log(`[갤러리 API 동기화 성공] 총 ${EPISODES.length}개 회차 연동 완료`);
+            return;
+          }
+        }
+
+        // 2순위: /api/status 폴백
         const res = await fetch('/api/status');
         if (res.ok) {
           const data = await res.json();
           if (data && data.works && data.works.length > 0) {
             EPISODES.length = 0; // 기존 배열 비우기
             data.works.forEach(w => {
+              const epDigits = (w.episode_no || '').replace(/[^0-9]/g, '').padStart(2, '0');
               // 이미지 경로 정리
               let cleanImg = w.image_file ? w.image_file.replace(/^(\.\/|\/)/, '') : '';
               if (cleanImg && !cleanImg.startsWith('images/')) {
                 cleanImg = cleanImg.replace(/^.*images\//, 'images/');
               }
               if (!cleanImg) {
-                const epDigits = (w.episode_no || '').replace(/[^0-9]/g, '').padStart(2, '0');
                 cleanImg = `images/${epDigits}_삽화.jpg`;
               }
 
@@ -1289,6 +1233,14 @@
                 } else {
                   cleanMusic = cleanAudio;
                 }
+              }
+
+              // 파일 시스템 기본 규칙 기반 자동 보강
+              if (!cleanRecite && epDigits) {
+                cleanRecite = `music/${epDigits}_낭송.wav`;
+              }
+              if (!cleanMusic && ['02','03','04','05','06','09','11','12','13'].includes(epDigits)) {
+                cleanMusic = `music/${epDigits}_음원.mp3`;
               }
 
               EPISODES.push({
@@ -1321,8 +1273,7 @@
       renderTOC();
       loadEpisode(0);
       checkStudioEnvironment();
-      loadEpisode(0);
-      checkStudioEnvironment();
+      applyReadingStyles();
 
       // 오디오 플레이어 로드 성공 및 실패 상태 리스너
       const mainAudio = document.getElementById('audioPlayer');
@@ -1336,25 +1287,10 @@
         });
       }
 
-      // 그림 포함 토글 이벤트
-      const toggle = document.getElementById('imageToggle');
-      toggle.addEventListener('change', function() {
-        const colImage = document.getElementById('colImage');
-        const container = document.getElementById('bookContainer');
-        if (this.checked) {
-          colImage.classList.remove('hidden');
-          container.classList.remove('text-only');
-        } else {
-          colImage.classList.add('hidden');
-          container.classList.add('text-only');
-        }
-      });
-
       // 키보드 방향키 이동 지원
       document.addEventListener('keydown', function(e) {
         if (e.key === "ArrowLeft") navigatePrev();
         if (e.key === "ArrowRight") navigateNext();
-        if (e.key === "Escape") closeModal();
       });
 
       // 스튜디오 작업 후 갤러리 탭으로 복귀 시 최신 원고·음원 자동 실시간 동기화
@@ -1370,6 +1306,34 @@
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) autoRefreshOnFocus();
       });
+    }
+
+    // 본문 가독성 조절 (글자 크기 & 줄 간격 - 독자 취향 저장)
+    let currentFontSize = parseInt(localStorage.getItem('storybook_font_size') || '22', 10);
+    let currentLineHeight = parseFloat(localStorage.getItem('storybook_line_height') || '2.35');
+
+    function applyReadingStyles() {
+      const poem = document.getElementById('poemContent');
+      const fontTag = document.getElementById('fontSizeTag');
+      const lhTag = document.getElementById('lineHeightTag');
+      if (poem) {
+        poem.style.fontSize = `${currentFontSize}px`;
+        poem.style.lineHeight = currentLineHeight.toFixed(2);
+      }
+      if (fontTag) fontTag.textContent = `${currentFontSize}px`;
+      if (lhTag) lhTag.textContent = currentLineHeight.toFixed(1);
+    }
+
+    function changeFontSize(delta) {
+      currentFontSize = Math.max(16, Math.min(36, currentFontSize + delta * 2));
+      localStorage.setItem('storybook_font_size', currentFontSize);
+      applyReadingStyles();
+    }
+
+    function changeLineHeight(delta) {
+      currentLineHeight = Math.max(1.6, Math.min(3.2, +(currentLineHeight + delta).toFixed(2)));
+      localStorage.setItem('storybook_line_height', currentLineHeight);
+      applyReadingStyles();
     }
 
     // 시집 목록 동적 로드 및 프로젝트 전환 핸들러
@@ -1457,12 +1421,9 @@
 
       const audioPlayer = document.getElementById('audioPlayer');
       const audioSource = document.getElementById('audioSource');
-      const lyricsBtn = document.getElementById('btnLyricsToggle');
-      const lyricsDrawer = document.getElementById('lyricsDrawer');
       const titleSpan = document.getElementById('audioSectionTitle');
       const btnRecite = document.getElementById('btnPlayRecite');
       const btnMusic = document.getElementById('btnPlayMusic');
-      const btnClose = document.getElementById('btnMusicClose');
 
       // 1. 이전 실행 즉시 완전 중단
       if (audioPlayer) {
@@ -1477,14 +1438,11 @@
         if (btnMusic) btnMusic.classList.remove('active');
         if (titleSpan) titleSpan.innerHTML = '<span>🎙️</span> 시 낭송 듣기';
         targetSrc = data.recite || data.audio || '';
-        if (lyricsBtn) lyricsBtn.style.display = 'none';
-        if (lyricsDrawer) lyricsDrawer.style.display = 'none';
       } else {
         if (btnMusic) btnMusic.classList.add('active');
         if (btnRecite) btnRecite.classList.remove('active');
         if (titleSpan) titleSpan.innerHTML = '<span>🎵</span> 노래 듣기';
         targetSrc = data.music || data.audio || '';
-        if (lyricsBtn) lyricsBtn.style.display = data.lyrics ? 'block' : 'none';
       }
 
       // 3. audioPlayer 요소 자체에 직접 src 지정 (캐시 방지 타임스탬프 결합 및 WAV/MP3 자동 파싱)
@@ -1497,18 +1455,7 @@
         audioPlayer.load();
       }
 
-      // 4. 가사 버튼 유무에 따른 닫기 버튼 너비 균형 조정
-      if (btnClose) {
-        if (lyricsBtn && lyricsBtn.style.display !== 'none') {
-          btnClose.style.flex = '0 0 auto';
-          btnClose.innerHTML = '✕ 닫기';
-        } else {
-          btnClose.style.flex = '1';
-          btnClose.innerHTML = '✕ 오디오 플레이어 닫기';
-        }
-      }
-
-      // 5. 사용자가 원할 때 직접 재생(▶) 버튼을 누를 수 있도록 자동 재생 완전 배제 (수동 대기)
+      // 4. 사용자가 원할 때 직접 재생(▶) 버튼을 누를 수 있도록 자동 재생 완전 배제 (수동 대기)
       if (autoPlay && audioPlayer) {
         audioPlayer.play().catch(e => {
           console.log('[오디오 수동 재생 대기]:', e);
@@ -1530,11 +1477,11 @@
         const hasM = Boolean(item.hasMusic && item.music);
 
         if (hasR && hasM) {
-          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;">🎙️ 낭송</span> <span class="music-badge">🎵 노래</span>`;
+          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;" title="시 낭송 수록">🎙️</span> <span class="music-badge" title="노래 수록">🎵</span>`;
         } else if (hasR) {
-          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;">🎙️ 낭송</span>`;
+          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;" title="시 낭송 수록">🎙️</span>`;
         } else if (hasM) {
-          badges = `<span class="music-badge">🎵 노래</span>`;
+          badges = `<span class="music-badge" title="노래 수록">🎵</span>`;
         }
 
         div.innerHTML = `
@@ -1558,9 +1505,9 @@
       // 텍스트 정보 반영
       document.getElementById('poemBadge').innerText = data.ep;
       document.getElementById('poemTitle').innerText = data.title;
-      document.getElementById('poemMemory').innerText = data.memory ? `기억의 중심: ${data.memory}` : '';
       document.getElementById('poemContent').innerText = data.body;
       document.getElementById('mainImage').src = data.image;
+      applyReadingStyles();
 
       // 페이지 인디케이터
       document.getElementById('pageIndicator').innerText = `${currentIndex + 1} / ${EPISODES.length}`;
@@ -1572,14 +1519,11 @@
       const openBar = document.getElementById('musicOpenBar') || document.getElementById('musicReopenBar');
       const audioPlayer = document.getElementById('audioPlayer');
       const audioSource = document.getElementById('audioSource');
-      const lyricsDrawer = document.getElementById('lyricsDrawer');
-      const lyricsBtn = document.getElementById('btnLyricsToggle');
       const toggleGroup = document.getElementById('audioToggleGroup');
       const titleSpan = document.getElementById('audioSectionTitle');
       const iconSpan = document.getElementById('openMusicIcon') || document.getElementById('reopenMusicIcon');
       const textSpan = document.getElementById('openMusicText') || document.getElementById('reopenMusicText');
 
-      lyricsDrawer.style.display = 'none';
       if (musicSec) musicSec.style.display = 'none'; // 기본 접힘 상태 유지
 
       // 이전 에피소드의 오디오 재생 즉시 중단 (중복 방지)
@@ -1595,7 +1539,6 @@
         // [케이스 4: 둘 다 있음] -> 트랙 데이터 준비 & 열기 바 노출
         if (toggleGroup) toggleGroup.style.display = 'flex';
         switchAudioTrack('music', false); // 초기 로드 시에는 준비만
-        lyricsDrawer.innerText = data.lyrics || '';
         if (openBar) {
           if (iconSpan) iconSpan.textContent = '🎵';
           if (textSpan) textSpan.textContent = '노래 · 시 낭송 듣기 (플레이어 열기)';
@@ -1612,18 +1555,6 @@
           if (audioSource) audioSource.src = bustUrl;
           audioPlayer.load();
         }
-        if (lyricsBtn) lyricsBtn.style.display = data.lyrics ? 'block' : 'none';
-        lyricsDrawer.innerText = data.lyrics || '';
-        const btnClose = document.getElementById('btnMusicClose');
-        if (btnClose) {
-          if (data.lyrics) {
-            btnClose.style.flex = '0 0 auto';
-            btnClose.innerHTML = '✕ 닫기';
-          } else {
-            btnClose.style.flex = '1';
-            btnClose.innerHTML = '✕ 오디오 플레이어 닫기';
-          }
-        }
         if (openBar) {
           if (iconSpan) iconSpan.textContent = '🎵';
           if (textSpan) textSpan.textContent = '노래 듣기 (플레이어 열기)';
@@ -1639,12 +1570,6 @@
           audioPlayer.src = bustUrl;
           if (audioSource) audioSource.src = bustUrl;
           audioPlayer.load();
-        }
-        if (lyricsBtn) lyricsBtn.style.display = 'none';
-        const btnClose = document.getElementById('btnMusicClose');
-        if (btnClose) {
-          btnClose.style.flex = '1';
-          btnClose.innerHTML = '✕ 오디오 플레이어 닫기';
         }
         if (openBar) {
           if (iconSpan) iconSpan.textContent = '🎙️';
@@ -1683,12 +1608,6 @@
       if (currentIndex < EPISODES.length - 1) {
         loadEpisode(currentIndex + 1);
       }
-    }
-
-    // 노래 가사 토글
-    function toggleLyrics() {
-      const drawer = document.getElementById('lyricsDrawer');
-      drawer.style.display = (drawer.style.display === 'block') ? 'none' : 'block';
     }
 
     // 음악/낭송 플레이어 열기 (사용자가 원할 때 펼치며 수동 재생 대기)
@@ -1753,15 +1672,6 @@
       }
     }
 
-    // 이미지 확대 모달
-    function openModal() {
-      const src = document.getElementById('mainImage').src;
-      document.getElementById('modalImg').src = src;
-      document.getElementById('imageModal').classList.add('active');
-    }
-    function closeModal() {
-      document.getElementById('imageModal').classList.remove('active');
-    }
 
     // 스토리북 스튜디오 환경 감지 (로컬 파일 시스템 또는 로컬호스트 환경에서만 버튼 노출)
     function checkStudioEnvironment() {
