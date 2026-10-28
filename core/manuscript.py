@@ -189,12 +189,44 @@ class ManuscriptManager:
         return None
 
     def _write_works_to_file(self, works: List[PoemWork]) -> None:
-        """작품 리스트를 받아 마크다운 파일로 영구 저장"""
+        """작품 리스트를 받아 마크다운 파일로 영구 저장 (기존 시집 헤더 메타데이터 보존)"""
         completed_count = sum(1 for w in works if "완성" in w.status)
+        target_cnt = TARGET_POEMS_COUNT
+        book_title = "시화집 작품집"
+        meta_quote_block = []
+
+        # 기존 파일이나 project.json에서 시집 메타데이터 보존
+        meta_file = self.file_path.parent / "project.json"
+        if meta_file.exists():
+            try:
+                import json
+                pdata = json.loads(meta_file.read_text(encoding="utf-8"))
+                book_title = pdata.get("name", book_title)
+                target_cnt = pdata.get("target_count", target_cnt)
+                author_label = "지은이" if pdata.get("author_type", "single") == "single" else "엮은이"
+                meta_quote_block = [
+                    f"> **{author_label}**: {pdata.get('author', '')}  ",
+                    f"> **부제**: {pdata.get('subtitle', '')}  ",
+                    f"> **기획**: {pdata.get('description', '')}  ",
+                    ""
+                ]
+            except Exception:
+                pass
+        elif self.file_path.exists():
+            try:
+                old_text = self.file_path.read_text(encoding="utf-8")
+                for line in old_text.split("\n---")[0].splitlines():
+                    if line.strip().startswith(">"):
+                        meta_quote_block.append(line)
+                if meta_quote_block:
+                    meta_quote_block.append("")
+            except Exception:
+                pass
 
         lines = [
-            f"# 시화집 작품집 원고 (진행 현황: {completed_count} / {TARGET_POEMS_COUNT}편 완료)",
+            f"# {book_title} 원고 (진행 현황: {completed_count} / {target_cnt}편 완료)",
             "",
+            *meta_quote_block,
             "---",
             ""
         ]

@@ -14,7 +14,8 @@ py_files = list(BASE_DIR.glob("**/*.py"))
 py_errors = []
 
 for py_file in py_files:
-    if ".git" in str(py_file) or "__pycache__" in str(py_file) or ".gemini" in str(py_file):
+    parts = py_file.parts
+    if any(p in parts for p in (".git", "__pycache__", ".gemini", ".venv", "venv", "_internal", "python")):
         continue
     rel_path = py_file.relative_to(BASE_DIR)
     try:

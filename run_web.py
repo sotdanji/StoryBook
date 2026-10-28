@@ -44,8 +44,9 @@ def main():
     # 1.2초 뒤 브라우저 자동 오픈
     threading.Timer(1.2, open_browser, args=[target_port]).start()
 
-    # Uvicorn 서버 구동 (코드 수정 시 자동 리로드 지원)
-    uvicorn.run("web.app:app", host="127.0.0.1", port=target_port, reload=True, log_level="info")
+    # 개발 모드(--reload 또는 환경변수)일 때만 자동 리로드 활성화 (포터블 실행 시 리소스 절약)
+    use_reload = ("--reload" in sys.argv) or (os.getenv("STORYBOOK_RELOAD", "0") == "1")
+    uvicorn.run("web.app:app", host="127.0.0.1", port=target_port, reload=use_reload, log_level="info")
 
 if __name__ == "__main__":
     main()

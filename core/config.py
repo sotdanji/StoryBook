@@ -31,32 +31,34 @@ PAPER_THICKNESS = {
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
+def _update_env_file(key_name: str, value: str) -> None:
+    """지정한 환경변수를 .env 파일에 안전하게 저장하거나 갱신합니다."""
+    env_path = BASE_DIR / ".env"
+    existing_lines = []
+    found = False
+
+    if env_path.exists():
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip().startswith(f"{key_name}="):
+                    existing_lines.append(f"{key_name}={value}\n")
+                    found = True
+                else:
+                    existing_lines.append(line)
+
+    if not found:
+        existing_lines.append(f"{key_name}={value}\n")
+
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(existing_lines)
+
 def save_gemini_api_key(new_key: str) -> bool:
     """Gemini API 키를 .env 파일에 영구 저장하고 런타임 환경변수를 즉시 갱신합니다."""
     global GEMINI_API_KEY
     clean_key = new_key.strip()
     GEMINI_API_KEY = clean_key
     os.environ["GEMINI_API_KEY"] = clean_key
-
-    env_path = BASE_DIR / ".env"
-    existing_lines = []
-    key_found = False
-
-    if env_path.exists():
-        with open(env_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.strip().startswith("GEMINI_API_KEY="):
-                    existing_lines.append(f"GEMINI_API_KEY={clean_key}\n")
-                    key_found = True
-                else:
-                    existing_lines.append(line)
-
-    if not key_found:
-        existing_lines.append(f"GEMINI_API_KEY={clean_key}\n")
-
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.writelines(existing_lines)
-
+    _update_env_file("GEMINI_API_KEY", clean_key)
     return True
 
 def save_gemini_model(new_model: str) -> bool:
@@ -65,26 +67,7 @@ def save_gemini_model(new_model: str) -> bool:
     clean_model = new_model.strip()
     GEMINI_MODEL = clean_model
     os.environ["GEMINI_MODEL"] = clean_model
-
-    env_path = BASE_DIR / ".env"
-    existing_lines = []
-    model_found = False
-
-    if env_path.exists():
-        with open(env_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.strip().startswith("GEMINI_MODEL="):
-                    existing_lines.append(f"GEMINI_MODEL={clean_model}\n")
-                    model_found = True
-                else:
-                    existing_lines.append(line)
-
-    if not model_found:
-        existing_lines.append(f"GEMINI_MODEL={clean_model}\n")
-
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.writelines(existing_lines)
-
+    _update_env_file("GEMINI_MODEL", clean_model)
     return True
 
 def get_gemini_api_key_status() -> dict:
