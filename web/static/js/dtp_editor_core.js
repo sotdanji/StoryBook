@@ -1734,11 +1734,39 @@
         const btn = document.getElementById(`btnTabDtp${t.charAt(0).toUpperCase() + t.slice(1)}`);
         const content = document.getElementById(`toolboxTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
         if (btn) btn.classList.toggle('active', t === tabKey);
-        if (content) content.style.display = (t === tabKey) ? 'flex' : 'none';
+        if (content) {
+          content.classList.toggle('active', t === tabKey);
+          content.style.setProperty('display', t === tabKey ? 'flex' : 'none', 'important');
+        }
       });
       if (tabKey === 'image') {
         this.syncToolboxImageTab();
       }
+      if (tabKey === 'ai') {
+        const work = this.getCurrentWork();
+        const chip = document.getElementById('canvaAiWorkTitle');
+        if (chip && work) {
+          chip.textContent = `📄 [${work.episode_no || '제01화'} ${work.title || ''}]`;
+        }
+      }
+    }
+
+    /**
+     * Canva풍 AI 어시스턴트: 새 대화 시작 (리셋)
+     */
+    resetAiChat() {
+      const msgBox = document.getElementById("dtpAiMessages");
+      if (!msgBox) return;
+      const work = this.getCurrentWork();
+      const title = work ? `「${work.title}」` : "현재 시화";
+      msgBox.innerHTML = `
+        <div class="canva-ai-bubble">
+          안녕하세요! AI 시화 동반자 안실장입니다. 🌿<br>
+          새로운 대화를 시작합니다. ${title}에 관해 궁금한 점이나 시어 퇴고, 삽화 요청을 자유롭게 말씀해 주세요.
+        </div>
+      `;
+      const input = document.getElementById("inputDtpAiPrompt");
+      if (input) input.value = "";
     }
 
     /**
@@ -2045,16 +2073,16 @@
       const msgBox = document.getElementById("dtpAiMessages");
       if (!msgBox) return;
 
-      // 사용자 버블 추가
+      // 사용자 버블 추가 (Canva풍 그라데이션)
       const userBubble = document.createElement("div");
-      userBubble.className = "user-bubble";
+      userBubble.className = "canva-user-bubble";
       userBubble.textContent = userText;
       msgBox.appendChild(userBubble);
       msgBox.scrollTop = msgBox.scrollHeight;
 
       // AI 로딩 버블
       const aiBubble = document.createElement("div");
-      aiBubble.className = "ai-bubble";
+      aiBubble.className = "canva-ai-bubble";
       aiBubble.innerHTML = "안실장이 생각하고 있습니다... ✍️";
       msgBox.appendChild(aiBubble);
       msgBox.scrollTop = msgBox.scrollHeight;
@@ -2132,6 +2160,12 @@
 
       // 6) 그림 탭 동기화
       this.syncToolboxImageTab();
+
+      // 7) Canva풍 AI 탭 맥락 칩 동기화
+      const chip = document.getElementById('canvaAiWorkTitle');
+      if (chip && work) {
+        chip.textContent = `📄 [${work.episode_no || ''} ${work.title || ''}]`;
+      }
     }
 
   }

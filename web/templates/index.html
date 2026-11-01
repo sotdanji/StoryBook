@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StoryBook Studio | 기억 기반 시화집 독립출판</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/static/css/style.css?v=v5910">
+  <link rel="stylesheet" href="/static/css/style.css?v=v5920">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>window.name = "StoryBookStudio";</script>
 </head>
@@ -942,7 +942,7 @@
             <!-- 3. 패널 본문 영역 (스크롤) -->
             <div class="dtp-toolbox-body">
               <!-- [탭 1: ✍️ 글 편집] 상하 배열 (Row Stack) -->
-              <div class="dtp-tab-content" id="toolboxTabText">
+              <div class="dtp-tab-content active" id="toolboxTabText">
                 <!-- 1. 작업제어 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">작업제어</span>
@@ -1033,7 +1033,7 @@
               </div>
 
               <!-- [탭 2: 🎨 그림 편집] 상하 배열 (Row Stack) -->
-              <div class="dtp-tab-content" id="toolboxTabImage" style="display: none;">
+              <div class="dtp-tab-content" id="toolboxTabImage">
                 <!-- 1. 대상 면 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">대상 면</span>
@@ -1114,26 +1114,47 @@
                 </div>
               </div>
 
-              <!-- [탭 3: 🤖 AI 동반자] -->
-              <div class="dtp-tab-content" id="toolboxTabAi" style="display: none;">
-                <!-- 빠른 추천 액션 버튼 -->
-                <div class="dtp-control-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
-                  <button type="button" class="btn-control-sub" style="text-align: left; justify-content: flex-start;" onclick="dtpEditor.askAiQuickAction('rhyme')">✨ 여운 있는 시어 추천 및 퇴고</button>
-                  <button type="button" class="btn-control-sub" style="text-align: left; justify-content: flex-start;" onclick="dtpEditor.askAiQuickAction('art_prompt')">🎨 노을빛 수채화 프롬프트 제안</button>
-                  <button type="button" class="btn-control-sub" style="text-align: left; justify-content: flex-start;" onclick="dtpEditor.askAiQuickAction('layout')">📐 줄 수에 맞춘 2면 조판 조언</button>
-                </div>
+              <!-- [탭 3: 🤖 AI 동반자] Canva풍 AI 어시스턴트 -->
+              <div class="dtp-tab-content" id="toolboxTabAi">
+                <div class="dtp-canva-ai-container">
+                  <!-- 상단 바: 현재 시 맥락 칩 + 새 대화 리셋 -->
+                  <div class="canva-ai-topbar">
+                    <div class="canva-context-chip" id="canvaAiContextChip" title="현재 시화 작품 실시간 연동 중">
+                      <span class="chip-arrow">↳</span>
+                      <span id="canvaAiWorkTitle">📄 [제01화 새벽 대청]</span>
+                    </div>
+                    <button type="button" class="btn-canva-reset" onclick="dtpEditor.resetAiChat()" title="새 대화 시작">
+                      ✏️
+                    </button>
+                  </div>
 
-                <!-- AI 미니 대화창 -->
-                <div class="dtp-ai-chat-box">
-                  <div class="dtp-ai-messages" id="dtpAiMessages">
-                    <div class="ai-bubble">
+                  <!-- 대화 메시지 목록 -->
+                  <div class="canva-ai-messages" id="dtpAiMessages">
+                    <div class="canva-ai-bubble">
                       안녕하세요! AI 시화 동반자 안실장입니다. 🌿<br>
-                      현재 펼쳐진 작품에 맞추어 시어 퇴고나 삽화 프롬프트, 조판 배치를 도와드릴게요.
+                      현재 펼쳐진 작품에 맞추어 시어 퇴고나 삽화 프롬프트, 2면 조판 배치를 도와드릴게요.
                     </div>
                   </div>
-                  <div class="dtp-ai-input-area">
-                    <input type="text" class="dtp-ai-input" id="inputDtpAiPrompt" placeholder="안실장에게 질문이나 퇴고 요청..." onkeydown="if(event.key==='Enter') dtpEditor.sendAiMessage()">
-                    <button type="button" class="btn-ai-send" onclick="dtpEditor.sendAiMessage()">전송</button>
+
+                  <!-- 빠른 추천 칩 -->
+                  <div class="canva-quick-chips">
+                    <button type="button" class="canva-chip-btn" onclick="dtpEditor.askAiQuickAction('rhyme')">✨ 시어 퇴고</button>
+                    <button type="button" class="canva-chip-btn" onclick="dtpEditor.askAiQuickAction('art_prompt')">🎨 삽화 프롬프트</button>
+                    <button type="button" class="canva-chip-btn" onclick="dtpEditor.askAiQuickAction('layout')">📐 조판 조언</button>
+                  </div>
+
+                  <!-- 하단 Canva풍 라운드 입력 카드 -->
+                  <div class="canva-input-wrapper">
+                    <div class="canva-prompt-card">
+                      <textarea class="canva-prompt-input" id="inputDtpAiPrompt" placeholder="아이디어를 설명해 주세요" rows="2" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); dtpEditor.sendAiMessage();}"></textarea>
+                      <div class="canva-card-toolbar">
+                        <button type="button" class="canva-tool-btn" onclick="dtpEditor.askAiQuickAction('rhyme')" title="빠른 추천">+ </button>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <button type="button" class="canva-tool-btn" title="음성 인식" onclick="if(window.showToast) showToast('음성 인식 기능이 곧 지원됩니다.', 'info');">🎙️</button>
+                          <button type="button" class="btn-canva-send" onclick="dtpEditor.sendAiMessage()">전송</button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3543,7 +3564,7 @@
 
   <script src="/static/js/app.js?v=v5800"></script>
   <script src="/static/js/poem_video.js?v=20261031_v4400"></script>
-  <script src="/static/js/dtp_editor_core.js?v=v5910"></script>
+  <script src="/static/js/dtp_editor_core.js?v=v5920"></script>
   <script>
     async function handleLogout() {
       if (confirm("로그아웃하고 집필실을 나가시겠습니까?")) {

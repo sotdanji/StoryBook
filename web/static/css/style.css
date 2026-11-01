@@ -5183,79 +5183,16 @@ body.is-app-busy * {
   font-size: 0.72rem;
 }
 
-/* 9. AI 미니 대화창 (AI 탭) */
-.dtp-ai-chat-box {
-  display: flex;
-  flex-direction: column;
-  height: 380px;
-  background: #FAF7F2;
-  border: 1px solid #EAE0D2;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.dtp-ai-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 0.78rem;
-}
-
-.ai-bubble {
-  background: #FFFFFF;
-  border: 1px solid #E6DCCD;
-  border-radius: 8px 8px 8px 2px;
-  padding: 7px 10px;
-  color: #382414;
-  line-height: 1.45;
-}
-
-.user-bubble {
-  background: #8B3A1A;
-  color: #FFFFFF;
-  border-radius: 8px 8px 2px 8px;
-  padding: 7px 10px;
-  align-self: flex-end;
-  line-height: 1.45;
-}
-
-.dtp-ai-input-area {
-  display: flex;
-  gap: 4px;
-  padding: 6px;
-  background: #FFFFFF;
-  border-top: 1px solid #EAE0D2;
-}
-
-.dtp-ai-input {
-  flex: 1;
-  border: 1px solid #D5C5B2;
-  border-radius: 6px;
-  padding: 5px 8px;
-  font-size: 0.78rem;
-  outline: none;
-}
-
-.btn-ai-send {
-  background: #8B3A1A;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* --- DTP Toolbox Vertical Stack Layout (상하 배열 구조) --- */
+/* --- DTP Toolbox Tabs (탭 분리 제어) --- */
 .dtp-tab-content {
-  display: flex !important;
+  display: none !important;
   flex-direction: column !important;
   gap: 8px !important;
   width: 100% !important;
+}
+
+.dtp-tab-content.active {
+  display: flex !important;
 }
 
 .dtp-control-row {
@@ -5332,4 +5269,232 @@ body.is-app-busy * {
   background: #8B3A1A;
   border-color: #6E2D13;
   color: #FFFFFF;
+}
+
+/* --- Canva풍 AI 어시스턴트 스타일 (Magic Studio 컨셉) --- */
+.dtp-canva-ai-container {
+  display: flex;
+  flex-direction: column;
+  height: 480px;
+  background: #FAF9F6;
+  border: 1px solid #E5E1D8;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.canva-ai-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #EFEAE2;
+}
+
+.canva-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: #4B5563;
+  background: #F3F4F6;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canva-context-chip .chip-arrow {
+  color: #8B5CF6;
+  font-weight: 800;
+}
+
+.btn-canva-reset {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-canva-reset:hover {
+  background: #EDE9FE;
+  color: #7C3AED;
+}
+
+.canva-ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.8rem;
+}
+
+.canva-user-bubble {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #E0F2FE 0%, #EDE9FE 100%);
+  color: #1E1B4B;
+  border: 1px solid #C7D2FE;
+  border-radius: 16px 16px 4px 16px;
+  padding: 9px 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  max-width: 86%;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.08);
+  word-break: break-word;
+}
+
+.canva-ai-bubble {
+  align-self: flex-start;
+  background: #FFFFFF;
+  color: #1F2937;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+  font-size: 0.79rem;
+  line-height: 1.55;
+  max-width: 92%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  word-break: break-word;
+}
+
+.canva-ai-bubble strong {
+  color: #111827;
+}
+
+.canva-ai-bubble code {
+  background: #F3F4F6;
+  color: #4B5563;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-family: monospace;
+}
+
+.canva-quick-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 10px;
+  background: #FAF9F6;
+  border-top: 1px solid #EFEAE2;
+  scrollbar-width: none;
+}
+
+.canva-quick-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.canva-chip-btn {
+  background: #FFFFFF;
+  border: 1px solid #DDD6FE;
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6D28D9;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.canva-chip-btn:hover {
+  background: #EDE9FE;
+  border-color: #8B5CF6;
+}
+
+.canva-input-wrapper {
+  padding: 8px 10px 10px 10px;
+  background: #FFFFFF;
+  border-top: 1px solid #EFEAE2;
+}
+
+.canva-prompt-card {
+  background: #FFFFFF;
+  border: 1.5px solid #DDD6FE;
+  border-radius: 16px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.canva-prompt-card:focus-within {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.canva-prompt-input {
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #1F2937;
+  font-family: inherit;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+}
+
+.canva-prompt-input::placeholder {
+  color: #9CA3AF;
+  font-size: 0.78rem;
+}
+
+.canva-card-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.canva-tool-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.05rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.canva-tool-btn:hover {
+  color: #7C3AED;
+  background: #EDE9FE;
+}
+
+.btn-canva-send {
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-canva-send:hover {
+  background: #5B21B6;
 }
