@@ -4888,3 +4888,364 @@ body.is-app-busy * {
   border-color: #643E19 !important;
   opacity: 1 !important;
 }
+
+
+/* ==========================================================================
+   DTP Toolbox Styles (Auto-injected)
+   ========================================================================== */
+/* ==========================================================================
+   StoryBook Studio — DTP 편집 도구상자 (Canva 대체형 사이드 DTP 패널)
+   ========================================================================== */
+
+/* 1. 도구상자 + 2면 스프레드를 감싸는 작업 공간 래퍼 */
+.dtp-workspace-area {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 2. 도구상자 메인 패널 (사이드바와 편집 페이지 사이) */
+.dtp-toolbox-panel {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  background: #FFFDF9;
+  border: 1.5px solid #E6DDD0;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(90, 60, 30, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  z-index: 40;
+  transition: width 0.28s ease, min-width 0.28s ease, transform 0.28s ease, opacity 0.28s ease;
+}
+
+/* 접힌 상태 (Collapsed) */
+.dtp-toolbox-panel.is-collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  background: #FAF6F0;
+  border-color: #E2D7C8;
+}
+
+.dtp-toolbox-panel.is-collapsed .dtp-toolbox-body,
+.dtp-toolbox-panel.is-collapsed .dtp-tab-bar,
+.dtp-toolbox-panel.is-collapsed .toolbox-title-text {
+  display: none !important;
+}
+
+.dtp-toolbox-panel.is-collapsed .toolbox-header {
+  padding: 12px 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dtp-toolbox-panel.is-collapsed .btn-toolbox-toggle {
+  transform: rotate(180deg);
+}
+
+/* 3. 도구상자 헤더 */
+.toolbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #F7F1E7;
+  border-bottom: 1px solid #E8DFD3;
+}
+
+.toolbox-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #4A3319;
+}
+
+.btn-toolbox-toggle {
+  background: #FFFFFF;
+  border: 1px solid #D5C5B2;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #643E19;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-toolbox-toggle:hover {
+  background: #EFE6D8;
+  border-color: #BFA58C;
+}
+
+/* 4. 도구상자 3대 탭 스위처 */
+.dtp-tab-bar {
+  display: flex;
+  background: #EFE9DE;
+  border-bottom: 1px solid #E0D4C3;
+  padding: 4px 6px 0 6px;
+  gap: 4px;
+}
+
+.dtp-tab-btn {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7A6247;
+  background: transparent;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.dtp-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #4A3319;
+}
+
+.dtp-tab-btn.active {
+  background: #FFFDF9;
+  color: #8C3A14;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+  font-weight: 800;
+  border-top: 2px solid #C85A2A;
+}
+
+/* 5. 도구상자 본문 (스크롤 영역) */
+.dtp-toolbox-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - 220px);
+}
+
+.dtp-toolbox-body::-webkit-scrollbar {
+  width: 5px;
+}
+.dtp-toolbox-body::-webkit-scrollbar-thumb {
+  background: #D8CBB9;
+  border-radius: 4px;
+}
+
+.dtp-tool-group {
+  background: #FFFFFF;
+  border: 1px solid #EFE6D8;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dtp-tool-group-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #6E5338;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed #EDE3D4;
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+}
+
+/* 6. 정렬 버튼 그룹 (4종: 왼쪽, 가운데, 오른쪽, 양끝 배분) */
+.align-btn-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.btn-align {
+  background: #FBF8F3;
+  border: 1.5px solid #D8C7B2;
+  border-radius: 6px;
+  padding: 6px 2px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #553B20;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+
+.btn-align:hover {
+  background: #F3E9DA;
+  border-color: #BFA58C;
+}
+
+.btn-align.active {
+  background: #8B3A1A;
+  border-color: #6E2D13;
+  color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(139, 58, 26, 0.3);
+}
+
+/* 7. 미니 슬라이더 및 입력 콤포넌트 */
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.tool-label {
+  font-weight: 700;
+  color: #634C33;
+  white-space: nowrap;
+}
+
+.tool-val-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #8C3A14;
+  background: #FFF3EB;
+  border: 1px solid #FCD9C6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* 8. 그림 분할 레이아웃 선택 카드 (그림 탭) */
+.img-layout-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.layout-card {
+  background: #FAF6F0;
+  border: 1.5px solid #E2D7C8;
+  border-radius: 6px;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.layout-card:hover {
+  background: #F3ECE1;
+  border-color: #BFA58C;
+}
+
+.layout-card.active {
+  background: #FEF6F0;
+  border-color: #C85A2A;
+  color: #8C3A14;
+  font-weight: 800;
+  box-shadow: 0 0 0 1.5px rgba(200, 90, 42, 0.3);
+}
+
+.layout-card-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.layout-card-name {
+  font-size: 0.72rem;
+}
+
+/* 9. AI 미니 대화창 (AI 탭) */
+.dtp-ai-chat-box {
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+  background: #FAF7F2;
+  border: 1px solid #EAE0D2;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dtp-ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.ai-bubble {
+  background: #FFFFFF;
+  border: 1px solid #E6DCCD;
+  border-radius: 8px 8px 8px 2px;
+  padding: 7px 10px;
+  color: #382414;
+  line-height: 1.45;
+}
+
+.user-bubble {
+  background: #8B3A1A;
+  color: #FFFFFF;
+  border-radius: 8px 8px 2px 8px;
+  padding: 7px 10px;
+  align-self: flex-end;
+  line-height: 1.45;
+}
+
+.dtp-ai-input-area {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: #FFFFFF;
+  border-top: 1px solid #EAE0D2;
+}
+
+.dtp-ai-input {
+  flex: 1;
+  border: 1px solid #D5C5B2;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  outline: none;
+}
+
+.btn-ai-send {
+  background: #8B3A1A;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}

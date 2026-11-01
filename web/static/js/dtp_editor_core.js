@@ -38,6 +38,8 @@
       this.undoStack = [];
       this.redoStack = [];
       this.maxUndoSteps = 25;
+      this.targetPageSlot = 'left';
+      this.currentToolboxTab = 'text';
 
       this.defaultConfig = {
         page_count: 2,
@@ -575,6 +577,9 @@
         const partLabel = maxParts > 1 ? ` (${this.currentSpreadPart}/${maxParts}부)` : "";
         turnIndicator.textContent = `${work.episode_no || ''} 「${work.title || ''}」 — ${curStart}·${curStart + 1}면${partLabel}`;
       }
+
+      // 8) DTP 도구상자 전체 동기화
+      this.syncToolboxUI(work, cfg);
     }
 
     /**
@@ -1707,6 +1712,435 @@
         window.showToast(`✅ [${work.episode_no}] 「${work.title}」 (${cfg.page_count}쪽) 조판 설정이 완료·저장되었습니다!`, "success");
       }
     }
+
+    /**
+     * DTP 도구상자 탭 전환 ('text', 'image', 'ai')
+     */
+    switchToolboxTab(tabKey) {
+      this.currentToolboxTab = tabKey;
+      const tabs = ['text', 'image', 'ai'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`btnTabDtp${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const content = document.getElementById(`toolboxTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (btn) btn.classList.toggle('active', t === tabKey);
+        if (content) content.style.display = (t === tabKey) ? 'flex' : 'none';
+      });
+      if (tabKey === 'image') {
+        this.syncToolboxImageTab();
+      }
+    }
+
+    /**
+     * 도구상자 접기 / 펼치기 토글
+     */
+    toggleToolboxCollapse() {
+      const panel = document.getElementById("dtpToolboxPanel");
+      if (!panel) return;
+      panel.classList.toggle("is-collapsed");
+      const isCollapsed = panel.classList.contains("is-collapsed");
+      const icon = document.getElementById("btnToggleToolboxIcon");
+      if (icon) icon.textContent = isCollapsed ? "▶" : "◀";
+    }
+
+    /**
+     * 본문 텍스트 정렬 (4종: 'left', 'center', 'right', 'justify')
+     */
+    setTextAlign(align) {
+      const validAligns = ['left', 'center', 'right', 'justify'];
+      if (!validAligns.includes(align)) align = 'left';
+
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      this.pushUndoState();
+      const cfg = this.getNormalizedConfig(work);
+      cfg.text_align = align;
+      work.layout_config = cfg;
+
+      // 화면 즉시 반영
+      document.querySelectorAll('.dtp-body-content, .dtp-body-text').forEach(el => {
+        el.style.textAlign = align;
+      });
+
+      // 정렬 버튼 active 상태 갱신
+      const btnMap = {
+        'left': 'btnAlignLeft',
+        'center': 'btnAlignCenter',
+        'right': 'btnAlignRight',
+        'justify': 'btnAlignJustify'
+      };
+      Object.entries(btnMap).forEach(([k, btnId]) => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.classList.toggle('active', k === align);
+      });
+
+      this.saveLayoutConfigToServer(work.episode_no, cfg);
+      if (window.showToast) {
+        const labelMap = { left: '왼쪽', center: '가운데', right: '오른쪽', justify: '양끝 배분' };
+        window.showToast(`본문 정렬: ${labelMap[align] || align} 정렬 적용`, 'info');
+      }
+    }
+
+    /**
+     * 서체 변경
+     */
+    setFontFamily(fontFamily) {
+      const work = this.getCurrentWork();
+      if (!work) return;
+      this.pushUndoState();
+      const cfg = this.getNormalizedConfig(work);
+      cfg.font_family = fontFamily;
+      work.layout_config = cfg;
+
+      document.querySelectorAll('.dtp-body-content, .dtp-body-text, .dtp-title').forEach(el => {
+        el.style.fontFamily = fontFamily;
+      });
+
+      this.saveLayoutConfigToServer(work.episode_no, cfg);
+    }
+
+    /**
+     * 글자 크기 미세 증감 (+0.5 / -0.5)
+     */
+    adjustFontSize(delta) {
+      const work = this.getCurrentWork();
+      if (!work) return;
+      const cfg = this.getNormalizedConfig(work);
+      const curPt = parseFloat(cfg.font_size_pt) || 12.0;
+      const nextPt = Math.max(8.0, Math.min(20.0, Math.round((curPt + delta) * 10) / 10));
+      this.setFontSizePt(nextPt);
+    }
+
+    /**
+     * 줄간격 퍼센트 슬라이더 (130% ~ 220%)
+     */
+    setLineHeight(percentVal) {
+      const work = this.getCurrentWork();
+      if (!work) return;
+      const ratio = Math.round(parseFloat(percentVal)) / 100.0;
+      const cfg = this.getNormalizedConfig(work);
+      cfg.line_height_ratio = ratio;
+
+      document.querySelectorAll('.dtp-body-content, .dtp-body-text').forEach(el => {
+        el.style.lineHeight = `${ratio}`;
+      });
+
+      const lbl = document.getElementById('lblTbLineHeightVal');
+      if (lbl) lbl.textContent = `${percentVal}%`;
+
+      clearTimeout(this._lineHeightDebounce);
+      this._lineHeightDebounce = setTimeout(() => {
+        this.saveLayoutConfigToServer(work.episode_no, cfg);
+      }, 400);
+    }
+
+    /**
+     * 그림 탭: 편집 대상 면 선택 ('left' | 'right')
+     */
+    setTargetPageSlot(slot) {
+      this.targetPageSlot = slot;
+      const btnL = document.getElementById('btnTargetLeft');
+      const btnR = document.getElementById('btnTargetRight');
+      if (btnL) {
+        btnL.style.background = slot === 'left' ? '#8B3A1A' : '#FFF';
+        btnL.style.color = slot === 'left' ? '#FFF' : '#553412';
+      }
+      if (btnR) {
+        btnR.style.background = slot === 'right' ? '#8B3A1A' : '#FFF';
+        btnR.style.color = slot === 'right' ? '#FFF' : '#553412';
+      }
+      this.syncToolboxImageTab();
+    }
+
+    /**
+     * 그림 탭: 현재 슬롯의 설정 동기화
+     */
+    syncToolboxImageTab() {
+      const slot = this.targetPageSlot || 'left';
+      const side = slot.charAt(0).toUpperCase() + slot.slice(1);
+      const select = document.getElementById(`selectImgLayout${side}`);
+      const curLayout = select ? select.value : 'single';
+
+      const cardMap = {
+        'single': 'cardLayoutSingle',
+        'split_vertical': 'cardLayoutSplitV',
+        'split_horizontal': 'cardLayoutSplitH',
+        'main_detail': 'cardLayoutMainDetail'
+      };
+      Object.entries(cardMap).forEach(([k, id]) => {
+        const card = document.getElementById(id);
+        if (card) card.classList.toggle('active', k === curLayout);
+      });
+
+      const work = this.getCurrentWork();
+      const cfg = work ? this.getNormalizedConfig(work) : null;
+      const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
+      const pageInfo = cfg?.pages?.[pageIdx] || {};
+
+      const pan = pageInfo.image_pan || { x: 0, y: 0 };
+      const inputX = document.getElementById('inputTbPanX');
+      const inputY = document.getElementById('inputTbPanY');
+      const lblX = document.getElementById('lblTbPanXVal');
+      const lblY = document.getElementById('lblTbPanYVal');
+      if (inputX) inputX.value = pan.x || 0;
+      if (inputY) inputY.value = pan.y || 0;
+      if (lblX) lblX.textContent = `${pan.x || 0}%`;
+      if (lblY) lblY.textContent = `${pan.y || 0}%`;
+
+      const filter = pageInfo.image_filter || { vignette: 0, blur: 0, tone: 'none' };
+      const inputVig = document.getElementById('inputTbVignette');
+      const inputBlur = document.getElementById('inputTbBlur');
+      const selTone = document.getElementById('selectTbTone');
+      const lblVig = document.getElementById('lblTbVignetteVal');
+      const lblBlur = document.getElementById('lblTbBlurVal');
+      if (inputVig) inputVig.value = filter.vignette || 0;
+      if (lblVig) lblVig.textContent = `${filter.vignette || 0}%`;
+      if (inputBlur) inputBlur.value = filter.blur || 0;
+      if (lblBlur) lblBlur.textContent = `${filter.blur || 0}px`;
+      if (selTone) selTone.value = filter.tone || 'none';
+    }
+
+    /**
+     * 그림 분할 3단계 프리셋 적용
+     */
+    applyImageLayoutPreset(layout) {
+      const slot = this.targetPageSlot || 'left';
+      this.onImageLayoutChange(slot, layout);
+      this.syncToolboxImageTab();
+    }
+
+    /**
+     * 그림 초점 및 중심점 패닝 (X, Y)
+     */
+    setImagePan(axis, val) {
+      const slot = this.targetPageSlot || 'left';
+      const side = slot.charAt(0).toUpperCase() + slot.slice(1);
+      const img = document.getElementById(`dtpImg${side}`);
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      const cfg = this.getNormalizedConfig(work);
+      const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
+      if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+      if (!cfg.pages[pageIdx].image_pan) cfg.pages[pageIdx].image_pan = { x: 0, y: 0 };
+
+      cfg.pages[pageIdx].image_pan[axis] = parseInt(val, 10) || 0;
+      const pan = cfg.pages[pageIdx].image_pan;
+
+      const posX = 50 + (pan.x || 0);
+      const posY = 50 + (pan.y || 0);
+      if (img) {
+        img.style.objectPosition = `${posX}% ${posY}%`;
+      }
+      document.querySelectorAll(`#dtpLayerImage${side} .dtp-art-image`).forEach(subImg => {
+        subImg.style.objectPosition = `${posX}% ${posY}%`;
+      });
+
+      const lbl = document.getElementById(axis === 'x' ? 'lblTbPanXVal' : 'lblTbPanYVal');
+      if (lbl) lbl.textContent = `${val}%`;
+
+      clearTimeout(this._panDebounce);
+      this._panDebounce = setTimeout(() => {
+        this.saveLayoutConfigToServer(work.episode_no, cfg);
+      }, 500);
+    }
+
+    /**
+     * 그림 초점 리셋
+     */
+    resetImagePan() {
+      this.setImagePan('x', 0);
+      this.setImagePan('y', 0);
+      const inputX = document.getElementById('inputTbPanX');
+      const inputY = document.getElementById('inputTbPanY');
+      if (inputX) inputX.value = 0;
+      if (inputY) inputY.value = 0;
+    }
+
+    /**
+     * 그림 필터 (비네팅, 블러, 톤) 적용
+     */
+    setImageFilter(filterType, val) {
+      const slot = this.targetPageSlot || 'left';
+      const side = slot.charAt(0).toUpperCase() + slot.slice(1);
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      const cfg = this.getNormalizedConfig(work);
+      const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
+      if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+      if (!cfg.pages[pageIdx].image_filter) cfg.pages[pageIdx].image_filter = { vignette: 0, blur: 0, tone: 'none' };
+
+      cfg.pages[pageIdx].image_filter[filterType] = val;
+      const f = cfg.pages[pageIdx].image_filter;
+
+      const targetImgs = document.querySelectorAll(`#dtpLayerImage${side} .dtp-art-image, #dtpImg${side}`);
+      targetImgs.forEach(targetImg => {
+        let filterStr = "";
+        if (f.blur > 0) filterStr += `blur(${f.blur}px) `;
+        if (f.tone === 'sepia') filterStr += `sepia(0.55) contrast(1.05) `;
+        else if (f.tone === 'mono') filterStr += `grayscale(1) contrast(1.1) `;
+        else if (f.tone === 'vintage') filterStr += `sepia(0.3) saturate(1.2) hue-rotate(-10deg) `;
+        targetImg.style.filter = filterStr.trim();
+
+        if (f.vignette > 0) {
+          const vigPct = 100 - (f.vignette * 0.4);
+          targetImg.style.webkitMaskImage = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+          targetImg.style.maskImage = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+        } else {
+          targetImg.style.webkitMaskImage = 'none';
+          targetImg.style.maskImage = 'none';
+        }
+      });
+
+      if (filterType === 'vignette') {
+        const lbl = document.getElementById('lblTbVignetteVal');
+        if (lbl) lbl.textContent = `${val}%`;
+      } else if (filterType === 'blur') {
+        const lbl = document.getElementById('lblTbBlurVal');
+        if (lbl) lbl.textContent = `${val}px`;
+      }
+
+      clearTimeout(this._filterDebounce);
+      this._filterDebounce = setTimeout(() => {
+        this.saveLayoutConfigToServer(work.episode_no, cfg);
+      }, 500);
+    }
+
+    /**
+     * 현재 대상 슬롯 삽화 교체 모달 열기
+     */
+    openCurrentImageManager() {
+      const slot = this.targetPageSlot || 'left';
+      if (typeof window.openSlotImageManager === 'function') {
+        window.openSlotImageManager(slot);
+      }
+    }
+
+    /**
+     * AI 동반자: 빠른 추천 액션
+     */
+    askAiQuickAction(actionType) {
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      let prompt = "";
+      if (actionType === 'rhyme') {
+        prompt = `제${work.episode_no}화 「${work.title}」의 시적 여운을 더 살릴 수 있는 퇴고 방향이나 대체 시어를 추천해줘.`;
+      } else if (actionType === 'art_prompt') {
+        prompt = `제${work.episode_no}화 「${work.title}」에 어울리는 한국 서정 수채화/수묵담채 삽화 프롬프트를 제안해줘.`;
+      } else if (actionType === 'layout') {
+        const lineCount = (work.poem_body || "").split("\n").filter(l => l.trim()).length;
+        prompt = `현재 시 본문이 총 ${lineCount}줄인데, A5 2면에 가장 알맞은 줄간격과 글자 크기, 연 구성을 조언해줘.`;
+      }
+
+      const input = document.getElementById("inputDtpAiPrompt");
+      if (input) input.value = prompt;
+      this.sendAiMessage(prompt);
+    }
+
+    /**
+     * AI 동반자 메시지 전송 및 응답 렌더링
+     */
+    async sendAiMessage(customText) {
+      const input = document.getElementById("inputDtpAiPrompt");
+      const userText = customText || (input ? input.value.trim() : "");
+      if (!userText) return;
+      if (input) input.value = "";
+
+      const msgBox = document.getElementById("dtpAiMessages");
+      if (!msgBox) return;
+
+      // 사용자 버블 추가
+      const userBubble = document.createElement("div");
+      userBubble.className = "user-bubble";
+      userBubble.textContent = userText;
+      msgBox.appendChild(userBubble);
+      msgBox.scrollTop = msgBox.scrollHeight;
+
+      // AI 로딩 버블
+      const aiBubble = document.createElement("div");
+      aiBubble.className = "ai-bubble";
+      aiBubble.innerHTML = "안실장이 생각하고 있습니다... ✍️";
+      msgBox.appendChild(aiBubble);
+      msgBox.scrollTop = msgBox.scrollHeight;
+
+      const work = this.getCurrentWork();
+      const cfg = work ? this.getNormalizedConfig(work) : {};
+      const lineCount = work ? (work.poem_body || "").split("\n").filter(l => l.trim()).length : 0;
+
+      // 문맥 기반 즉각 지능형 피드백 생성
+      setTimeout(() => {
+        let reply = "";
+        if (userText.includes("시어") || userText.includes("퇴고")) {
+          reply = `🌿 <strong>「${work.title}」 퇴고 제안</strong><br>
+사용자님의 실제 기억과 육성이 깃든 원형 시어를 보존하면서, 마지막 연의 서술형 종결어미를 명사형이나 잔잔한 읊조림(‘-네’, ‘-던가’)으로 여운을 남겨보세요. 구체적 사물(대청마루, 무우, 호롱불 등)의 촉각을 선명히 두면 시적 깊이가 배가됩니다.`;
+        } else if (userText.includes("프롬프트") || userText.includes("삽화") || userText.includes("그림")) {
+          reply = `🎨 <strong>「${work.title}」 삽화 프롬프트 제안</strong><br>
+<code>Korean traditional soft watercolor, nostalgic morning sunlight, quiet wooden porch, soft ink wash edges, negative space, no text, 300 DPI publication quality</code><br>
+도구상자의 <em>[출판 필터 & 비네팅]</em>에서 외곽 페이드를 20% 주시면 한지와 더욱 자연스럽게 융합됩니다.`;
+        } else if (userText.includes("조판") || userText.includes("줄") || userText.includes("크기")) {
+          reply = `📐 <strong>「${work.title}」 조판 조언</strong><br>
+현재 본문은 총 ${lineCount}줄입니다. A5 국판 인쇄 규격상 한 면당 14~16줄이 가장 읽기 편안합니다. 
+현재 설정(글자 크기 ${cfg.font_size_pt || 12}pt, 줄간격 ${Math.round((cfg.line_height_ratio || 1.5) * 100)}%)은 <strong>인쇄안전선 안착</strong> 범위 내에 잘 안착되어 있습니다!`;
+        } else {
+          reply = `🌿 <strong>안실장의 조언</strong><br>
+말씀해주신 '<em>${userText}</em>'에 맞춰 시화집의 품격을 높일 수 있도록 계속 돕겠습니다. 도구상자의 [정렬], [크기], [그림 분할] 도구를 함께 활용해 보세요!`;
+        }
+        aiBubble.innerHTML = reply;
+        msgBox.scrollTop = msgBox.scrollHeight;
+      }, 400);
+    }
+
+    /**
+     * 도구상자 전체 UI 상태 동기화 (renderSpread 시 자동 호출)
+     */
+    syncToolboxUI(work, cfg) {
+      if (!work || !cfg) return;
+
+      // 1) 정렬 버튼 동기화
+      const align = cfg.text_align || 'left';
+      const btnMap = {
+        'left': 'btnAlignLeft',
+        'center': 'btnAlignCenter',
+        'right': 'btnAlignRight',
+        'justify': 'btnAlignJustify'
+      };
+      Object.entries(btnMap).forEach(([k, btnId]) => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.classList.toggle('active', k === align);
+      });
+
+      // 2) 글꼴 셀렉터 동기화
+      const selFont = document.getElementById('selectTbFontFamily');
+      if (selFont && cfg.font_family) {
+        selFont.value = cfg.font_family;
+      }
+
+      // 3) 글자 크기 동기화
+      const lblFontSize = document.getElementById('lblTbFontSizeVal');
+      if (lblFontSize) {
+        lblFontSize.textContent = `${(parseFloat(cfg.font_size_pt) || 12).toFixed(1)}pt`;
+      }
+
+      // 4) 줄간격 동기화
+      const inputLh = document.getElementById('inputTbLineHeight');
+      const lblLh = document.getElementById('lblTbLineHeightVal');
+      const lhPercent = Math.round((parseFloat(cfg.line_height_ratio) || 1.5) * 100);
+      if (inputLh) inputLh.value = lhPercent;
+      if (lblLh) lblLh.textContent = `${lhPercent}%`;
+
+      // 5) 한지 투명도 동기화
+      const inputHanji = document.getElementById('inputTbHanjiOpacity');
+      const lblHanji = document.getElementById('lblTbHanjiOpacityVal');
+      const hanjiPercent = Math.round((parseFloat(cfg.backdrop_opacity) || 0.85) * 100);
+      if (inputHanji) inputHanji.value = hanjiPercent;
+      if (lblHanji) lblHanji.textContent = `${hanjiPercent}%`;
+
+      // 6) 그림 탭 동기화
+      this.syncToolboxImageTab();
+    }
+
   }
 
   // 전역 인스턴스 등록

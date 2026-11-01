@@ -361,6 +361,17 @@ class BookkPDFBuilder:
             # -------------------------------------------------------------
             if cfg and isinstance(cfg, dict) and (cfg.get("slots") or cfg.get("pages")):
                 page_count = cfg.get("page_count", 2)
+                text_align = cfg.get("text_align", "left")
+
+                def draw_aligned_text(canvas, line_str, bx, cy, align_mode, bw):
+                    if not line_str:
+                        return
+                    if align_mode == "center":
+                        canvas.drawCentredString(bx + (bw / 2.0), cy, line_str)
+                    elif align_mode == "right":
+                        canvas.drawRightString(bx + bw, cy, line_str)
+                    else:
+                        canvas.drawString(bx, cy, line_str)
                 pages_meta = cfg.get("pages", [])
                 raw_slots = cfg.get("slots", [])
                 raw_roles = cfg.get("page_roles", [])
@@ -452,10 +463,11 @@ class BookkPDFBuilder:
                                 c.setFillColorRGB(0.24, 0.22, 0.21)
                             c.setFont(FONT_NAME, p_font_size)
                             curr_y = top_y
+                            box_avail_w = self.canvas_w_pt - m["right"] - body_x
                             for line in ind_lines:
                                 if curr_y < m["bottom"] + 15:
                                     break
-                                c.drawString(body_x, curr_y, line)
+                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
                                 curr_y -= line_h
                         elif role_here != "none":
                             c_idx = chunk_map.get(slot_idx, 0)
@@ -501,10 +513,11 @@ class BookkPDFBuilder:
                             else:
                                 c.setFillColorRGB(0.24, 0.22, 0.21)
                             c.setFont(FONT_NAME, p_font_size)
+                            box_avail_w = max(50.0, self.canvas_w_pt - m["right"] - right_offset_pt - body_x)
                             for line in chunk_lines:
                                 if curr_y < m["bottom"] + 15:
                                     break
-                                c.drawString(body_x, curr_y, line)
+                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
                                 curr_y -= line_h
 
                             if not is_last and len(chunk_lines) > 0:
@@ -557,10 +570,11 @@ class BookkPDFBuilder:
                         p_font_size, line_h = 8.5, 14.5
                         c.setFillColorRGB(0.24, 0.22, 0.21)
                         c.setFont(FONT_NAME, p_font_size)
+                        box_avail_w = self.canvas_w_pt - m["right"] - body_x
                         for line in chunk_lines:
                             if curr_y < m["bottom"] + 15:
                                 break
-                            c.drawString(body_x, curr_y, line)
+                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
                             curr_y -= line_h
 
                         if not is_last:
@@ -610,10 +624,11 @@ class BookkPDFBuilder:
                         p_font_size, line_h = 8.5, 14.5
                         c.setFillColorRGB(0.24, 0.22, 0.21)
                         c.setFont(FONT_NAME, p_font_size)
+                        box_avail_w = self.canvas_w_pt - m["right"] - body_x
                         for line in chunk_lines:
                             if curr_y < text_limit_y:
                                 break
-                            c.drawString(body_x, curr_y, line)
+                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
                             curr_y -= line_h
 
                         # 2) 하단 삽화 배치

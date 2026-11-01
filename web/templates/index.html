@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StoryBook Studio | 기억 기반 시화집 독립출판</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/static/css/style.css?v=v5800">
+  <link rel="stylesheet" href="/static/css/style.css?v=v5900">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>window.name = "StoryBookStudio";</script>
 </head>
@@ -910,7 +910,244 @@
           </div>
         </div>
 
-        <!-- 2페이지 펼침면 스프레드 북 (모듈형 2-Layer 대칭 컴포넌트) -->
+        <!-- [StoryBook DTP] 작업 공간 영역 (좌측 DTP 편집 도구상자 + 중앙 책 스프레드) -->
+        <div class="dtp-workspace-area">
+          <!-- 🛠️ DTP 편집 도구상자 (Canva 대체형 독립 사이드 패널) -->
+          <aside class="dtp-toolbox-panel" id="dtpToolboxPanel">
+            <!-- 1. 패널 헤더 -->
+            <div class="toolbox-header">
+              <div class="toolbox-title-group">
+                <span class="toolbox-icon">🛠️</span>
+                <span class="toolbox-title-text">시화 편집 도구</span>
+              </div>
+              <button type="button" class="btn-toolbox-toggle" id="btnToggleToolbox" onclick="dtpEditor.toggleToolboxCollapse()" title="도구상자 접기/펼치기">
+                <span id="btnToggleToolboxIcon">◀</span>
+                <span class="toolbox-title-text">접기</span>
+              </button>
+            </div>
+
+            <!-- 2. 3대 탭 스위처 -->
+            <div class="dtp-tab-bar">
+              <button type="button" class="dtp-tab-btn active" id="btnTabDtpText" onclick="dtpEditor.switchToolboxTab('text')" title="글 편집 (정렬, 서체, 크기, 줄간격)">
+                <span>✍️</span> 글 편집
+              </button>
+              <button type="button" class="dtp-tab-btn" id="btnTabDtpImage" onclick="dtpEditor.switchToolboxTab('image')" title="그림 편집 (분할, 중심점, 필터)">
+                <span>🎨</span> 그림 편집
+              </button>
+              <button type="button" class="dtp-tab-btn" id="btnTabDtpAi" onclick="dtpEditor.switchToolboxTab('ai')" title="AI 창작 동반자 (안실장)">
+                <span>🤖</span> AI 동반자
+              </button>
+            </div>
+
+            <!-- 3. 패널 본문 영역 (스크롤) -->
+            <div class="dtp-toolbox-body">
+              <!-- [탭 1: ✍️ 글 편집] -->
+              <div class="dtp-tab-content" id="toolboxTabText">
+                <!-- 작업 제어 & 가이드 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>작업 제어 & 안내선</span>
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn-micro" style="flex: 1; padding: 5px 0; font-weight: 700;" onclick="dtpEditor.undo()" title="실행취소 (Ctrl+Z)">↩ 되돌리기</button>
+                    <button type="button" class="btn-micro" style="flex: 1; padding: 5px 0; font-weight: 700;" onclick="dtpEditor.redo()" title="다시실행 (Ctrl+Y)">↪ 다시실행</button>
+                  </div>
+                  <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button type="button" class="btn-micro" id="btnTbToggleGuides" style="flex: 1; padding: 5px 0; font-weight: 700; color: #C53030; background: #FFF5F5;" onclick="dtpEditor.toggleGuides()" title="안전선 가이드 토글">🟥 가이드선</button>
+                    <button type="button" class="btn-micro" id="btnTbToggleScale" style="flex: 1; padding: 5px 0; font-weight: 700;" onclick="dtpEditor.toggleRealScale()" title="실물 크기 100% 감상">🔍 실물 100%</button>
+                  </div>
+                </div>
+
+                <!-- 문단 정렬 4종 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>본문 정렬 (4종)</span>
+                    <span style="font-size: 0.68rem; color: #A07855;">PDF 동기화</span>
+                  </div>
+                  <div class="align-btn-group">
+                    <button type="button" class="btn-align active" id="btnAlignLeft" onclick="dtpEditor.setTextAlign('left')" title="왼쪽 정렬">
+                      <span style="font-size: 0.95rem;">⫷</span>
+                      <span>왼쪽</span>
+                    </button>
+                    <button type="button" class="btn-align" id="btnAlignCenter" onclick="dtpEditor.setTextAlign('center')" title="가운데 정렬">
+                      <span style="font-size: 0.95rem;">≡</span>
+                      <span>가운데</span>
+                    </button>
+                    <button type="button" class="btn-align" id="btnAlignRight" onclick="dtpEditor.setTextAlign('right')" title="오른쪽 정렬">
+                      <span style="font-size: 0.95rem;">⫸</span>
+                      <span>오른쪽</span>
+                    </button>
+                    <button type="button" class="btn-align" id="btnAlignJustify" onclick="dtpEditor.setTextAlign('justify')" title="양끝 배분 정렬">
+                      <span style="font-size: 0.95rem;">≣</span>
+                      <span>배분</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 서체 & 글자 크기 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>서체 & 글자 크기</span>
+                  </div>
+                  <div class="tool-row">
+                    <span class="tool-label">글꼴</span>
+                    <select id="selectTbFontFamily" onchange="dtpEditor.setFontFamily(this.value)" class="dtp-select" style="flex: 1; padding: 3px 6px; font-size: 0.78rem;">
+                      <option value="Batang, KoPub Batang, serif" selected>바탕체 (정통 서정)</option>
+                      <option value="'Nanum Myeongjo', serif">나눔명조</option>
+                      <option value="'ChosunNm', serif">조선명조</option>
+                      <option value="'Gowun Batang', serif">고운바탕</option>
+                      <option value="'MaruBuri', serif">마루부리</option>
+                    </select>
+                  </div>
+                  <div class="tool-row" style="margin-top: 4px;">
+                    <span class="tool-label">크기</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                      <button type="button" class="btn-micro" onclick="dtpEditor.adjustFontSize(-0.5)" style="padding: 2px 7px;">-</button>
+                      <span class="tool-val-badge" id="lblTbFontSizeVal">12.0pt</span>
+                      <button type="button" class="btn-micro" onclick="dtpEditor.adjustFontSize(0.5)" style="padding: 2px 7px;">+</button>
+                    </div>
+                  </div>
+                  <div class="tool-row" style="margin-top: 4px;">
+                    <span class="tool-label">줄간격</span>
+                    <input type="range" id="inputTbLineHeight" min="130" max="220" step="5" value="150" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setLineHeight(this.value)">
+                    <span class="tool-val-badge" id="lblTbLineHeightVal">150%</span>
+                  </div>
+                </div>
+
+                <!-- 가독성 한지 필터 & 반전 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>한지 필터 & 색상</span>
+                  </div>
+                  <div class="tool-row">
+                    <span class="tool-label">한지 투명도</span>
+                    <input type="range" id="inputTbHanjiOpacity" min="0" max="100" value="85" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setHanjiOpacity(this.value)">
+                    <span class="tool-val-badge" id="lblTbHanjiOpacityVal">85%</span>
+                  </div>
+                  <div style="display: flex; gap: 4px; margin-top: 6px;">
+                    <button type="button" class="btn-micro" style="flex: 1; padding: 5px 0; font-weight: 700;" onclick="dtpEditor.toggleTextColor()">🎨 글자색 반전 (먹색/백색)</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- [탭 2: 🎨 그림 편집] -->
+              <div class="dtp-tab-content" id="toolboxTabImage" style="display: none;">
+                <!-- 대상 면 선택 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>편집 대상 면</span>
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn-micro" id="btnTargetLeft" style="flex: 1; padding: 6px 0; font-weight: 800; background: #8B3A1A; color: #FFF;" onclick="dtpEditor.setTargetPageSlot('left')">1면 (좌측면)</button>
+                    <button type="button" class="btn-micro" id="btnTargetRight" style="flex: 1; padding: 6px 0; font-weight: 700;" onclick="dtpEditor.setTargetPageSlot('right')">2면 (우측면)</button>
+                  </div>
+                </div>
+
+                <!-- 그림 분할 레이아웃 3단계 프리셋 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>그림 분할 레이아웃</span>
+                    <span style="font-size: 0.68rem; color: #A07855;">3단계 프리셋</span>
+                  </div>
+                  <div class="img-layout-cards">
+                    <div class="layout-card active" id="cardLayoutSingle" onclick="dtpEditor.applyImageLayoutPreset('single')">
+                      <span class="layout-card-icon">🖼️</span>
+                      <span class="layout-card-name">1장 전체</span>
+                    </div>
+                    <div class="layout-card" id="cardLayoutSplitV" onclick="dtpEditor.applyImageLayoutPreset('split_vertical')">
+                      <span class="layout-card-icon">⬒</span>
+                      <span class="layout-card-name">상·하 2단</span>
+                    </div>
+                    <div class="layout-card" id="cardLayoutSplitH" onclick="dtpEditor.applyImageLayoutPreset('split_horizontal')">
+                      <span class="layout-card-icon">◧</span>
+                      <span class="layout-card-name">좌·우 2단</span>
+                    </div>
+                    <div class="layout-card" id="cardLayoutMainDetail" onclick="dtpEditor.applyImageLayoutPreset('main_detail')">
+                      <span class="layout-card-icon">◰</span>
+                      <span class="layout-card-name">메인+소품</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 중심점 패닝 및 시선 이동 -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>그림 초점 & 중심점 (Pan)</span>
+                    <button type="button" class="btn-micro" onclick="dtpEditor.resetImagePan()" style="font-size: 0.68rem; padding: 1px 4px;">리셋</button>
+                  </div>
+                  <div class="tool-row">
+                    <span class="tool-label">가로 초점 (X)</span>
+                    <input type="range" id="inputTbPanX" min="-50" max="50" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('x', this.value)">
+                    <span class="tool-val-badge" id="lblTbPanXVal">0%</span>
+                  </div>
+                  <div class="tool-row" style="margin-top: 4px;">
+                    <span class="tool-label">세로 초점 (Y)</span>
+                    <input type="range" id="inputTbPanY" min="-50" max="50" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('y', this.value)">
+                    <span class="tool-val-badge" id="lblTbPanYVal">0%</span>
+                  </div>
+                </div>
+
+                <!-- 그림 다듬기 필터 (비네팅, 블러, 톤) -->
+                <div class="dtp-tool-group">
+                  <div class="dtp-tool-group-title">
+                    <span>출판 필터 & 비네팅</span>
+                  </div>
+                  <div class="tool-row">
+                    <span class="tool-label">외곽 페이드 (비네팅)</span>
+                    <input type="range" id="inputTbVignette" min="0" max="100" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageFilter('vignette', this.value)">
+                    <span class="tool-val-badge" id="lblTbVignetteVal">0%</span>
+                  </div>
+                  <div class="tool-row" style="margin-top: 4px;">
+                    <span class="tool-label">감성 블러</span>
+                    <input type="range" id="inputTbBlur" min="0" max="10" value="0" step="0.5" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageFilter('blur', this.value)">
+                    <span class="tool-val-badge" id="lblTbBlurVal">0px</span>
+                  </div>
+                  <div class="tool-row" style="margin-top: 4px;">
+                    <span class="tool-label">색감 톤</span>
+                    <select id="selectTbTone" onchange="dtpEditor.setImageFilter('tone', this.value)" class="dtp-select" style="flex: 1; padding: 2px 4px; font-size: 0.76rem;">
+                      <option value="none" selected>원본 컬러 (선명)</option>
+                      <option value="sepia">따스한 세피아</option>
+                      <option value="mono">수묵 담채 흑백</option>
+                      <option value="vintage">서정 빈티지</option>
+                    </select>
+                  </div>
+                  <div style="margin-top: 6px;">
+                    <button type="button" class="btn-micro" style="width: 100%; padding: 6px 0; font-weight: 700;" onclick="dtpEditor.openCurrentImageManager()">🎨 현재 면 삽화 교체 / 관리</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- [탭 3: 🤖 AI 동반자] -->
+              <div class="dtp-tab-content" id="toolboxTabAi" style="display: none;">
+                <!-- 빠른 추천 액션 버튼 -->
+                <div class="dtp-tool-group" style="padding: 8px;">
+                  <div class="dtp-tool-group-title">
+                    <span>원클릭 AI 창작 도우미</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <button type="button" class="btn-micro" style="text-align: left; padding: 4px 8px; font-weight: 600;" onclick="dtpEditor.askAiQuickAction('rhyme')">✨ 여운 있는 시어 추천 및 퇴고</button>
+                    <button type="button" class="btn-micro" style="text-align: left; padding: 4px 8px; font-weight: 600;" onclick="dtpEditor.askAiQuickAction('art_prompt')">🎨 노을빛 수채화 프롬프트 제안</button>
+                    <button type="button" class="btn-micro" style="text-align: left; padding: 4px 8px; font-weight: 600;" onclick="dtpEditor.askAiQuickAction('layout')">📐 줄 수에 맞춘 2면 조판 조언</button>
+                  </div>
+                </div>
+
+                <!-- AI 미니 대화창 -->
+                <div class="dtp-ai-chat-box">
+                  <div class="dtp-ai-messages" id="dtpAiMessages">
+                    <div class="ai-bubble">
+                      안녕하세요! AI 시화 동반자 안실장입니다. 🌿<br>
+                      현재 펼쳐진 작품에 맞추어 시어 퇴고나 삽화 프롬프트, 조판 배치를 도와드릴게요.
+                    </div>
+                  </div>
+                  <div class="dtp-ai-input-area">
+                    <input type="text" class="dtp-ai-input" id="inputDtpAiPrompt" placeholder="안실장에게 질문이나 퇴고 요청..." onkeydown="if(event.key==='Enter') dtpEditor.sendAiMessage()">
+                    <button type="button" class="btn-ai-send" onclick="dtpEditor.sendAiMessage()">전송</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+                  <!-- 2페이지 펼침면 스프레드 북 (모듈형 2-Layer 대칭 컴포넌트) -->
         <div class="book-spread dtp-spread-container" id="bookSpreadContainer">
           <div class="book-crease"></div>
 
@@ -1063,6 +1300,7 @@
             <div class="dtp-overflow-badge" id="dtpOverflowRight" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
             <div class="dtp-page-folio" id="lblBookFolioRight">2</div>
           </div>
+        </div>
         </div>
 
         <!-- [StoryBook DTP] 책장 하단: 페이지 단위 연속 이동 내비게이션 바 -->
@@ -3313,7 +3551,7 @@
 
   <script src="/static/js/app.js?v=v5800"></script>
   <script src="/static/js/poem_video.js?v=20261031_v4400"></script>
-  <script src="/static/js/dtp_editor_core.js?v=v5800"></script>
+  <script src="/static/js/dtp_editor_core.js?v=v5900"></script>
   <script>
     async function handleLogout() {
       if (confirm("로그아웃하고 집필실을 나가시겠습니까?")) {

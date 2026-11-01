@@ -225,17 +225,42 @@
       color: var(--accent-brown);
       font-weight: 700;
     }
-    .toc-item .music-badge {
-      font-size: 13px;
-      background: #fff4d6;
-      color: #9c6c00;
-      padding: 2px 6px;
-      border-radius: 8px;
+    .toc-item .music-badge,
+    .toc-item .media-badge {
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      min-height: 22px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 11.5px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      line-height: 1.2;
+      line-height: 1;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .toc-item .media-badge:hover {
+      transform: scale(1.18);
+    }
+    .toc-item .badge-audio {
+      background: #8B3A1A;
+      color: #FFFFFF;
+      border: 1.5px solid #5A1E0B;
+      box-shadow: 0 1px 3px rgba(139, 58, 26, 0.28);
+    }
+    .toc-item .badge-audio {
+      filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45));
+    }
+    .toc-item .badge-video {
+      background: #EDE9FE;
+      color: #5B21B6;
+      border: 1.5px solid #7C3AED;
+      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.25);
     }
 
     /* 명령 버튼 & 제어 패널 */
@@ -862,6 +887,9 @@
       {
         ep: "제01화",
         title: "새벽 대청",
+        hasRecite: true,
+        recite: "music/01_낭송.wav",
+        hasAudio: true,
         image: "images/01_새벽대청.jpg",
         memory: "동지섣달 새벽, 윗채 대청마루에서 베틀을 짜며 애절한 노래를 흥얼거리시던 어머니의 뒷모습",
         body: `새벽녘  
@@ -922,6 +950,9 @@
       {
         ep: "제03화",
         title: "마지막 상여",
+        hasVideo: true,
+        songVideo: "videos/제03화_마지막_상여_music_16x9.mp4",
+        video: "videos/제03화_마지막_상여_music_16x9.mp4",
         image: "images/03_마지막상여.jpg",
         memory: "층층시하 종갓집에서 사철 베를 짜던 어머니, 50년 전 미리 지어둔 모시 수의를 입고 오뉴월 장대비에 떠나신 아버지의 마지막 상여",
         hasMusic: true,
@@ -1154,6 +1185,9 @@
       {
         ep: "제09화",
         title: "다듬이질",
+        hasVideo: true,
+        poemVideo: "videos/09_다듬이질_시낭송_영상.mp4",
+        video: "videos/09_다듬이질_시낭송_영상.mp4",
         image: "images/09_다듬이질.jpg",
         memory: "깊은 밤 대청마루에서 다듬잇돌 하나를 사이에 두고 마주 앉은 어머니와 할머니, 모계의 세대와 타악의 호흡",
         body: `다듬잇돌 하나,  
@@ -1197,6 +1231,10 @@
       {
         ep: "제11화",
         title: "따순굼턱",
+        hasVideo: true,
+        poemVideo: "videos/11_따순굼턱_Suno낭송_영상.mp4",
+        songVideo: "videos/11_따순굼턱_포크_리릭비디오.mp4",
+        video: "videos/11_따순굼턱_포크_리릭비디오.mp4",
         image: "images/11_삽화.jpg",
         hasRecite: true,
         recite: "music/11_낭송.wav",
@@ -1274,6 +1312,18 @@
                 cleanMusic = `music/${epDigits}_음원.mp3`;
               }
 
+              let cleanPoemV = w.poemVideo || w.poem_video || '';
+              let cleanSongV = w.songVideo || w.song_video || w.video_file || '';
+              if (!cleanPoemV && ['09','12','13'].includes(epDigits)) {
+                if (epDigits === '09') cleanPoemV = 'videos/09_다듬이질_시낭송_영상.mp4';
+                if (epDigits === '12') cleanPoemV = 'videos/12_아리랑쓰리랑_시낭송_영상.mp4';
+                if (epDigits === '13') cleanPoemV = 'videos/13_검정 고무신_시낭송_영상.mp4';
+              }
+              if (!cleanSongV && ['03','11'].includes(epDigits)) {
+                if (epDigits === '03') cleanSongV = 'videos/제03화_마지막_상여_music_16x9.mp4';
+                if (epDigits === '11') cleanSongV = 'videos/11_따순굼턱_포크_리릭비디오.mp4';
+              }
+
               EPISODES.push({
                 ep: w.episode_no || '',
                 title: w.title || '',
@@ -1286,6 +1336,10 @@
                 music: cleanMusic,
                 hasAudio: Boolean(cleanRecite || cleanMusic),
                 audio: cleanMusic || cleanRecite,
+                hasVideo: Boolean(cleanPoemV || cleanSongV),
+                poemVideo: cleanPoemV,
+                songVideo: cleanSongV,
+                video: cleanSongV || cleanPoemV,
                 lyrics: w.lyrics || ''
               });
             });
@@ -1503,7 +1557,7 @@
       }
     }
 
-    // 목차 렌더링
+    // 목차 렌더링 (오디오 🎧, 비디오 🎬 이모지 적용)
     function renderTOC() {
       const box = document.getElementById('tocBox');
       box.innerHTML = '';
@@ -1512,17 +1566,34 @@
         div.className = `toc-item ${index === currentIndex ? 'active' : ''}`;
         div.onclick = () => loadEpisode(index);
         
-        let badges = '';
-        const hasR = Boolean(item.hasRecite && item.recite);
-        const hasM = Boolean(item.hasMusic && item.music);
+        // 1) 오디오 존재 여부: 낭송(육성/AI/음악낭송) 또는 노래 중 하나라도 있으면 참
+        const hasA = Boolean(
+          item.hasAudio ||
+          (item.hasRecite && item.recite) ||
+          (item.hasMusic && item.music) ||
+          (item.hasVoice && item.voice) ||
+          (item.hasAiRecite && item.aiRecite) ||
+          (item.hasSong && item.song) ||
+          item.audio || item.recite || item.music
+        );
 
-        if (hasR && hasM) {
-          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;" title="시 낭송 수록">🎙️</span> <span class="music-badge" title="노래 수록">🎵</span>`;
-        } else if (hasR) {
-          badges = `<span class="music-badge" style="background:#8b3a1a;color:#fff;" title="시 낭송 수록">🎙️</span>`;
-        } else if (hasM) {
-          badges = `<span class="music-badge" title="노래 수록">🎵</span>`;
+        // 2) 비디오 존재 여부: 시낭송 영상 또는 노래 뮤직비디오 중 하나라도 있으면 참
+        const hasV = Boolean(
+          item.hasVideo ||
+          (item.hasPoemVideo && item.poemVideo) ||
+          (item.hasSongVideo && item.songVideo) ||
+          item.video || item.poemVideo || item.songVideo
+        );
+
+        const badgesArr = [];
+        if (hasA) {
+          badgesArr.push('<span class="media-badge badge-audio" title="오디오 수록 (낭송/노래)">🎧</span>');
         }
+        if (hasV) {
+          badgesArr.push('<span class="media-badge badge-video" title="영상 수록 (시낭송/노래 영상)">🎬</span>');
+        }
+
+        const badges = badgesArr.join(' ');
 
         div.innerHTML = `
           <div>
