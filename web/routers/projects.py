@@ -276,18 +276,11 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 else:
                     music_f = old_a
 
-            # 🎵 실제 파일 시스템의 낭송/노래 자동 탐색 (누락 방지)
+            # 🎵 실제 파일 시스템의 3대 음원 자동 탐색 (육성 / AI낭송 / 노래)
             import re
             ep_digits = re.sub(r'[^0-9]', '', w.episode_no or '').zfill(2)
             proj_dir = project_manager.get_project_dir(pid)
-            if not recite_f and ep_digits:
-                candidate_rec = proj_dir / "music" / f"{ep_digits}_낭송.wav"
-                if candidate_rec.exists():
-                    recite_f = f"music/{ep_digits}_낭송.wav"
-            if not music_f and ep_digits:
-                candidate_mus = proj_dir / "music" / f"{ep_digits}_음원.mp3"
-                if candidate_mus.exists():
-                    music_f = f"music/{ep_digits}_음원.mp3"
+            music_dir = proj_dir / "music"
 
             def _clean_audio_url(f_path):
                 if not f_path:
@@ -295,8 +288,84 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 f_clean = f_path.replace("./", "").lstrip("/")
                 return f"/projects/{safe_name}/{f_clean}"
 
+            # 1) 육성 시 낭송 (내 목소리 직접 녹음)
+            voice_f = ""
+            for ext in ["wav", "webm", "mp3", "m4a"]:
+                cand = music_dir / f"{ep_digits}_육성.{ext}"
+                if cand.exists():
+                    voice_f = f"music/{cand.name}"
+                    break
+            if not voice_f and recite_f and ("육성" in recite_f or recite_f.endswith(".webm")):
+                voice_f = recite_f
+
+            # 2) AI 시 낭송 (AI TTS 성우)
+            ai_recite_f = ""
+            for ext in ["wav", "mp3", "m4a"]:
+                for tag in ["낭송", "AI낭송"]:
+                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
+                    if cand.exists():
+                        ai_recite_f = f"music/{cand.name}"
+                        break
+                if ai_recite_f:
+                    break
+            if not ai_recite_f and recite_f and "육성" not in recite_f and "음악" not in recite_f:
+                ai_recite_f = recite_f
+
+            # 3) 음악 시 낭송 (Suno 배경음악 낭송 / Spoken Word)
+            music_recite_f = ""
+            for ext in ["mp3", "m4a", "wav"]:
+                for tag in ["음악낭송", "음악시낭송"]:
+                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
+                    if cand.exists():
+                        music_recite_f = f"music/{cand.name}"
+                        break
+                if music_recite_f:
+                    break
+            if not music_recite_f and recite_f and "음악" in recite_f:
+                music_recite_f = recite_f
+
+            # 4) 노래 듣기 (가창 노래)
+            song_f = ""
+            for ext in ["mp3", "m4a", "wav"]:
+                for tag in ["노래", "음원", "music"]:
+                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
+                    if cand.exists():
+                        song_f = f"music/{cand.name}"
+                        break
+                if song_f:
+                    break
+            if not song_f and music_f:
+                song_f = music_f
+
+            # 하위 호환 매핑
+            recite_f = voice_f or ai_recite_f or music_recite_f
+            music_f = song_f
+
             recite_path = _clean_audio_url(recite_f)
             music_path = _clean_audio_url(music_f)
+            voice_path = _clean_audio_url(voice_f)
+            ai_recite_path = _clean_audio_url(ai_recite_f)
+            music_recite_path = _clean_audio_url(music_recite_f)
+            song_path = _clean_audio_url(song_f)
+
+            # 🎬 비디오 파일(낭송 영상 및 노래 영상 각각) 감지
+            poem_video_path = ""
+            song_video_path = ""
+            videos_dir = proj_dir / "videos"
+            if videos_dir.exists() and ep_digits:
+                # 노래 영상
+                matched_song_v = list(videos_dir.glob(f"*{ep_digits}*music*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*노래*.mp4"))
+                if matched_song_v:
+                    latest_song = max(matched_song_v, key=os.path.getmtime)
+                    song_video_path = f"/api/poem_video/stream/{safe_name}/{latest_song.name}"
+                # 낭송 영상
+                matched_poem_v = list(videos_dir.glob(f"*{ep_digits}*recite*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*낭송*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*.mp4"))
+                if matched_poem_v:
+                    latest_poem = max(matched_poem_v, key=os.path.getmtime)
+                    poem_video_path = f"/api/poem_video/stream/{safe_name}/{latest_poem.name}"
+
+            has_video = bool(poem_video_path or song_video_path)
+            default_video = song_video_path or poem_video_path
 
             episodes.append({
                 "ep": w.episode_no,
@@ -306,11 +375,25 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 "body": w.poem_body,
                 "hasRecite": bool(recite_f),
                 "recite": recite_path,
+                "hasVoice": bool(voice_f),
+                "voice": voice_path,
+                "hasAiRecite": bool(ai_recite_f),
+                "aiRecite": ai_recite_path,
+                "hasMusicRecite": bool(music_recite_f),
+                "musicRecite": music_recite_path,
+                "hasSong": bool(song_f),
+                "song": song_path,
                 "hasMusic": bool(music_f),
                 "music": music_path,
-                "hasAudio": bool(recite_f or music_f),
+                "hasAudio": bool(voice_f or ai_recite_f or music_recite_f or song_f),
                 "audio": music_path or recite_path,
-                "lyrics": getattr(w, "lyrics", "") or ""
+                "lyrics": getattr(w, "lyrics", "") or "",
+                "hasVideo": has_video,
+                "video": default_video,
+                "hasPoemVideo": bool(poem_video_path),
+                "poemVideo": poem_video_path,
+                "hasSongVideo": bool(song_video_path),
+                "songVideo": song_video_path
             })
 
         projects_list = project_manager.list_projects()

@@ -1,0 +1,11 @@
+{
+  "src/AudioVisualizer.tsx": "efdf0b7c357a8f708f918a8d2b511a97d522264c4441fdedb62312869d363fe2",
+  "src/LyricVideo.tsx": "ff4859ff6d1c36ed86d05ab853163da9748d284d56872637816097987c3f482f",
+  "src/index.tsx": "a03080acd42600d4846b58c1101bf1b8f2a45b1ed2c5797c4378c9beda48a697",
+  "src/lyric-layout.d.mts": "46dd97807705712af39cf46bf6ec8be4d93d28b1b2683d0092edb3f58cd724f8",
+  "src/lyric-layout.mjs": "f49df0b6bc3843dbb9ab5776ba98bba5649aa4f2693fd7c84c8837d43a4df518",
+  "src/motion.d.mts": "25347c7ff94416db2373f8ee01ad884a7e8f6caabb82b1ebe60757a5e5ba38e2",
+  "src/motion.mjs": "58078c657cb3f6387cc21693f727955d60a606e91a3c0394b8942e8fccd482ff",
+  "src/types.ts": "fe92698147faca67c730d3d50082f6c54ca9c2953dbc75be2db261dd44ddaf2d",
+  "scripts/audio-spectrum.mjs": "16ae5fd0a464d531b1f9c5905145986cefccb16330143545739abacac9984363"
+}

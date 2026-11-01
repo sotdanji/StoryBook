@@ -1,0 +1,12 @@
+node_modules/
+.remotion/
+.musicstep/
+dist/
+input/*
+!input/README.txt
+output/*
+!output/.gitkeep
+public/assets/*
+!public/assets/PretendardVariable.woff2
+.DS_Store
+Thumbs.db

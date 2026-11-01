@@ -188,6 +188,10 @@ class ManuscriptManager:
                 return w
         return None
 
+    def get_work(self, episode_no: str) -> Optional[PoemWork]:
+        """get_work_by_episode의 호환성 별칭"""
+        return self.get_work_by_episode(episode_no)
+
     def _write_works_to_file(self, works: List[PoemWork]) -> None:
         """작품 리스트를 받아 마크다운 파일로 영구 저장 (기존 시집 헤더 메타데이터 보존)"""
         completed_count = sum(1 for w in works if "완성" in w.status)
@@ -368,8 +372,14 @@ class ManuscriptManager:
             self._write_works_to_file(works)
         return found
 
-    def update_work_layout_config(self, episode_no: str, layout_config: dict) -> bool:
-        """2P/4P 매트릭스 슬롯 조판 설정을 갱신하고 기존 layout_mode/part2_mode도 호환 동기화"""
+    def update_work_layout_config(
+        self,
+        episode_no: str,
+        layout_config: dict,
+        title: Optional[str] = None,
+        poem_body: Optional[str] = None
+    ) -> bool:
+        """2P/4P/6P 매트릭스 슬롯 조판 설정을 갱신하고 기존 layout_mode/part2_mode 및 직접 편집 텍스트도 동기화"""
         works = self.load_works()
         found = False
         target_num = re.sub(r'[^0-9]', '', str(episode_no)).zfill(2)
@@ -378,17 +388,21 @@ class ManuscriptManager:
             w_num = re.sub(r'[^0-9]', '', str(w.episode_no)).zfill(2)
             if w.episode_no == episode_no or (target_num and w_num == target_num):
                 w.layout_config = layout_config
+                if title is not None and title.strip():
+                    w.title = title.strip()
+                if poem_body is not None:
+                    w.poem_body = poem_body
                 page_count = layout_config.get("page_count", 2)
-                if page_count == 4:
+                if page_count >= 4:
                     w.layout_mode = "multi_page"
                 elif page_count == 1:
                     w.layout_mode = "single_page"
                 else:
                     w.layout_mode = "compact"
                 
-                # 4P 모드일 때 3면/4면 기반 part2_mode 유추
+                # 4P/6P 모드일 때 3면/4면 기반 part2_mode 유추
                 slots = layout_config.get("slots", [])
-                if page_count == 4 and len(slots) >= 4:
+                if page_count >= 4 and len(slots) >= 4:
                     slot3 = slots[2] if isinstance(slots[2], dict) else {"type": slots[2]}
                     if slot3.get("type") == "text":
                         w.part2_mode = "poem_text"

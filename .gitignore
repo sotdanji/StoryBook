@@ -10,4 +10,7 @@ scratch/
 .system_generated/
 .pytest_cache/
 *.log
-
+node_modules/
+*.backup_*
+*.bak
+package-lock.json

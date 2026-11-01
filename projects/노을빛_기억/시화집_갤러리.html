@@ -789,9 +789,11 @@
             <span class="music-title" id="audioSectionTitle">
               <span>🎵</span> 노래 듣기
             </span>
-            <div id="audioToggleGroup" style="display: none; gap: 6px;">
-              <button type="button" id="btnPlayRecite" class="audio-tab-btn" onclick="switchAudioTrack('recite')">🎙️ 시 낭송</button>
-              <button type="button" id="btnPlayMusic" class="audio-tab-btn active" onclick="switchAudioTrack('music')">🎵 노래</button>
+            <div id="audioToggleGroup" style="display: none; gap: 4px; flex-wrap: wrap;">
+              <button type="button" id="btnPlayVoice" class="audio-tab-btn" onclick="switchAudioTrack('voice')">🎙️ 육성 시 낭송</button>
+              <button type="button" id="btnPlayAiRecite" class="audio-tab-btn" onclick="switchAudioTrack('ai_recite')">🤖 AI 시 낭송</button>
+              <button type="button" id="btnPlayMusicRecite" class="audio-tab-btn" onclick="switchAudioTrack('music_recite')">🎻 음악 시 낭송</button>
+              <button type="button" id="btnPlayMusic" class="audio-tab-btn active" onclick="switchAudioTrack('music')">🎵 노래 듣기</button>
             </div>
           </div>
           <div class="music-player">
@@ -803,18 +805,47 @@
               ⚠️ 음원 파일이 아직 등록되지 않았거나 손상되었습니다.<br>스튜디오의 [4. 노래가 되는 시]에서 <strong>[클릭하여 음원 파일 가져오기]</strong>로 MP3 파일을 등록해주세요.
             </div>
           </div>
-          <div class="music-action-bar" id="musicActionBar">
+          <!-- 🎶 갤러리 노래 가사 감상 패널 -->
+          <div id="galleryLyricsPanel" style="display: none; margin-top: 10px; padding: 12px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #E2E8F0;">
+              <span style="font-size: 13px; font-weight: 700; color: #2B4B6F; display: flex; align-items: center; gap: 5px;">
+                <span>🎶</span> <span>노래 가사 감상</span>
+              </span>
+              <span style="font-size: 11px; color: #64748B;">음악과 함께 노랫말을 음미하세요</span>
+            </div>
+            <div id="galleryLyricsText" style="font-size: 14px; line-height: 1.7; color: #1E293B; white-space: pre-wrap; max-height: 140px; overflow-y: auto; padding: 4px 2px;"></div>
+          </div>
+
+          <div class="music-action-bar" id="musicActionBar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <button type="button" id="btnGalleryToggleLyrics" class="btn-music-close" onclick="toggleGalleryLyrics()" style="background: #EBF3FA; border-color: #7FAAD0; color: #1E466E; font-size: 13px; padding: 6px 12px;" title="노래 가사를 함께 감상합니다">
+              📜 가사 보기
+            </button>
             <button type="button" class="btn-music-close" id="btnMusicClose" onclick="closeAudioPlayer()" title="플레이어를 닫고 오디오 재생을 멈춥니다">
               ✕ 오디오 닫기
             </button>
           </div>
         </div>
 
-        <!-- 음악/낭송 플레이어 열기 바 (시 읽기에 방해되지 않도록 기본 접힘 상태) -->
-        <div id="musicOpenBar" style="display: none; margin-top: auto; padding-top: 14px;">
-          <button type="button" class="btn-music-open" id="btnMusicOpen" onclick="openAudioPlayer()" title="시와 어우러지는 음악/낭송 플레이어를 엽니다">
-            <span id="openMusicIcon">🎵</span> <span id="openMusicText">노래 듣기 (플레이어 열기)</span>
+        <!-- 통합 미디어 버튼 바: [오디오] & [비디오] (시 감상에 방해되지 않도록 정갈한 단일 툴바) -->
+        <div id="galleryUnifiedMediaBar" style="display: none; margin-top: auto; padding-top: 14px; gap: 8px;">
+          <!-- 1. [오디오] 버튼 -->
+          <button type="button" class="btn-music-open" id="btnGalleryAudioUnified" onclick="toggleGalleryAudioPlayer()" style="flex: 1;" title="시 낭송 또는 노래 오디오 플레이어를 엽니다">
+            <span id="galleryAudioIcon">🎧</span> <span id="galleryAudioText">오디오</span>
           </button>
+          <!-- 2. [비디오] 버튼 -->
+          <button type="button" class="btn-music-open" id="btnGalleryVideoUnified" onclick="toggleGalleryVideoMenu(event)" style="flex: 1; display: none; background: #EFF6FF; border-color: #93C5FD; color: #1D4ED8;" title="완성된 시화 영상(시 낭송 또는 노래 영상)을 감상합니다">
+            <span>🎬 비디오</span> <span style="font-size: 11px; opacity: 0.7;">▼</span>
+          </button>
+          
+          <!-- 비디오 선택 팝업 메뉴 -->
+          <div id="galleryVideoDropdown" style="display: none; position: absolute; bottom: 60px; right: 20px; background: #FFF; border: 1.5px solid #60A5FA; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1000; min-width: 160px; overflow: hidden;">
+            <button type="button" id="menuGalleryPoemVideo" onclick="selectGalleryVideo('poem')" style="width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; font-size: 13px; font-weight: 600; color: #1E3A8A; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+              <span>📖</span> <span>시 낭송 영상</span>
+            </button>
+            <button type="button" id="menuGallerySongVideo" onclick="selectGalleryVideo('song')" style="width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; border-top: 1px solid #DBEAFE; font-size: 13px; font-weight: 600; color: #1D4ED8; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+              <span>🎵</span> <span>노래 영상</span>
+            </button>
+          </div>
         </div>
 
       </section>
@@ -1414,7 +1445,7 @@
       }
     }
 
-    // 트랙 전환 (낭송 vs 노래) - 수동 재생 기본 및 WAV/MP3 완벽 호환
+    // 트랙 전환: 1) 육성 시 낭송  2) AI 시 낭송  3) 음악 시 낭송  4) 노래 듣기
     function switchAudioTrack(type, autoPlay = false) {
       const data = EPISODES[currentIndex];
       if (!data) return;
@@ -1422,7 +1453,9 @@
       const audioPlayer = document.getElementById('audioPlayer');
       const audioSource = document.getElementById('audioSource');
       const titleSpan = document.getElementById('audioSectionTitle');
-      const btnRecite = document.getElementById('btnPlayRecite');
+      const btnVoice = document.getElementById('btnPlayVoice');
+      const btnAiRecite = document.getElementById('btnPlayAiRecite');
+      const btnMusicRecite = document.getElementById('btnPlayMusicRecite');
       const btnMusic = document.getElementById('btnPlayMusic');
 
       // 1. 이전 실행 즉시 완전 중단
@@ -1431,21 +1464,29 @@
         audioPlayer.currentTime = 0;
       }
 
+      [btnVoice, btnAiRecite, btnMusicRecite, btnMusic].forEach(b => { if (b) b.classList.remove('active'); });
+
       // 2. 선택된 트랙으로 소스 결정
       let targetSrc = '';
-      if (type === 'recite') {
-        if (btnRecite) btnRecite.classList.add('active');
-        if (btnMusic) btnMusic.classList.remove('active');
-        if (titleSpan) titleSpan.innerHTML = '<span>🎙️</span> 시 낭송 듣기';
-        targetSrc = data.recite || data.audio || '';
+      if (type === 'voice') {
+        if (btnVoice) btnVoice.classList.add('active');
+        if (titleSpan) titleSpan.innerHTML = '<span>🎙️</span> 육성 시 낭송 듣기';
+        targetSrc = data.voice || data.recite || data.audio || '';
+      } else if (type === 'ai_recite' || type === 'recite') {
+        if (btnAiRecite) btnAiRecite.classList.add('active');
+        if (titleSpan) titleSpan.innerHTML = '<span>🤖</span> AI 시 낭송 듣기';
+        targetSrc = data.aiRecite || data.recite || data.audio || '';
+      } else if (type === 'music_recite') {
+        if (btnMusicRecite) btnMusicRecite.classList.add('active');
+        if (titleSpan) titleSpan.innerHTML = '<span>🎻</span> 음악 시 낭송 듣기';
+        targetSrc = data.musicRecite || data.recite || data.music || data.audio || '';
       } else {
         if (btnMusic) btnMusic.classList.add('active');
-        if (btnRecite) btnRecite.classList.remove('active');
         if (titleSpan) titleSpan.innerHTML = '<span>🎵</span> 노래 듣기';
-        targetSrc = data.music || data.audio || '';
+        targetSrc = data.song || data.music || data.audio || '';
       }
 
-      // 3. audioPlayer 요소 자체에 직접 src 지정 (캐시 방지 타임스탬프 결합 및 WAV/MP3 자동 파싱)
+      // 3. audioPlayer 요소 자체에 직접 src 지정
       if (targetSrc && audioPlayer) {
         const bustUrl = targetSrc.includes('?') ? targetSrc : `${targetSrc}?t=${Date.now()}`;
         audioPlayer.src = bustUrl;
@@ -1455,7 +1496,6 @@
         audioPlayer.load();
       }
 
-      // 4. 사용자가 원할 때 직접 재생(▶) 버튼을 누를 수 있도록 자동 재생 완전 배제 (수동 대기)
       if (autoPlay && audioPlayer) {
         audioPlayer.play().catch(e => {
           console.log('[오디오 수동 재생 대기]:', e);
@@ -1532,53 +1572,35 @@
         audioPlayer.currentTime = 0;
       }
 
-      const hasR = Boolean((data.hasRecite && data.recite) || (data.audio && data.audio.includes('낭송')));
-      const hasM = Boolean((data.hasMusic && data.music) || (data.audio && !data.audio.includes('낭송')));
+      const btnVoice = document.getElementById('btnPlayVoice');
+      const btnAiRecite = document.getElementById('btnPlayAiRecite');
+      const btnMusicRecite = document.getElementById('btnPlayMusicRecite');
+      const btnMusic = document.getElementById('btnPlayMusic');
 
-      if (hasR && hasM) {
-        // [케이스 4: 둘 다 있음] -> 트랙 데이터 준비 & 열기 바 노출
-        if (toggleGroup) toggleGroup.style.display = 'flex';
-        switchAudioTrack('music', false); // 초기 로드 시에는 준비만
-        if (openBar) {
-          if (iconSpan) iconSpan.textContent = '🎵';
-          if (textSpan) textSpan.textContent = '노래 · 시 낭송 듣기 (플레이어 열기)';
-          openBar.style.display = 'block';
-        }
-      } else if (hasM) {
-        // [케이스 3: 노래만 있음]
-        if (toggleGroup) toggleGroup.style.display = 'none';
-        if (titleSpan) titleSpan.innerHTML = '<span>🎵</span> 노래 듣기';
-        const targetSrc = data.music || data.audio || '';
-        if (targetSrc && audioPlayer) {
-          const bustUrl = targetSrc.includes('?') ? targetSrc : `${targetSrc}?t=${Date.now()}`;
-          audioPlayer.src = bustUrl;
-          if (audioSource) audioSource.src = bustUrl;
-          audioPlayer.load();
-        }
-        if (openBar) {
-          if (iconSpan) iconSpan.textContent = '🎵';
-          if (textSpan) textSpan.textContent = '노래 듣기 (플레이어 열기)';
-          openBar.style.display = 'block';
-        }
-      } else if (hasR) {
-        // [케이스 2: 낭송만 있음]
-        if (toggleGroup) toggleGroup.style.display = 'none';
-        if (titleSpan) titleSpan.innerHTML = '<span>🎙️</span> 시 낭송 듣기';
-        const targetSrc = data.recite || data.audio || '';
-        if (targetSrc && audioPlayer) {
-          const bustUrl = targetSrc.includes('?') ? targetSrc : `${targetSrc}?t=${Date.now()}`;
-          audioPlayer.src = bustUrl;
-          if (audioSource) audioSource.src = bustUrl;
-          audioPlayer.load();
-        }
-        if (openBar) {
-          if (iconSpan) iconSpan.textContent = '🎙️';
-          if (textSpan) textSpan.textContent = '시 낭송 듣기 (플레이어 열기)';
-          openBar.style.display = 'block';
-        }
+      const hasV = Boolean(data.voice || (data.hasVoice && data.voice) || (data.recite && (data.recite.includes('육성') || data.recite.endsWith('.webm'))));
+      const hasMR = Boolean(data.musicRecite || (data.hasMusicRecite && data.musicRecite) || (data.recite && data.recite.includes('음악')));
+      const hasAi = Boolean(data.aiRecite || (data.hasAiRecite && data.aiRecite) || (data.recite && !data.recite.includes('육성') && !data.recite.includes('음악')) || (data.audio && data.audio.includes('낭송') && !data.audio.includes('육성') && !data.audio.includes('음악')));
+      const hasM = Boolean(data.song || data.music || (data.hasSong && data.song) || (data.hasMusic && data.music) || (data.audio && !data.audio.includes('낭송')));
+
+      if (btnVoice) btnVoice.style.display = hasV ? 'inline-block' : 'none';
+      if (btnAiRecite) btnAiRecite.style.display = hasAi ? 'inline-block' : 'none';
+      if (btnMusicRecite) btnMusicRecite.style.display = hasMR ? 'inline-block' : 'none';
+      if (btnMusic) btnMusic.style.display = hasM ? 'inline-block' : 'none';
+
+      const trackCount = [hasV, hasAi, hasMR, hasM].filter(Boolean).length;
+      if (toggleGroup) {
+        toggleGroup.style.display = (trackCount > 1) ? 'flex' : 'none';
+      }
+
+      if (hasM) {
+        switchAudioTrack('music', false);
+      } else if (hasMR) {
+        switchAudioTrack('music_recite', false);
+      } else if (hasAi) {
+        switchAudioTrack('ai_recite', false);
+      } else if (hasV) {
+        switchAudioTrack('voice', false);
       } else {
-        // [케이스 1: 하나도 없음]
-        if (openBar) openBar.style.display = 'none';
         audioPlayer.pause();
       }
 
@@ -1592,8 +1614,211 @@
         }
       });
 
+      // 📜 가사 및 🎬 영상 감상 버튼 상태 갱신
+      updateGalleryLyricsAndVideo(data);
+
       // 시 본문 스크롤 맨 위로 리셋
       document.querySelector('.poem-body-scroll').scrollTop = 0;
+    }
+
+    // 🎧 [오디오] & 🎬 [비디오] 통합 바 갱신
+    let galleryAvailableVideos = { poem: null, song: null };
+
+    function updateGalleryLyricsAndVideo(data) {
+      const mediaBar = document.getElementById('galleryUnifiedMediaBar');
+      const btnAudio = document.getElementById('btnGalleryAudioUnified');
+      const btnVideo = document.getElementById('btnGalleryVideoUnified');
+      const lyricsPanel = document.getElementById('galleryLyricsPanel');
+      const lyricsText = document.getElementById('galleryLyricsText');
+      const btnLyrics = document.getElementById('btnGalleryToggleLyrics');
+
+      if (lyricsPanel) lyricsPanel.style.display = 'none';
+      if (btnLyrics) {
+        btnLyrics.textContent = '📜 가사 보기';
+        btnLyrics.style.display = (data && data.lyrics && data.lyrics.trim()) ? 'inline-flex' : 'none';
+      }
+      if (lyricsText) {
+        lyricsText.textContent = (data && data.lyrics) ? data.lyrics.trim() : '';
+      }
+
+      const hasA = Boolean(data && data.hasAudio);
+      if (btnAudio) {
+        btnAudio.style.display = hasA ? 'flex' : 'none';
+      }
+
+      // 비디오 버튼 설정 (시 낭송 영상 & 노래 영상)
+      galleryAvailableVideos = { poem: null, song: null };
+      const menuPoemV = document.getElementById('menuGalleryPoemVideo');
+      const menuSongV = document.getElementById('menuGallerySongVideo');
+
+      if (data && data.poemVideo) {
+        galleryAvailableVideos.poem = { url: data.poemVideo, title: `「${data.title}」 시 낭송 영상` };
+        if (menuPoemV) menuPoemV.style.display = 'flex';
+      } else {
+        if (menuPoemV) menuPoemV.style.display = 'none';
+      }
+
+      if (data && data.songVideo) {
+        galleryAvailableVideos.song = { url: data.songVideo, title: `「${data.title}」 노래 뮤직비디오` };
+        if (menuSongV) menuSongV.style.display = 'flex';
+      } else {
+        if (menuSongV) menuSongV.style.display = 'none';
+      }
+
+      const hasV = Boolean(galleryAvailableVideos.poem || galleryAvailableVideos.song);
+      if (btnVideo) {
+        btnVideo.style.display = hasV ? 'flex' : 'none';
+      }
+
+      if (mediaBar) {
+        mediaBar.style.display = (hasA || hasV) ? 'flex' : 'none';
+      }
+    }
+
+    function toggleGalleryAudioPlayer() {
+      const musicSec = document.getElementById('musicSection');
+      if (!musicSec) return;
+      const isHidden = (musicSec.style.display === 'none');
+      if (isHidden) {
+        musicSec.style.display = 'block';
+      } else {
+        closeAudioPlayer();
+      }
+    }
+
+    function toggleGalleryVideoMenu(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('galleryVideoDropdown');
+      if (!dropdown) return;
+
+      const pV = galleryAvailableVideos.poem;
+      const sV = galleryAvailableVideos.song;
+      if (pV && !sV) {
+        selectGalleryVideo('poem');
+        return;
+      }
+      if (!pV && sV) {
+        selectGalleryVideo('song');
+        return;
+      }
+
+      dropdown.style.display = (dropdown.style.display === 'none') ? 'block' : 'none';
+    }
+
+    function selectGalleryVideo(type) {
+      const dropdown = document.getElementById('galleryVideoDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+
+      const target = galleryAvailableVideos[type];
+      if (!target || !target.url) {
+        alert('선택하신 영상이 아직 없습니다.');
+        return;
+      }
+
+      const audio = document.getElementById('audioPlayer');
+      if (audio) audio.pause();
+
+      openGlobalGalleryVideoModal(target.url, target.title);
+    }
+
+    document.addEventListener('click', () => {
+      const dropdown = document.getElementById('galleryVideoDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    });
+
+    function toggleGalleryLyrics() {
+      const panel = document.getElementById('galleryLyricsPanel');
+      const btn = document.getElementById('btnGalleryToggleLyrics');
+      if (!panel) return;
+
+      const isHidden = (panel.style.display === 'none');
+      if (isHidden) {
+        panel.style.display = 'block';
+        if (btn) btn.textContent = '✕ 가사 닫기';
+      } else {
+        panel.style.display = 'none';
+        if (btn) btn.textContent = '📜 가사 보기';
+      }
+    }
+
+    function openGalleryVideoModal() {
+      const btn = document.getElementById('btnGalleryWatchVideo');
+      const vUrl = btn ? btn.getAttribute('data-video-url') : '';
+      if (!vUrl) {
+        alert('감상할 영상이 아직 없습니다.');
+        return;
+      }
+
+      // 오디오 정지
+      const audio = document.getElementById('audioPlayer');
+      if (audio) audio.pause();
+
+      const epData = EPISODES[currentIndex];
+      const title = epData ? `「${epData.title}」 시화 영상 감상` : '시화 영상 감상';
+      openGlobalGalleryVideoModal(vUrl, title);
+    }
+
+    function openGlobalGalleryVideoModal(videoUrl, title) {
+      let modal = document.getElementById('galleryGlobalVideoModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'galleryGlobalVideoModal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.88)';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '999999';
+        modal.style.backdropFilter = 'blur(6px)';
+
+        modal.innerHTML = `
+          <div style="position: relative; width: 92%; max-width: 980px; background: #181412; border: 1.5px solid #4A3B32; border-radius: 14px; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,0.65);">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #261F1A; border-bottom: 1px solid #3D312A; color: #FFF;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">🎬</span>
+                <span id="galleryGlobalVideoTitle" style="font-weight: 700; font-size: 15px; color: #F5E8D3;">${title}</span>
+              </div>
+              <button onclick="closeGalleryVideoModal()" style="background: none; border: none; color: #D5C2B0; font-size: 24px; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
+            </div>
+            <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; background: #000;">
+              <video id="galleryGlobalVideoElement" controls autoplay style="position: absolute; top:0; left:0; width: 100%; height: 100%; outline: none;"></video>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeGalleryVideoModal();
+        });
+      }
+
+      const titleEl = document.getElementById('galleryGlobalVideoTitle');
+      if (titleEl) titleEl.textContent = title;
+
+      const videoEl = document.getElementById('galleryGlobalVideoElement');
+      if (videoEl) {
+        videoEl.src = videoUrl;
+        videoEl.load();
+        videoEl.play().catch(() => {});
+      }
+      modal.style.display = 'flex';
+    }
+
+    function closeGalleryVideoModal() {
+      const modal = document.getElementById('galleryGlobalVideoModal');
+      if (modal) {
+        const videoEl = document.getElementById('galleryGlobalVideoElement');
+        if (videoEl) {
+          videoEl.pause();
+          videoEl.src = '';
+        }
+        modal.style.display = 'none';
+      }
     }
 
     // 이전 화 이동

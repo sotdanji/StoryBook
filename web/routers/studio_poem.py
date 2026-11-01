@@ -11,7 +11,7 @@ import time
 import base64
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -98,6 +98,8 @@ class SaveLayoutRequest(BaseModel):
 class SaveLayoutConfigRequest(BaseModel):
     episode_no: str
     layout_config: dict
+    title: Optional[str] = None
+    poem_body: Optional[str] = None
 
 class DeleteWorkRequest(BaseModel):
     episode_no: str
@@ -382,7 +384,7 @@ async def save_work_layout_endpoint(req: SaveLayoutRequest):
 async def save_work_layout_config_endpoint(req: SaveLayoutConfigRequest):
     """2P/4P 매트릭스 슬롯 조판 설정 영구 저장"""
     mgr = project_manager.get_active_manuscript_manager()
-    success = mgr.update_work_layout_config(req.episode_no, req.layout_config)
+    success = mgr.update_work_layout_config(req.episode_no, req.layout_config, title=req.title, poem_body=req.poem_body)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
     return {
@@ -677,3 +679,33 @@ async def import_bulk_manuscript(req: BulkImportRequest):
         "message": f"총 {len(parsed_items)}편의 완성 원고가 성공적으로 등록되었습니다!"
     }
 
+
+
+class OverlayTextRequest(BaseModel):
+    episode_no: Union[int, str]
+    page_key: str
+    text: str
+
+@router.post("/api/poem/overlay_text")
+async def save_overlay_text_endpoint(req: OverlayTextRequest):
+    """전면그림+글 모드 등에서 사용자가 직접 입력한 오버레이 텍스트 저장"""
+    try:
+        mgr = project_manager.get_active_manuscript_manager()
+        works = mgr.load_works()
+        ep_no_str = str(req.episode_no).replace("제", "").replace("화", "").strip()
+        ep_no = int(ep_no_str) if ep_no_str.isdigit() else 1
+
+        target = None
+        for w in works:
+            if w.episode_no == ep_no:
+                target = w
+                break
+        if target:
+            if not hasattr(target, "overlay_texts") or not isinstance(target.overlay_texts, dict):
+                target.overlay_texts = {}
+            target.overlay_texts[req.page_key] = req.text
+            mgr.save_works(works)
+            return {"success": True, "saved_key": req.page_key}
+        return {"success": False, "error": "Work not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
