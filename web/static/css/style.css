@@ -5249,3 +5249,87 @@ body.is-app-busy * {
   font-weight: 700;
   cursor: pointer;
 }
+
+/* --- DTP Toolbox Vertical Stack Layout (상하 배열 구조) --- */
+.dtp-tab-content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.dtp-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #FFFFFF;
+  border: 1px solid #EFE6D8;
+  border-radius: 7px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dtp-row-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #553412;
+  min-width: 62px;
+  flex-shrink: 0;
+  letter-spacing: -0.2px;
+}
+
+.dtp-row-control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.dtp-select-field {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4A3319;
+  background: #FAF6F0;
+  border: 1px solid #D5C5B2;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.dtp-select-field:focus {
+  border-color: #8B3A1A;
+  background: #FFF;
+}
+
+.btn-control-sub {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #D5C5B2;
+  border-radius: 5px;
+  background: #FDFBF7;
+  color: #553412;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-control-sub:hover {
+  background: #F3ECE1;
+  border-color: #BFA58C;
+}
+
+.btn-control-sub.active {
+  background: #8B3A1A;
+  border-color: #6E2D13;
+  color: #FFFFFF;
+}

@@ -1576,8 +1576,11 @@
     /**
      * 빨간색 가이드선 토글
      */
-    toggleGuides() {
-      this.showGuides = !this.showGuides;
+    /**
+     * 빨간색 가이드선 설정 (ON / OFF)
+     */
+    setGuides(enable) {
+      this.showGuides = !!enable;
       this.applyGuidesVisibility();
       const btn = document.getElementById("btnToggleLayoutGuides");
       if (btn) {
@@ -1585,6 +1588,14 @@
         btn.style.background = this.showGuides ? "#FFF5F5" : "#FFF";
         btn.style.color = this.showGuides ? "#C53030" : "#6E5340";
       }
+      const btnOn = document.getElementById("btnGuideOn");
+      const btnOff = document.getElementById("btnGuideOff");
+      if (btnOn) btnOn.classList.toggle("active", this.showGuides);
+      if (btnOff) btnOff.classList.toggle("active", !this.showGuides);
+    }
+
+    toggleGuides() {
+      this.setGuides(!this.showGuides);
     }
 
     applyGuidesVisibility() {
@@ -1762,17 +1773,9 @@
         el.style.textAlign = align;
       });
 
-      // 정렬 버튼 active 상태 갱신
-      const btnMap = {
-        'left': 'btnAlignLeft',
-        'center': 'btnAlignCenter',
-        'right': 'btnAlignRight',
-        'justify': 'btnAlignJustify'
-      };
-      Object.entries(btnMap).forEach(([k, btnId]) => {
-        const btn = document.getElementById(btnId);
-        if (btn) btn.classList.toggle('active', k === align);
-      });
+      // 정렬 드롭다운 동기화
+      const selAlign = document.getElementById('selectTbTextAlign');
+      if (selAlign) selAlign.value = align;
 
       this.saveLayoutConfigToServer(work.episode_no, cfg);
       if (window.showToast) {
@@ -1841,14 +1844,8 @@
       this.targetPageSlot = slot;
       const btnL = document.getElementById('btnTargetLeft');
       const btnR = document.getElementById('btnTargetRight');
-      if (btnL) {
-        btnL.style.background = slot === 'left' ? '#8B3A1A' : '#FFF';
-        btnL.style.color = slot === 'left' ? '#FFF' : '#553412';
-      }
-      if (btnR) {
-        btnR.style.background = slot === 'right' ? '#8B3A1A' : '#FFF';
-        btnR.style.color = slot === 'right' ? '#FFF' : '#553412';
-      }
+      if (btnL) btnL.classList.toggle('active', slot === 'left');
+      if (btnR) btnR.classList.toggle('active', slot === 'right');
       this.syncToolboxImageTab();
     }
 
@@ -1861,16 +1858,13 @@
       const select = document.getElementById(`selectImgLayout${side}`);
       const curLayout = select ? select.value : 'single';
 
-      const cardMap = {
-        'single': 'cardLayoutSingle',
-        'split_vertical': 'cardLayoutSplitV',
-        'split_horizontal': 'cardLayoutSplitH',
-        'main_detail': 'cardLayoutMainDetail'
-      };
-      Object.entries(cardMap).forEach(([k, id]) => {
-        const card = document.getElementById(id);
-        if (card) card.classList.toggle('active', k === curLayout);
-      });
+      const selImgLayout = document.getElementById('selectTbImgLayout');
+      if (selImgLayout) selImgLayout.value = curLayout;
+
+      const btnL = document.getElementById('btnTargetLeft');
+      const btnR = document.getElementById('btnTargetRight');
+      if (btnL) btnL.classList.toggle('active', slot === 'left');
+      if (btnR) btnR.classList.toggle('active', slot === 'right');
 
       const work = this.getCurrentWork();
       const cfg = work ? this.getNormalizedConfig(work) : null;
@@ -2098,29 +2092,28 @@
     syncToolboxUI(work, cfg) {
       if (!work || !cfg) return;
 
-      // 1) 정렬 버튼 동기화
-      const align = cfg.text_align || 'left';
-      const btnMap = {
-        'left': 'btnAlignLeft',
-        'center': 'btnAlignCenter',
-        'right': 'btnAlignRight',
-        'justify': 'btnAlignJustify'
-      };
-      Object.entries(btnMap).forEach(([k, btnId]) => {
-        const btn = document.getElementById(btnId);
-        if (btn) btn.classList.toggle('active', k === align);
-      });
+      // 1) 안내선 ON/OFF 동기화
+      const btnOn = document.getElementById("btnGuideOn");
+      const btnOff = document.getElementById("btnGuideOff");
+      if (btnOn) btnOn.classList.toggle("active", this.showGuides);
+      if (btnOff) btnOff.classList.toggle("active", !this.showGuides);
 
-      // 2) 글꼴 셀렉터 동기화
+      // 2) 본문 정렬 드롭다운 동기화
+      const align = cfg.text_align || 'left';
+      const selAlign = document.getElementById('selectTbTextAlign');
+      if (selAlign) selAlign.value = align;
+
+      // 3) 글꼴 드롭다운 동기화
       const selFont = document.getElementById('selectTbFontFamily');
       if (selFont && cfg.font_family) {
         selFont.value = cfg.font_family;
       }
 
-      // 3) 글자 크기 동기화
-      const lblFontSize = document.getElementById('lblTbFontSizeVal');
-      if (lblFontSize) {
-        lblFontSize.textContent = `${(parseFloat(cfg.font_size_pt) || 12).toFixed(1)}pt`;
+      // 4) 글자 크기 드롭다운 동기화
+      const selSize = document.getElementById('selectTbFontSize');
+      if (selSize) {
+        const pt = Math.round(parseFloat(cfg.font_size_pt) || 12);
+        selSize.value = String(pt);
       }
 
       // 4) 줄간격 동기화
