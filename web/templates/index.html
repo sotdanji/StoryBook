@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StoryBook Studio | 기억 기반 시화집 독립출판</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/static/css/style.css?v=v5920">
+  <link rel="stylesheet" href="/static/css/style.css?v=v6150">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>window.name = "StoryBookStudio";</script>
 </head>
@@ -816,96 +816,42 @@
     <section id="panelBook" class="tab-content">
       <div class="book-viewer-container">
         
-        <!-- [StoryBook DTP Core] 조판 편집 상단 툴바 -->
-        <div class="book-toolbar layout-toolbar">
-          <!-- Row 1: 작품 넘기기 & 목차 & Undo/Redo & 가이드선 & 출판 다운로드 -->
-          <div class="layout-toolbar-row row-sub" style="border-bottom: 1px dashed #EDE5DA; padding-bottom: 6px; border-top: none;">
-            <div class="toolbar-nav-group" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-              <button id="btnPrevWork" class="nav-btn" onclick="dtpEditor.navigateWork(-1)" title="[이전 작품] 이전 회차 작품으로 이동하여 조판 상태를 확인합니다.">◀ 이전</button>
-              <select id="selectWorkDropdown" class="form-input" style="width: 190px;" onchange="dtpEditor.renderSpread(this.value, 1)" title="[작품 선택] 특정 회차의 시와 삽화를 선택하여 조판실에 펼칩니다.">
-                <!-- 작품 옵션들이 JS로 채워짐 -->
-              </select>
-              <button id="btnNextWork" class="nav-btn" onclick="dtpEditor.navigateWork(1)" title="[다음 작품] 다음 회차 작품으로 이동하여 조판 상태를 확인합니다.">다음 ▶</button>
-              
-              <!-- [안실장 추천] Undo / Redo 버튼 -->
-              <div style="display: inline-flex; align-items: center; gap: 3px; margin-left: 4px;">
-                <button type="button" class="nav-btn btn-quick-action" id="btnDtpUndo" onclick="dtpEditor.undo()" title="[실행 취소 (Ctrl+Z)] 방금 변경한 조판 상태를 이전으로 되돌립니다." disabled style="padding: 4px 8px; font-weight: 700;">
-                  <span>↩ 되돌리기</span>
-                </button>
-                <button type="button" class="nav-btn btn-quick-action" id="btnDtpRedo" onclick="dtpEditor.redo()" title="[다시 실행 (Ctrl+Y)] 되돌린 조판 작업을 다시 적용합니다." disabled style="padding: 4px 8px; font-weight: 700;">
-                  <span>↪ 다시실행</span>
-                </button>
-              </div>
+        <!-- [StoryBook DTP Core] 조판 편집 상단 툴바 (완전 단순화 단일 행) -->
+        <div class="book-toolbar layout-toolbar" style="padding: 6px 14px;">
+                    <div class="layout-toolbar-row" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 10px; width: 100%;">
+            <!-- 좌측: 작품 이동 & 실물 100% & 목차·순서 & 인쇄안전선 상태 배지 -->
+            <div class="toolbar-nav-group" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <button id="btnPrevWork" class="nav-btn" onclick="dtpEditor.navigateWork(-1)" title="[이전 시화] (단축키: Ctrl+←)">◀ 이전</button>
+              <span id="navWorkIndexText" style="font-weight: 700; color: #553412; font-size: 0.85rem; min-width: 55px; text-align: center;">1 / 1</span>
+              <button id="btnNextWork" class="nav-btn" onclick="dtpEditor.navigateWork(1)" title="[다음 시화] (단축키: Ctrl+→)">다음 ▶</button>
 
-              <!-- 빨간색 가이드선 토글 및 1:1 실물 줌 -->
-              <button id="btnToggleLayoutGuides" class="nav-btn btn-quick-action" onclick="dtpEditor.toggleGuides()" style="margin-left: 4px; background: #FFF5F5; border: 1.5px solid #FEB2B2; color: #C53030; font-weight: 700;" title="[가이드선 토글] 빨간색 텍스트 상자 가이드선(제목 상단선, 본문 하단선)을 켜거나 숨깁니다.">
-                <span>🟥 가이드선 켬</span>
-              </button>
-              <button id="btnToggleRealScale" class="nav-btn btn-quick-action" onclick="dtpEditor.toggleRealScale()" style="margin-left: 3px; background: #FFF; border: 1.5px solid #D5C2B0; color: #643E19; font-weight: 700;" title="[A5 실물 크기 1:1 감상] 실제 A5 종이책(148x210mm) 비율로 화면 배율을 맞춥니다.">
+              <button id="btnToggleRealScale" class="nav-btn btn-quick-action" onclick="dtpEditor.toggleRealScale()" style="margin-left: 4px; background: #FFF; border: 1.5px solid #D5C2B0; color: #643E19; font-weight: 700;" title="[A5 실물 크기 1:1 감상] 실제 A5 종이책(148x210mm) 비율로 화면 배율을 맞춥니다.">
                 <span>🔍 실물 100%</span>
               </button>
-              
-              <button id="btnOpenTocEditor" class="nav-btn btn-quick-action" onclick="openTocEditorModal()" style="margin-left: 4px;" title="[시집 목차 & 순서 편집] 큰 주제별 묶음(부/챕터) 구성 및 작품 순서를 자유롭게 변경합니다.">
+
+              <button id="btnOpenTocEditor" class="nav-btn btn-quick-action" onclick="openTocEditorModal()" style="margin-left: 2px;" title="[시집 목차 & 순서 편집] 큰 주제별 묶음(부/챕터) 구성 및 작품 순서를 자유롭게 변경합니다.">
                 <span>📑 목차·순서</span>
               </button>
-            </div>
 
-            <div class="layout-export-group">
-              <input type="file" id="viewerFileInput" accept="image/*" style="display: none;" onchange="onViewerFileSelected(event)">
-              <!-- [핵심] 조판 완료 확정 및 저장 버튼 -->
-              <button type="button" class="btn-primary" id="btnFinishLayout" onclick="finishAndSaveCurrentLayout()" style="padding: 6px 15px; font-size: 0.82rem; font-weight: 700; background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); border: 1.5px solid #166534; color: #FFF; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(22,163,74,0.3); white-space: nowrap !important;" title="[조판 완료] 현재 회차의 시화 배치와 설정을 확정하고 공식 원고에 영구 저장합니다.">
-                <span>✅ 조판 완료</span>
-              </button>
-              <a href="/api/bookk/export_interior?format_key=a5" class="btn-primary" id="btnDownloadBookkPdf" onclick="onDownloadPdfGuide('bookk')" style="padding: 6px 14px; font-size: 0.8rem; text-decoration: none; background: #15803D; border: 1px solid #166534; white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center; min-width: max-content;" title="[부크크 인쇄용 국판 A5 PDF] 300 DPI 공식 완제본 PDF를 다운로드합니다.">
-                <span>📚 인쇄용 A5 PDF</span>
-              </a>
-              <a href="/api/export_pdf" class="btn-primary" id="btnDownloadViewerPdf" onclick="onDownloadPdfGuide('ebook')" style="padding: 6px 14px; font-size: 0.8rem; text-decoration: none; background: var(--accent-primary); white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center; min-width: max-content;" title="[일반 전자책 완제 PDF] 표준 A5 완제 PDF를 다운로드합니다.">
-                <span>📕 열람용 PDF</span>
-              </a>
-            </div>
-          </div>
-
-          <!-- Row 2: 실시간 조판 편집 컨트롤 (글자크기, 한지 투명도, 스프레드 네비) -->
-          <div class="layout-toolbar-row row-main" style="padding-top: 6px; flex-wrap: wrap; gap: 8px;">
-            <div class="layout-controls-group" style="display: flex; align-items: center; gap: 6px;">
-              <div id="layoutStatusBadge" class="layout-badge badge-ok" title="실제 종이책 인쇄 안전 한계선 내에 본문이 안정적으로 안착되어 있는지 실시간 판정합니다.">
+              <!-- 실제 인쇄안전선 안착 상태 배지만 유지 (4쪽 조판, 1부/2부 버튼 제거) -->
+              <div id="layoutStatusBadge" class="layout-badge badge-ok" style="margin-left: 4px;" title="실제 종이책 인쇄 안전 한계선 내에 본문이 안정적으로 안착되어 있는지 실시간 판정합니다.">
                 <span class="badge-dot">●</span>
                 <span id="layoutStatusText">✅ 인쇄안전선 안착</span>
               </div>
-
-              <!-- 총 면수 배지 & 스프레드 1부/2부/3부 전환 네비 -->
-              <div class="layout-spread-controls" style="display: inline-flex; align-items: center; gap: 5px;">
-                <div id="lblTotalPagesBadge" class="btn-micro" style="font-weight: 700; padding: 4px 10px; background: #FFF; border: 1.5px solid #D5C2B0; color: #553412; cursor: default; border-radius: 6px;" title="현재 시화 작품의 총 수록 면수입니다.">📄 2쪽 조판 (1·2면)</div>
-                <div id="spreadPartNavGroup" style="display: none; align-items: center; gap: 3px; background: #F5EBE1; padding: 2px 4px; border-radius: 6px; border: 1px solid #E2D3C4;">
-                  <!-- JS에서 동적 렌더링 -->
-                </div>
-              </div>
             </div>
 
-            <!-- [안실장 추천] 한지 가독성 패널 슬라이더 (실시간 투명도 조절: 기본 85%) & 글자색 반전 -->
-            <div class="dtp-toolbar-hanji-group" title="[그림 위 글 가독성 필터] 미색 한지 패널의 투명도를 실시간으로 조절하고 글자색을 반전합니다.">
-              <span style="font-size: 0.74rem; font-weight: 700; color: #7A5335;">한지필터</span>
-              <input type="range" id="inputDtpHanjiOpacity" min="0" max="100" value="85" style="width: 70px; cursor: pointer;" oninput="dtpEditor.setHanjiOpacity(this.value)">
-              <span id="lblDtpHanjiOpacityVal" style="font-size: 0.72rem; font-weight: 700; color: #8C3B14; min-width: 28px;">85%</span>
-              <button type="button" class="btn-micro" onclick="dtpEditor.toggleTextColor()" style="font-size: 0.72rem; padding: 2px 6px; font-weight: 700;" title="글자색을 먹색 또는 순백색으로 반전합니다.">🎨 글자색 반전</button>
-            </div>
-
-            <!-- 조판 글자 크기(pt) & 줄간격 조율기 -->
-            <div class="layout-micro-adjust" id="layoutMicroAdjust" style="display: inline-flex; align-items: center; gap: 4px;" title="[조판 글자 크기·줄간격] 본문의 글자 크기(pt)와 줄간격을 조율합니다.">
-              <div style="display: inline-flex; align-items: center; gap: 4px; background: #FFF; border: 1.5px solid #D5C2B0; border-radius: 6px; padding: 2px 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
-                <span style="font-size: 0.74rem; font-weight: 700; color: #7A5335;">크기</span>
-                <select id="selectTypographyFontSizePt" onchange="onTypographyFontSizeSelectChange(this.value)" style="border: none; background: transparent; font-size: 0.8rem; font-weight: 700; color: #553412; cursor: pointer; outline: none; padding: 1px 2px;" title="본문 글자 크기를 pt 단위로 변경합니다. (초기치: 12pt)">
-                  <option value="10">10pt</option>
-                  <option value="11">11pt</option>
-                  <option value="12" selected>12pt</option>
-                  <option value="13">13pt</option>
-                  <option value="14">14pt</option>
-                  <option value="custom">사용자지정...</option>
-                </select>
-              </div>
-              <button type="button" class="btn-micro" id="btnTypographyLineMinus" onclick="adjustCustomTypography('line', -1)" title="[줄간격 축소] 본문 줄간격을 좁힙니다.">↕-</button>
-              <button type="button" class="btn-micro" id="btnTypographyLinePlus" onclick="adjustCustomTypography('line', 1)" title="[줄간격 확대] 본문 줄간격을 넓힙니다.">↕+</button>
-              <button type="button" class="btn-micro" id="btnTypographyReset" onclick="resetCustomTypography()" title="[조판 초기화] 기본 글자 크기(12pt)와 기본 줄간격으로 복원합니다." style="font-size: 0.72rem; padding: 2px 6px;">초기화</button>
+            <!-- 우측: 핵심 3버튼 가로 1줄 나란히 배치 (조판 완료 | 인쇄용 A5 PDF | 열람용 PDF) -->
+            <div class="layout-export-group" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <input type="file" id="viewerFileInput" accept="image/*" style="display: none;" onchange="onViewerFileSelected(event)">
+              <button type="button" class="btn-primary" id="btnFinishLayout" onclick="finishAndSaveCurrentLayout()" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 700; background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); border: 1.5px solid #166534; color: #FFF; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(22,163,74,0.25); white-space: nowrap !important;" title="[조판 완료] 현재 회차의 시화 배치와 설정을 확정하고 공식 원고에 영구 저장합니다.">
+                <span>✅ 조판 완료</span>
+              </button>
+              <a href="/api/bookk/export_interior?format_key=a5" class="btn-primary" id="btnDownloadBookkPdf" onclick="onDownloadPdfGuide('bookk')" style="padding: 6px 13px; font-size: 0.8rem; text-decoration: none; background: #15803D; border: 1px solid #166534; white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center;">
+                <span>📗 인쇄용 A5 PDF</span>
+              </a>
+              <button type="button" class="btn-primary" id="btnDownloadReadingPdf" onclick="downloadReadingPdf()" style="padding: 6px 13px; font-size: 0.8rem; background: #8C5335; border: 1px solid #73432A; white-space: nowrap !important;">
+                <span>📕 열람용 PDF</span>
+              </button>
             </div>
           </div>
         </div>
@@ -984,6 +930,7 @@
                       <option value="'ChosunNm', serif">조선명조</option>
                       <option value="'Gowun Batang', serif">고운바탕</option>
                       <option value="'MaruBuri', serif">마루부리</option>
+                      <option value="custom">사용자 지정...</option>
                     </select>
                   </div>
                 </div>
@@ -1001,6 +948,7 @@
                       <option value="14">14pt</option>
                       <option value="15">15pt</option>
                       <option value="16">16pt</option>
+                      <option value="custom">사용자 지정...</option>
                     </select>
                   </div>
                 </div>
@@ -1014,8 +962,24 @@
                   </div>
                 </div>
 
-                <!-- 7. 한지필터 -->
-                <div class="dtp-control-row">
+                <!-- 구분선: [그림+글] 겹침 전용 가독성 조율기 -->
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #E2D7C8; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 0.72rem; font-weight: 800; color: #8C3A14;">❦ 그림 위 글 겹침 가독성</span>
+                  <span style="font-size: 0.68rem; color: #A07855;">[그림+글] 전용</span>
+                </div>
+
+                <!-- 7. 전체 글자색 모드 (3선택) -->
+                <div class="dtp-control-row" title="그림과 글이 겹칠 때 기본 글자색 모드를 설정합니다.">
+                  <span class="dtp-row-label">글자색 모드</span>
+                  <div class="dtp-row-control" style="display: flex; gap: 4px;">
+                    <button type="button" class="btn-control-sub btn-tb-colormode is-active" id="btnColorModeAuto" style="flex: 1; padding: 4px 2px; font-size: 0.7rem;" onclick="dtpEditor.setTextColorMode('auto')">🌗 자동</button>
+                    <button type="button" class="btn-control-sub btn-tb-colormode" id="btnColorModeDark" style="flex: 1; padding: 4px 2px; font-size: 0.7rem;" onclick="dtpEditor.setTextColorMode('dark')">⚫ 먹색</button>
+                    <button type="button" class="btn-control-sub btn-tb-colormode" id="btnColorModeLight" style="flex: 1; padding: 4px 2px; font-size: 0.7rem;" onclick="dtpEditor.setTextColorMode('light')">⚪ 백색</button>
+                  </div>
+                </div>
+
+                <!-- 8. 한지필터 슬라이더 -->
+                <div class="dtp-control-row" title="그림과 겹치는 글자 주변에 은은하게 퍼지는 한지빛 틴트 강도를 조절합니다.">
                   <span class="dtp-row-label">한지필터</span>
                   <div class="dtp-row-control">
                     <input type="range" id="inputTbHanjiOpacity" min="0" max="100" value="85" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setHanjiOpacity(this.value)">
@@ -1023,17 +987,28 @@
                   </div>
                 </div>
 
-                <!-- 8. 글자색 -->
-                <div class="dtp-control-row">
-                  <span class="dtp-row-label">글자색</span>
-                  <div class="dtp-row-control">
-                    <button type="button" class="btn-control-sub" style="width: 100%;" onclick="dtpEditor.toggleTextColor()">🎨 먹색 / 순백색 반전</button>
+                <!-- 9. 선택 행(줄) 개별 조절 도구 (툴박스 원클릭 선택) -->
+                <div class="dtp-line-selector-box" style="margin-top: 6px; padding: 6px 8px; background: #FAF6F0; border: 1px solid #E8DFD3; border-radius: 6px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-size: 0.7rem; font-weight: 700; color: #5C4B40;">선택 행(줄) 개별 조절:</span>
+                    <span id="lblSelectedLineHint" style="font-size: 0.68rem; color: #8C3A14; font-weight: 600;">(본문 행 클릭)</span>
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn-control-sub btn-line-colormode" id="btnLineSetAuto" style="flex: 1; padding: 3px 2px; font-size: 0.68rem;" onclick="dtpEditor.setSelectedLineColor('auto')">🌗 자동</button>
+                    <button type="button" class="btn-control-sub btn-line-colormode" id="btnLineSetDark" style="flex: 1; padding: 3px 2px; font-size: 0.68rem;" onclick="dtpEditor.setSelectedLineColor('dark')">⚫ 먹색</button>
+                    <button type="button" class="btn-control-sub btn-line-colormode" id="btnLineSetLight" style="flex: 1; padding: 3px 2px; font-size: 0.68rem;" onclick="dtpEditor.setSelectedLineColor('light')">⚪ 백색</button>
                   </div>
                 </div>
               </div>
 
               <!-- [탭 2: 🎨 그림 편집] 상하 배열 (Row Stack) -->
               <div class="dtp-tab-content" id="toolboxTabImage">
+                <!-- 페이지 용도 비활성화 안내 배너 (글 전용 또는 여백일 때 표시) -->
+                <div id="rowImageTabDisabledNotice" style="display: none; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.74rem; color: #92400E; line-height: 1.45;">
+                  ⚠️ <strong>현재 면은 <span id="lblNoticeSlotUsage">[글 전용]</span> 면입니다.</strong><br>
+                  상단 메뉴에서 페이지 용도를 <strong>[전면 그림]</strong> 또는 <strong>[그림 + 글]</strong>로 변경하시면 그림 편집 도구가 활성화됩니다.
+                </div>
+                <div id="containerImageControls">
                 <!-- 1. 대상 면 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">대상 면</span>
@@ -1043,38 +1018,72 @@
                   </div>
                 </div>
 
-                <!-- 2. 그림 분할 -->
+                <!-- 2. 그림 분할 (주체 컨트롤) -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">그림 분할</span>
                   <div class="dtp-row-control">
                     <select id="selectTbImgLayout" onchange="dtpEditor.applyImageLayoutPreset(this.value)" class="dtp-select-field">
                       <option value="single" selected>🖼️ 1장 전체 (기본)</option>
-                      <option value="split_vertical">⬒ 상·하 2단</option>
+                                            <option value="split_vertical">⬒ 상·하 2단</option>
                       <option value="split_horizontal">◧ 좌·우 2단</option>
-                      <option value="main_detail">◰ 메인 + 소품</option>
                     </select>
                   </div>
                 </div>
 
-                <!-- 3. 가로 초점 (X) -->
-                <div class="dtp-control-row">
-                  <span class="dtp-row-label">가로 초점(X)</span>
+                <!-- 2-1. 선택 그림 (분할 시 종속되어 바로 아래 표시) -->
+                <div class="dtp-control-row" id="rowSubFrameSelector" style="display: none; background: #FFF9F5; border-color: #FCD9C6;">
+                  <span class="dtp-row-label" style="color: #8C3A14;">선택 그림</span>
                   <div class="dtp-row-control">
-                    <input type="range" id="inputTbPanX" min="-50" max="50" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('x', this.value)">
+                    <button type="button" class="btn-control-sub active" id="btnSubFrame1" onclick="dtpEditor.setSelectedSubFrame(1)">🖼️ 1번 그림</button>
+                    <button type="button" class="btn-control-sub" id="btnSubFrame2" onclick="dtpEditor.setSelectedSubFrame(2)">🖼️ 2번 그림</button>
+                  </div>
+                </div>
+
+                <!-- 2-2. 그림틀 조절 및 크기 복원 -->
+                <div class="dtp-control-row" title="그림틀 테두리의 상·하·좌·우 핸들을 마우스로 드래그하여 사각형 크기를 줄일 수 있습니다.">
+                  <span class="dtp-row-label">그림틀 조절</span>
+                  <div class="dtp-row-control">
+                    <button type="button" class="btn-control-sub" style="width: 100%; font-size: 0.72rem;" onclick="dtpEditor.resetSelectedFrameRect()" title="선택된 그림틀을 100% 꽉 채운 원래 크기로 복원합니다.">⟲ 선택 그림틀 100% 크기 복원</button>
+                  </div>
+                </div>
+
+                <!-- 3. 그림 배율 (축소 40% ~ 확대 250% 자유도) -->
+                <div class="dtp-control-row" title="프레임 안에서 그림을 축소(40%)하거나 확대(250%)합니다.">
+                  <span class="dtp-row-label">그림 배율</span>
+                  <div class="dtp-row-control">
+                    <input type="range" id="inputTbScale" min="40" max="250" step="5" value="100" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageScale(this.value)">
+                    <span class="tool-val-badge" id="lblTbScaleVal">100%</span>
+                  </div>
+                </div>
+
+                <!-- 4. 가로 조정 (X) (화면 밖 극단 이동 -100% ~ +100%) -->
+                <div class="dtp-control-row" title="그림을 좌우로 이동합니다. 극단적인 면만 강조할 수 있도록 화면 밖까지 이동 가능합니다.">
+                  <span class="dtp-row-label">가로 조정(X)</span>
+                  <div class="dtp-row-control">
+                    <input type="range" id="inputTbPanX" min="-100" max="100" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('x', this.value)">
                     <span class="tool-val-badge" id="lblTbPanXVal">0%</span>
                   </div>
                 </div>
 
-                <!-- 4. 세로 초점 (Y) -->
-                <div class="dtp-control-row">
-                  <span class="dtp-row-label">세로 초점(Y)</span>
+                <!-- 5. 세로 조정 (Y) (화면 밖 극단 이동 -100% ~ +100%) -->
+                <div class="dtp-control-row" title="그림을 상하로 이동합니다. 극단적인 면만 강조할 수 있도록 화면 밖까지 이동 가능합니다.">
+                  <span class="dtp-row-label">세로 조정(Y)</span>
                   <div class="dtp-row-control">
-                    <input type="range" id="inputTbPanY" min="-50" max="50" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('y', this.value)">
+                    <input type="range" id="inputTbPanY" min="-100" max="100" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImagePan('y', this.value)">
                     <span class="tool-val-badge" id="lblTbPanYVal">0%</span>
                   </div>
                 </div>
 
-                <!-- 5. 외곽 페이드 (비네팅) -->
+                <!-- 6. 그림틀 여백 (인쇄범위 내 아담하게 축소/배치) -->
+                <div class="dtp-control-row" title="그림틀의 내부 여백을 조절하여 인쇄범위 내에서 그림을 아담하게 축소 및 배치합니다.">
+                  <span class="dtp-row-label">틀 여백</span>
+                  <div class="dtp-row-control">
+                    <input type="range" id="inputTbFrameInset" min="0" max="40" step="2" value="0" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageFrameInset(this.value)">
+                    <span class="tool-val-badge" id="lblTbFrameInsetVal">0px</span>
+                  </div>
+                </div>
+
+                <!-- 7. 외곽 페이드 (비네팅) -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">외곽 페이드</span>
                   <div class="dtp-row-control">
@@ -1083,7 +1092,7 @@
                   </div>
                 </div>
 
-                <!-- 6. 감성 블러 -->
+                <!-- 8. 감성 블러 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">감성 블러</span>
                   <div class="dtp-row-control">
@@ -1092,7 +1101,7 @@
                   </div>
                 </div>
 
-                <!-- 7. 색감 톤 -->
+                <!-- 9. 색감 톤 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">색감 톤</span>
                   <div class="dtp-row-control">
@@ -1105,12 +1114,13 @@
                   </div>
                 </div>
 
-                <!-- 8. 삽화 교체 / 관리 -->
+                <!-- 10. 선택된 그림 변경 / 관리 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">삽화 관리</span>
                   <div class="dtp-row-control">
-                    <button type="button" class="btn-control-sub" style="width: 100%;" onclick="dtpEditor.openCurrentImageManager()">🎨 현재 면 삽화 교체 / 관리</button>
+                    <button type="button" class="btn-control-sub" id="btnTbArtChange" style="width: 100%;" onclick="dtpEditor.openCurrentImageManager()">🎨 선택된 그림 변경 / 업로드</button>
                   </div>
+                </div>
                 </div>
               </div>
 
@@ -1190,9 +1200,8 @@
                   <option value="single">🖼️ 1장 전체</option>
                   <option value="split_vertical">⬒ 상·하 2단</option>
                   <option value="split_horizontal">◧ 좌·우 2단</option>
-                  <option value="main_detail">◰ 메인+소품</option>
                 </select>
-                <button type="button" class="btn-micro btn-dtp-art" id="btnArtLeft" onclick="openSlotImageManager('left')" title="삽화 교체 / 관리">🎨 삽화</button>
+                
               </div>
             </div>
 
@@ -1201,7 +1210,7 @@
               <img id="dtpImgLeft" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
               <div id="dtpPlaceholderLeft" class="dtp-art-placeholder is-hidden" style="display: none;">
                 <span class="placeholder-icon">🎨</span>
-                <span class="placeholder-text">그림을 끌어다 놓거나 [🎨 삽화]를 클릭하세요</span>
+                <span class="placeholder-text">그림을 끌어다 놓으세요</span>
               </div>
               <div id="dtpBlankLeft" class="dtp-blank-content is-hidden" style="display: none;">
                 <span class="blank-symbol">❦</span>
@@ -1265,9 +1274,8 @@
                   <option value="single">🖼️ 1장 전체</option>
                   <option value="split_vertical">⬒ 상·하 2단</option>
                   <option value="split_horizontal">◧ 좌·우 2단</option>
-                  <option value="main_detail">◰ 메인+소품</option>
                 </select>
-                <button type="button" class="btn-micro btn-dtp-art" id="btnArtRight" onclick="openSlotImageManager('right')" title="삽화 교체 / 관리">🎨 삽화</button>
+                
               </div>
             </div>
 
@@ -1276,7 +1284,7 @@
               <img id="dtpImgRight" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
               <div id="dtpPlaceholderRight" class="dtp-art-placeholder is-hidden" style="display: none;">
                 <span class="placeholder-icon">🎨</span>
-                <span class="placeholder-text">그림을 끌어다 놓거나 [🎨 삽화]를 클릭하세요</span>
+                <span class="placeholder-text">그림을 끌어다 놓으세요</span>
               </div>
               <div id="dtpBlankRight" class="dtp-blank-content is-hidden" style="display: none;">
                 <span class="blank-symbol">❦</span>
@@ -3564,7 +3572,7 @@
 
   <script src="/static/js/app.js?v=v5800"></script>
   <script src="/static/js/poem_video.js?v=20261031_v4400"></script>
-  <script src="/static/js/dtp_editor_core.js?v=v5920"></script>
+  <script src="/static/js/dtp_editor_core.js?v=v6150"></script>
   <script>
     async function handleLogout() {
       if (confirm("로그아웃하고 집필실을 나가시겠습니까?")) {

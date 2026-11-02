@@ -1,5 +1,25 @@
 @charset "UTF-8";
-@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Serif+KR:wght@300;400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap');
+
+/* 한국 전통 서정 명조 웹폰트 (마루부리, 조선명조) */
+@font-face {
+  font-family: 'MaruBuri';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10-21@1.0/MaruBuri-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'MaruBuri';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10-21@1.0/MaruBuri-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ChosunNm';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/ChosunNm.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
 
 :root {
   --bg-primary: #F9F7F2;
@@ -4677,8 +4697,8 @@ body.is-app-busy * {
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-left .handle-bar-pill,
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-right .handle-bar-pill {
-  width: 8px !important;
-  height: 58px !important;
+  width: 4.5px !important;
+  height: 40px !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-left:hover .handle-label {
@@ -4694,12 +4714,12 @@ body.is-app-busy * {
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle .handle-bar-pill {
-  width: 68px !important;
-  height: 8px !important;
-  background: #E53E3E !important;
-  border: 1px solid #B91C1C !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.35) !important;
+  width: 44px !important;
+  height: 4.5px !important;
+  background: #C2410C !important;
+  border: 1px solid #9A3412 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
   transition: transform 0.15s, background-color 0.15s !important;
 }
 
@@ -4784,48 +4804,23 @@ body.is-app-busy * {
   font-weight: 600 !important;
 }
 
-.dtp-layer-image.layout-split_vertical {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  padding: 16px !important;
-  box-sizing: border-box !important;
-}
-
-.dtp-layer-image.layout-split_vertical .dtp-image-frame {
-  flex: 1 1 50% !important;
-  height: calc(50% - 5px) !important;
-}
-
-.dtp-layer-image.layout-split_horizontal {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 10px !important;
-  padding: 16px !important;
-  box-sizing: border-box !important;
-}
-
-.dtp-layer-image.layout-split_horizontal .dtp-image-frame {
-  flex: 1 1 50% !important;
-  width: calc(50% - 5px) !important;
-}
-
+.dtp-layer-image.layout-split_vertical,
+.dtp-layer-image.layout-split_horizontal,
 .dtp-layer-image.layout-main_detail {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  padding: 16px !important;
+  position: absolute !important;
+  inset: 38px 0 0 0 !important;
+  width: 100% !important;
+  height: calc(100% - 38px) !important;
+  padding: 0 !important;
   box-sizing: border-box !important;
+  overflow: visible !important;
 }
 
-.dtp-layer-image.layout-main_detail .dtp-image-frame.frame-main {
-  flex: 0 0 68% !important;
-  height: calc(68% - 5px) !important;
-}
-
-.dtp-layer-image.layout-main_detail .dtp-image-frame.frame-detail {
-  flex: 0 0 32% !important;
-  height: calc(32% - 5px) !important;
+.dtp-layer-image.layout-split_vertical .dtp-image-frame,
+.dtp-layer-image.layout-split_horizontal .dtp-image-frame,
+.dtp-layer-image.layout-main_detail .dtp-image-frame {
+  position: absolute !important;
+  box-sizing: border-box !important;
 }
 
 .dtp-image-frame {
@@ -4835,7 +4830,8 @@ body.is-app-busy * {
   overflow: hidden !important;
   border-radius: 6px !important;
   background: #F5EFEB !important;
-  border: 1px dashed rgba(180, 160, 140, 0.45) !important;
+  border: 1.5px dashed #2563EB !important;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15) inset !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -4853,15 +4849,17 @@ body.is-app-busy * {
   position: absolute !important;
   top: 8px !important;
   left: 8px !important;
-  background: rgba(44, 37, 32, 0.72) !important;
+  background: rgba(30, 64, 175, 0.88) !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
   color: #FFF !important;
   font-size: 0.68rem !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   padding: 2px 7px !important;
-  border-radius: 3px !important;
+  border-radius: 4px !important;
   pointer-events: none !important;
   z-index: 10 !important;
   backdrop-filter: blur(2px) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
 }
 
 .dtp-image-frame .btn-frame-change {
@@ -4899,16 +4897,17 @@ body.is-app-busy * {
 
 /* 1. 도구상자 + 2면 스프레드를 감싸는 작업 공간 래퍼 */
 .dtp-workspace-area {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 20px;
-  width: 100%;
-  max-width: 1560px;
-  margin: 0 auto;
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 1560px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* 2. 도구상자 메인 패널 (사이드바와 편집 페이지 사이) */
@@ -5497,4 +5496,333 @@ body.is-app-busy * {
 
 .btn-canva-send:hover {
   background: #5B21B6;
+}
+
+
+/* --- [DTP 엔진] 정렬 4종 및 서체 상속 강제 규칙 --- */
+.dtp-body-content,
+.dtp-body-text {
+  transition: text-align 0.15s ease;
+}
+
+.dtp-body-content .poem-line,
+.dtp-body-text .poem-line {
+  font-family: inherit !important;
+}
+
+/* 1) 양끝 배분 정렬 (시의 짧은 구절도 지면 좌우에 고르게 배분) */
+.text-align-justify,
+.text-align-justify .poem-line {
+  text-align: justify !important;
+  text-align-last: justify !important;
+  text-justify: inter-word !important;
+}
+
+/* 2) 가운데 정렬 */
+.text-align-center,
+.text-align-center .poem-line {
+  text-align: center !important;
+  text-align-last: center !important;
+}
+
+/* 3) 오른쪽 정렬 */
+.text-align-right,
+.text-align-right .poem-line {
+  text-align: right !important;
+  text-align-last: right !important;
+}
+
+/* 4) 왼쪽 정렬 */
+.text-align-left,
+.text-align-left .poem-line {
+  text-align: left !important;
+  text-align-last: left !important;
+}
+
+
+/* --- [DTP 이미지 프레임 가이드라인, 선택 하이라이트 & 드래그 패닝] --- */
+.dtp-image-frame {
+  position: relative;
+  overflow: hidden;
+  cursor: grab !important;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow 0.15s ease, outline 0.15s ease;
+}
+
+.dtp-image-frame img,
+.dtp-layer-image > img {
+  pointer-events: none; /* 마우스 이벤트가 부모 프레임으로 가도록 */
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.dtp-layer-image {
+  cursor: grab;
+}
+
+.dtp-image-frame.is-panning,
+.dtp-layer-image.is-panning {
+  cursor: grabbing !important;
+}
+
+/* 1) 선택된 프레임 하이라이트 (시원한 코발트 블루 또렷한 테두리) */
+.dtp-image-frame.is-selected {
+  outline: 2.5px solid #2563EB !important;
+  outline-offset: -2.5px;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.5) !important;
+  z-index: 5;
+}
+
+/* 2) 가이드선 켬 상태일 때 그림틀 점선 테두리 (파랑 가이드선) */
+.guides-active .dtp-image-frame,
+.guides-active .dtp-layer-image {
+  border: 1.5px dashed #2563EB !important;
+}
+
+/* ==========================================================================
+   [샌드위치 분할 & 국소 스마트 한지 필터 & 그림틀 리사이즈 핸들]
+   ========================================================================== */
+
+/* 1. 상·하 샌드위치 레이아웃 (상단 그림 + 중앙 글 여백 + 하단 그림) */
+.dtp-layer-image.layout-split_sandwich {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  gap: 0 !important;
+}
+
+.dtp-layer-image.layout-split_sandwich .dtp-image-frame[data-sub-frame="1"] {
+  flex: none !important;
+  width: 100% !important;
+  height: 32% !important;
+  min-height: 40px !important;
+  max-height: 45% !important;
+}
+
+.dtp-layer-image.layout-split_sandwich .dtp-image-frame[data-sub-frame="2"] {
+  flex: none !important;
+  width: 100% !important;
+  height: 32% !important;
+  min-height: 40px !important;
+  max-height: 45% !important;
+}
+
+/* 2. 그림틀(프레임) 리사이즈 핸들 */
+/* 그림틀(프레임) 4변 리사이즈 핸들 (글상자와 100% 동일한 핸들 규격 및 overflow 보장) */
+.dtp-image-frame {
+  position: relative !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  transition: width 0.05s ease, height 0.05s ease, margin 0.05s ease !important;
+}
+
+.dtp-image-frame.is-resizing {
+  transition: none !important;
+  user-select: none !important;
+}
+
+/* 창문 마스크 레이어 (overflow: hidden으로 내부 그림을 깔끔하게 크롭, 핸들은 바깥에 노출) */
+.dtp-frame-crop {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
+  pointer-events: none !important;
+  background: #F5EFEB !important;
+}
+
+.dtp-frame-crop img,
+.dtp-image-frame img {
+  border-radius: 6px !important;
+  display: block !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  transition: filter 0.2s ease !important;
+}
+
+.dtp-frame-handle {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 65 !important;
+  pointer-events: auto !important;
+}
+
+.dtp-frame-handle.handle-top {
+  top: -10px !important;
+  bottom: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  width: auto !important;
+  cursor: ns-resize !important;
+}
+
+.dtp-frame-handle.handle-bottom {
+  bottom: -10px !important;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  width: auto !important;
+  cursor: ns-resize !important;
+}
+
+.dtp-frame-handle.handle-left {
+  left: -10px !important;
+  right: auto !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 20px !important;
+  height: auto !important;
+  cursor: ew-resize !important;
+}
+
+.dtp-frame-handle.handle-right {
+  right: -10px !important;
+  left: auto !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 20px !important;
+  height: auto !important;
+  cursor: ew-resize !important;
+}
+
+.dtp-frame-handle.handle-top .handle-bar-pill,
+.dtp-frame-handle.handle-bottom .handle-bar-pill {
+  width: 44px !important;
+  height: 4.5px !important;
+  background: #2563EB !important;
+  border: 1px solid #1D4ED8 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4) !important;
+  transition: transform 0.15s, background-color 0.15s !important;
+}
+
+.dtp-frame-handle.handle-left .handle-bar-pill,
+.dtp-frame-handle.handle-right .handle-bar-pill {
+  width: 4.5px !important;
+  height: 40px !important;
+  background: #2563EB !important;
+  border: 1px solid #1D4ED8 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4) !important;
+  transition: transform 0.15s, background-color 0.15s !important;
+}
+
+.dtp-frame-handle:hover .handle-bar-pill,
+.dtp-image-frame.is-resizing .dtp-frame-handle .handle-bar-pill {
+  transform: scale(1.18, 1.45) !important;
+  background: #60A5FA !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.6) !important;
+}
+
+.dtp-frame-handle .handle-label {
+  display: none !important;
+  position: absolute !important;
+  background: #1E3A8A !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  color: #FFF !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
+  z-index: 40 !important;
+}
+
+.dtp-frame-handle:hover .handle-label,
+.dtp-image-frame.is-resizing .dtp-frame-handle .handle-label {
+  display: block !important;
+}
+
+.dtp-frame-handle.handle-bottom .handle-label {
+  bottom: -22px !important;
+}
+
+.dtp-frame-handle.handle-top .handle-label {
+  top: -22px !important;
+}
+
+/* 3. 스마트 국소 한지 패널 스타일 (글상자/제목상자 배경) */
+.dtp-box-body.hanji-backdrop,
+.dtp-box-title.hanji-backdrop {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+
+/* --- [완벽 명도 대비 스마트 가독성 스타일] --- */
+.poem-line {
+  position: relative !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 글자 텍스트 영역: 오직 글자가 있는 너비만큼만 배경/틴트 적용 */
+.poem-line .line-text {
+  display: inline !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Case 1: 그림 위 먹색 글자 -> 배경이 뽀얀 순백 한지빛으로 밝아져 먹색 글자가 칼같이 선명하게 대비됨! */
+.poem-line.line-contrast-dark .line-text {
+  color: #1A120B !important;
+  background-color: var(--line-hanji-bg, rgba(255, 254, 250, 0.88)) !important;
+  box-shadow: var(--line-hanji-shadow, 0 0 12px 6px rgba(255, 254, 250, 0.88)) !important;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Case 2: 그림 위 백색 글자 -> 배경이 차분한 반투명 먹빛으로 어두워져 백색 글자가 눈부시게 대비됨! */
+.poem-line.line-contrast-light .line-text {
+  color: #FFFFFF !important;
+  background-color: var(--line-dark-tint-bg, rgba(24, 18, 14, 0.62)) !important;
+  box-shadow: var(--line-dark-tint-shadow, 0 0 12px 6px rgba(24, 18, 14, 0.62)) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Case 3: 흰 종이 위 기본 먹색 글자 -> 배경 틴트 없이 맑고 단아한 정통 종이 질감 */
+.poem-line.line-over-paper .line-text {
+  color: #2D241E !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* 수동 조작 행 호버 가이드 */
+.poem-line:hover .line-text {
+  outline: 1px dashed rgba(139, 58, 26, 0.35);
+}
+
+/* 툴박스 글자색 모드 활성 칩 */
+.btn-tb-colormode.is-active,
+.btn-line-colormode.is-active {
+  background: #8C3A14 !important;
+  color: #FFFFFF !important;
+  border-color: #632508 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(140, 58, 20, 0.35) !important;
+}
+
+/* 포커스/선택된 본문 행 가이드 */
+.poem-line.is-focused-line {
+  background-color: rgba(140, 58, 20, 0.08) !important;
+  border-left: 2.5px solid #8C3A14 !important;
+  padding-left: 5px !important;
+  border-radius: 3px !important;
 }
