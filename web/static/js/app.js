@@ -216,7 +216,16 @@ function updateWorkToEditDropdown() {
 
   selBox.innerHTML = "";
 
-  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  let works = (currentStatus && currentStatus.works && currentStatus.works.length > 0) ? currentStatus.works : [];
+  if (works.length === 0 && window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+    works = window.bookStructureData.sections
+      .filter(s => s.group === 'body_matter' || s.category === 'poem')
+      .map(s => ({
+        episode_no: s.episode_no,
+        title: (s.title || '').replace(/^\[.*?\]\s*/, ''),
+        chapter: s.chapter || ""
+      }));
+  }
 
   // 옵션 1: 신규 작품 집필
   const optNew = document.createElement("option");
@@ -227,10 +236,11 @@ function updateWorkToEditDropdown() {
 
   // 옵션 2~N: 기존 저장된 회차별 시
   works.forEach(w => {
+    if (!w.episode_no) return;
     const opt = document.createElement("option");
     opt.value = w.episode_no;
     const chapTag = w.chapter ? `[${w.chapter}] ` : '';
-    opt.textContent = `📖 ${chapTag}[${w.episode_no}] ${w.title}`;
+    opt.textContent = `📖 ${chapTag}[${w.episode_no}] ${w.title || '무제'}`;
     selBox.appendChild(opt);
   });
 
@@ -267,9 +277,33 @@ function onSelectWorkToEditChange(val) {
 
 // 📖 지정된 회차의 시를 편집창(제목/본문/기억/삽화/노래)으로 로드
 function loadWorkIntoEditor(episodeNo) {
-  const works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
-  const work = works.find(w => w.episode_no === episodeNo);
+  let works = (currentStatus && currentStatus.works) ? currentStatus.works : [];
+  let work = works.find(w => w.episode_no === episodeNo);
+
+  // fallback: currentStatus.works에 아직 없는 경우 bookStructureData 탐색
+  if (!work && window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+    const sec = window.bookStructureData.sections.find(s => s.episode_no === episodeNo);
+    if (sec) {
+      work = {
+        episode_no: sec.episode_no,
+        title: (sec.title || '').replace(/^\[.*?\]\s*/, ''),
+        author: sec.author || '',
+        poem_body: (sec.data && sec.data.poem_body) || '',
+        memory_anchor: (sec.data && sec.data.memory_anchor) || '',
+        image_file: (sec.data && sec.data.image_file) || ''
+      };
+    }
+  }
   if (!work) return;
+
+  // 창작실 드롭다운이 아직 비어있다면 즉시 갱신
+  const selBox = document.getElementById("selectWorkToEdit");
+  if (selBox) {
+    if (selBox.options.length <= 1) {
+      updateWorkToEditDropdown();
+    }
+    selBox.value = work.episode_no;
+  }
 
   currentEditingEpisode = work.episode_no;
   if (typeof updateSidebarVideoCard === 'function') {
@@ -318,7 +352,7 @@ function loadWorkIntoEditor(episodeNo) {
   const btnDel = document.getElementById("btnDeleteCurrentWork");
   if (btnDel) btnDel.style.display = "inline-flex";
 
-  const selBox = document.getElementById("selectWorkToEdit");
+  // selBox is already declared above
   if (selBox) selBox.value = work.episode_no;
 
   // 우측 스튜디오 이미지(삽화) 미리보기 로드
@@ -547,7 +581,11 @@ document.addEventListener("DOMContentLoaded", () => {
   initSidebar();
   initTabs();
   loadProjects();
+  updateWorkToEditDropdown();
   loadStatus();
+  if (typeof refreshBookStructure === 'function') {
+    refreshBookStructure();
+  }
   calculateSpecs();
   initDropzones();
   selectDraft("A");
@@ -1005,6 +1043,9 @@ async function loadStatus() {
     currentStatus = await res.json();
     window.currentStatus = currentStatus;
 
+    // 창작실 제목 목록 드롭다운 최우선 즉시 갱신 (지연 방지)
+    updateWorkToEditDropdown();
+
     const proj = currentStatus.project || {};
 
     // 헤더 및 사이드바 배지 업데이트
@@ -1082,11 +1123,209 @@ async function loadStatus() {
 
     loadImagesInspection();
     updateWorkToEditDropdown();
+    if (typeof refreshBookStructure === 'function') {
+      await refreshBookStructure();
+    }
   } catch (err) {
     console.error("상태 로드 실패:", err);
   }
 }
 
+// ========================================================
+// 📚 [Full Book Architecture] 책 전체 구성표 트리 위젯 로직
+// ========================================================
+let bookStructureData = null;
+let currentSelectedBookSectionId = null;
+
+async function refreshBookStructure() {
+  try {
+    const res = await fetch("/api/book/structure");
+    const json = await res.json();
+    if (!json.success || !json.data) {
+      console.warn("책 구조 응답 실패:", json);
+      return;
+    }
+
+    bookStructureData = json.data;
+    window.bookStructureData = bookStructureData;
+
+    // 1. 총 페이지 및 완성도 뱃지 업데이트 (안전한 fallback)
+    const badgePages = document.getElementById("badgeTotalBookPages");
+    const stats = bookStructureData.stats || {};
+    const totalP = stats.total_pages || bookStructureData.total_pages || 0;
+    const compRate = stats.completion_rate !== undefined ? stats.completion_rate : 0;
+    const compCnt = stats.completed_sections !== undefined ? stats.completed_sections : (stats.completed || 0);
+    const totCnt = stats.total_sections || (bookStructureData.sections ? bookStructureData.sections.length : 0);
+
+    if (badgePages) {
+      badgePages.textContent = "총 " + totalP + "쪽";
+      badgePages.title = "완성도: " + compRate + "% (" + compCnt + "/" + totCnt + " 섹션)";
+    }
+
+    // 2. 트리 렌더링
+    renderBookStructureTree(bookStructureData);
+  } catch (err) {
+    console.error("책 전체 구성표 로드 예외:", err);
+  }
+}
+
+function renderBookStructureTree(data) {
+  const container = document.getElementById("bookStructureTree");
+  if (!container) return;
+
+  if (!data || !data.sections || data.sections.length === 0) {
+    container.innerHTML = '<div style="font-size: 0.74rem; color: #A08C7D; padding: 8px; text-align: center;">등록된 섹션이 없습니다.</div>';
+    return;
+  }
+
+  // 그룹별 분할 (front_matter, body_matter, back_matter)
+  const bodyCount = data.sections.filter(function(s) { return s.group === 'body_matter'; }).length;
+  const groups = {
+    front_matter: { label: "앞부속 (표지·서문·목차)", icon: "📖", items: [] },
+    body_matter: { label: "본문 시화 (" + bodyCount + "편)", icon: "📜", items: [] },
+    back_matter: { label: "뒷부속 (맺음말·판권지)", icon: "🔖", items: [] }
+  };
+
+  data.sections.forEach(function(sec) {
+    if (groups[sec.group]) {
+      groups[sec.group].items.push(sec);
+    }
+  });
+
+  let html = '';
+  Object.keys(groups).forEach(function(grpKey) {
+    const grp = groups[grpKey];
+    if (grp.items.length === 0) return;
+
+    const firstItem = grp.items[0];
+    const lastItem = grp.items[grp.items.length - 1];
+
+    const firstPage = firstItem.start_page !== undefined ? firstItem.start_page : (firstItem.page_start !== undefined ? firstItem.page_start : 0);
+    const lastPage = lastItem.end_page !== undefined ? lastItem.end_page : (lastItem.start_page !== undefined ? lastItem.start_page : (lastItem.page_start || 0));
+    const pageRange = "p." + firstPage + "~" + lastPage;
+
+    html += '<div class="book-tree-group" id="treeGroup_' + grpKey + '">';
+    html += '  <div class="book-tree-group-header" onclick="toggleBookTreeGroup(\'' + grpKey + '\')">';
+    html += '    <div class="group-title-left">';
+    html += '      <span class="group-chevron">▾</span>';
+    html += '      <span>' + grp.icon + ' ' + grp.label + '</span>';
+    html += '    </div>';
+    html += '    <span class="group-page-range">' + pageRange + '</span>';
+    html += '  </div>';
+    html += '  <div class="book-tree-group-items">';
+
+    grp.items.forEach(function(sec) {
+      const sPage = sec.start_page !== undefined ? sec.start_page : (sec.page_start !== undefined ? sec.page_start : 0);
+      const ePage = sec.end_page !== undefined ? sec.end_page : (sec.page_count && sec.page_count > 1 ? (sPage + sec.page_count - 1) : sPage);
+      const pageStr = (ePage > sPage) ? ("p." + sPage + "~" + ePage) : ("p." + sPage);
+      
+      const isActive = currentSelectedBookSectionId === sec.id ? ' active' : '';
+      const safeTitle = (sec.title || '').replace(/"/g, '&quot;');
+      const epAttr = sec.episode_no ? (' data-episode="' + sec.episode_no + '"') : '';
+
+      const stIcon = sec.status_icon || (sec.status === 'completed' ? '🟢' : (sec.status === 'in_progress' ? '🟠' : '⚪'));
+      const stLabel = sec.status_label || (sec.status === 'completed' ? '완성' : (sec.status === 'in_progress' ? '작성 중' : '미작성'));
+
+      html += '    <div class="book-tree-item' + isActive + '" id="treeItem_' + sec.id + '"' +
+              ' data-section-id="' + sec.id + '" data-category="' + (sec.category || sec.section_type || '') + '"' + epAttr +
+              ' onclick="onBookTreeItemClick(\'' + sec.id + '\')"' +
+              ' title="' + safeTitle + ' (' + stLabel + ', ' + pageStr + ')">';
+      html += '      <div class="item-left">';
+      html += '        <span class="item-page">' + pageStr + '</span>';
+      html += '        <span class="item-title">' + safeTitle + '</span>';
+      html += '      </div>';
+      html += '      <span class="item-status" title="' + stLabel + '">' + stIcon + '</span>';
+      html += '    </div>';
+    });
+
+    html += '  </div>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function toggleBookTreeGroup(grpKey) {
+  const grpEl = document.getElementById("treeGroup_" + grpKey);
+  if (grpEl) {
+    grpEl.classList.toggle("collapsed");
+  }
+}
+
+function switchToTab(targetId) {
+  const tabs = document.querySelectorAll(".nav-tab-btn");
+  const panels = document.querySelectorAll(".tab-content");
+
+  tabs.forEach(tab => {
+    const t = tab.getAttribute("data-target") || tab.id;
+    if (t === targetId || (targetId === 'panelBook' && (t === 'panelBook' || tab.id === 'tabBtnBook'))) {
+      tab.classList.add("active");
+    } else {
+      tab.classList.remove("active");
+    }
+  });
+
+  panels.forEach(p => {
+    if (p.id === targetId) {
+      p.classList.add("active");
+    } else {
+      p.classList.remove("active");
+    }
+  });
+}
+
+function updateBookTreeActiveItem(sectionId) {
+  if (!sectionId) return;
+  document.querySelectorAll('.book-tree-item').forEach(function(el) { el.classList.remove('active'); });
+  const targetEl = document.getElementById("treeItem_" + sectionId);
+  if (targetEl) targetEl.classList.add('active');
+}
+window.updateBookTreeActiveItem = updateBookTreeActiveItem;
+window.refreshBookStructure = refreshBookStructure;
+
+async function onBookTreeItemClick(sectionId) {
+  if (!bookStructureData || !bookStructureData.sections) return;
+  const sec = bookStructureData.sections.find(function(s) { return s.id === sectionId; });
+  if (!sec) return;
+
+  currentSelectedBookSectionId = sectionId;
+
+  // 트리 UI 활성화 갱신
+  updateBookTreeActiveItem(sectionId);
+
+  const activeTab = document.querySelector('.tab-content.active');
+  const tabId = activeTab ? activeTab.id : '';
+
+  // 1) 본문 시화인 경우
+  if ((sec.category === 'poem' || sec.group === 'body_matter') && sec.episode_no) {
+    const epNo = sec.episode_no;
+
+    if (tabId === 'panelStudio') {
+      // 창작실 탭에서는 해당 회차 편집창 열기
+      if (typeof loadWorkIntoEditor === 'function') {
+        loadWorkIntoEditor(epNo);
+      }
+    } else {
+      // 조판실 탭 또는 기타 탭: 조판 편집기(panelBook)로 전환 후 렌더링
+      switchToTab('panelBook');
+      if (window.dtpEditor && typeof window.dtpEditor.loadSection === 'function') {
+        window.dtpEditor.loadSection(sec);
+      } else if (currentStatus && currentStatus.works) {
+        const foundIdx = currentStatus.works.findIndex(function(w) { return w.episode_no === epNo; });
+        if (foundIdx !== -1 && typeof renderBookSpread === 'function') {
+          renderBookSpread(foundIdx);
+        }
+      }
+    }
+  } else {
+    // 2) 부속물 (앞표지, 속표지, 서문, 목차, 맺음말, 판권지, 뒤표지)인 경우:
+    // 무조건 조판 편집기(panelBook)로 즉각 화면 전환하여 실물 조판 펼침면을 렌더링!
+    switchToTab('panelBook');
+    if (window.dtpEditor && typeof window.dtpEditor.loadSection === 'function') {
+      window.dtpEditor.loadSection(sec);
+    }
+  }
+}
 
 let isSavingWork = false; // 저장 중복 클릭 및 동시 실행 방지 플래그
 
@@ -2356,7 +2595,7 @@ function renderBookSpread(index) {
   }
 
   // [요구사항 1 & 2] 각 시(작품) 단위로 저장된 font_size_pt 반영 (초기치: 12pt)
-  const currentWorkPt = cfg.font_size_pt || 12;
+  const currentWorkPt = cfg.font_size_pt || 13;
   if (cfg.font_size_pt) {
     baseFontSize = currentWorkPt / 12.0;
   }
@@ -9144,7 +9383,7 @@ async function onTypographyFontSizeSelectChange(val) {
       // 취소 또는 유효하지 않은 입력 시 현재 값으로 복원
       const curWork = currentStatus?.works?.[currentWorkIndex];
       const curCfg = (typeof getNormalizedLayoutConfig === 'function' && curWork) ? getNormalizedLayoutConfig(curWork) : {};
-      syncFontSizeDropdown(curCfg.font_size_pt || 12);
+      syncFontSizeDropdown(curCfg.font_size_pt || 13);
       return;
     }
     targetPt = Math.max(6, Math.min(36, parseFloat(input)));
@@ -9254,14 +9493,14 @@ resetCustomTypography = function() {
   const work = currentStatus?.works?.[currentWorkIndex];
   if (work) {
     const cfg = getNormalizedLayoutConfig(work);
-    cfg.font_size_pt = 12;
+    cfg.font_size_pt = 13;
     delete cfg.custom_body_html;
     work.layout_config = cfg;
     if (typeof saveWorkLayoutConfigToServer === 'function') {
       saveWorkLayoutConfigToServer(work.episode_no, cfg);
     }
   }
-  syncFontSizeDropdown(12);
+  syncFontSizeDropdown(13);
   oldResetCustomTypography();
 };
 

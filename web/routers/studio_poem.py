@@ -100,6 +100,7 @@ class SaveLayoutConfigRequest(BaseModel):
     layout_config: dict
     title: Optional[str] = None
     poem_body: Optional[str] = None
+    status: Optional[str] = None
 
 class DeleteWorkRequest(BaseModel):
     episode_no: str
@@ -384,7 +385,7 @@ async def save_work_layout_endpoint(req: SaveLayoutRequest):
 async def save_work_layout_config_endpoint(req: SaveLayoutConfigRequest):
     """2P/4P 매트릭스 슬롯 조판 설정 영구 저장"""
     mgr = project_manager.get_active_manuscript_manager()
-    success = mgr.update_work_layout_config(req.episode_no, req.layout_config, title=req.title, poem_body=req.poem_body)
+    success = mgr.update_work_layout_config(req.episode_no, req.layout_config, title=req.title, poem_body=req.poem_body, status=req.status)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
     return {

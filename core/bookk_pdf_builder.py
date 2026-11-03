@@ -24,13 +24,22 @@ from core.image_optimizer import ensure_300dpi_image
 # 1mm = 2.834645669291339 pt (ReportLab 포인트 단위)
 MM_TO_PT = 2.834645669291339
 
-# 폰트 등록
-FONT_NAME = "Malgun"
-FONT_BOLD_NAME = "Malgun-Bold"
+# 폰트 등록 (최우선: 프로젝트 동봉 부크크 명조 -> 나눔명조 -> 시스템 폰트)
+FONT_NAME = "BookkMyungjo"
+FONT_BOLD_NAME = "BookkMyungjo-Bold"
+
+LOCAL_FONTS_DIR = Path(__file__).parent / "fonts"
 
 FONT_PATHS = [
-    ("C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/malgunbd.ttf"),
+    # 1. 프로젝트 내장 번들 폰트 (별도 폰트 설치 없는 완전 무설치 배포용)
+    (str(LOCAL_FONTS_DIR / "BookkMyungjo-Lt.ttf"), str(LOCAL_FONTS_DIR / "BookkMyungjo-Bd.ttf")),
+    (str(LOCAL_FONTS_DIR / "BookkMyungjo.ttf"), str(LOCAL_FONTS_DIR / "BookkMyungjo-Bold.ttf")),
+    (str(LOCAL_FONTS_DIR / "NanumMyeongjo.ttf"), str(LOCAL_FONTS_DIR / "NanumMyeongjoBold.ttf")),
+    # 2. 윈도우 시스템 설치 폰트
+    ("C:/Windows/Fonts/BookkMyungjo-Lt.ttf", "C:/Windows/Fonts/BookkMyungjo-Bd.ttf"),
     ("C:/Windows/Fonts/NanumMyeongjo.ttf", "C:/Windows/Fonts/NanumMyeongjoBold.ttf"),
+    ("C:/Windows/Fonts/batang.ttc", "C:/Windows/Fonts/batang.ttc"),
+    ("C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/malgunbd.ttf"),
     ("C:/Windows/Fonts/gulim.ttc", "C:/Windows/Fonts/gulim.ttc"),
 ]
 
@@ -376,7 +385,7 @@ class BookkPDFBuilder:
                 raw_slots = cfg.get("slots", [])
                 raw_roles = cfg.get("page_roles", [])
                 img_settings = cfg.get("image_settings", {})
-                cfg_pt = float(cfg.get("font_size_pt", 12) or 12)
+                cfg_pt = float(cfg.get("font_size_pt", 13) or 13)
                 backdrop_opacity = float(cfg.get("backdrop_opacity", 0.85))
                 is_light_text = (cfg.get("text_color_mode") == "light")
 
@@ -456,7 +465,7 @@ class BookkPDFBuilder:
                             ind_lines = [l.rstrip() for l in custom_txt.split("\n")]
                             top_y = self.canvas_h_pt - m["top"] - 16
                             p_font_size = max(8.0, min(14.0, cfg_pt * 0.82))
-                            line_h = p_font_size * float(cfg.get("line_height_ratio", 1.5))
+                            line_h = p_font_size * float(cfg.get("line_height_ratio", 1.6))
                             if slot_type == "image_text" and is_light_text:
                                 c.setFillColorRGB(0.99, 0.98, 0.96)
                             else:
@@ -507,7 +516,7 @@ class BookkPDFBuilder:
                                 curr_y = top_y - 32 - top_offset_pt
 
                             p_font_size = max(8.0, min(14.0, cfg_pt * 0.80))
-                            line_h = p_font_size * float(cfg.get("line_height_ratio", 1.5))
+                            line_h = p_font_size * float(cfg.get("line_height_ratio", 1.6))
                             if slot_type == "image_text" and is_light_text:
                                 c.setFillColorRGB(0.99, 0.98, 0.96)
                             else:

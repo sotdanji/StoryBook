@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StoryBook Studio | 기억 기반 시화집 독립출판</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/static/css/style.css?v=v6150">
+  <link rel="stylesheet" href="/static/css/style.css?v=v1793677488">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>window.name = "StoryBookStudio";</script>
 </head>
@@ -113,6 +113,21 @@
         <div class="progress-percent-row">
           <span>달성률</span>
           <strong id="sidebarProgressPercent">0%</strong>
+        </div>
+      </div>
+
+      <!-- 5. [신규: Full Book Architecture] 📚 책 전체 구성표 트리 위젯 -->
+      <div class="sidebar-section book-structure-widget" style="margin-top: 2px;">
+        <div class="sidebar-section-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #52361B; font-size: 0.85rem;">
+            <span>📚</span> 책 전체 구성표
+          </span>
+          <span id="badgeTotalBookPages" style="font-size: 0.68rem; background: #EFE6D8; color: #7C4A1E; padding: 2px 7px; border-radius: 10px; font-weight: 700;">총 0쪽</span>
+        </div>
+        
+        <!-- 책 전권 시퀀스 트리 스크롤 박스 (앞표지 -> 속표지 -> 서문 -> 목차 -> 시화 -> 맺음말 -> 판권지 -> 뒤표지) -->
+        <div class="book-structure-tree" id="bookStructureTree" style="max-height: 260px; overflow-y: auto; background: #FFFDF9; border: 1.5px solid #E6D8C8; border-radius: 8px; padding: 5px 6px;">
+          <div style="font-size: 0.74rem; color: #A08C7D; padding: 8px; text-align: center;">책 구성 불러오는 중...</div>
         </div>
       </div>
 
@@ -309,7 +324,7 @@
                   <button type="button" class="btn-copy" id="btnEditPrevWork" onclick="navigateEditWork(-1)" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600; border-color: #FCD34D; background: #FFFFFF; color: #92400E;" title="[이전 작품] 이전 회차의 시를 불러옵니다.">◀ 이전</button>
                   <button type="button" class="btn-copy" id="btnEditNextWork" onclick="navigateEditWork(1)" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600; border-color: #FCD34D; background: #FFFFFF; color: #92400E;" title="[다음 작품] 다음 회차의 시를 불러옵니다.">다음 ▶</button>
                   <button type="button" class="btn-copy" id="btnEditNewWork" onclick="startNewPoem(true)" style="padding: 3px 10px; font-size: 0.78rem; background: #92400E; color: #fff; border-color: #92400E; font-weight: 700;" title="[새 작품 집필] 신규 회차 작성 모드로 전환합니다.">✨ 새 작품</button>
-                  <button type="button" class="btn-copy" id="btnEditOpenToc" onclick="openTocEditorModal()" style="padding: 3px 8px; font-size: 0.78rem; color: #92400E; border-color: #FCD34D; background: #FFFDF9; font-weight: 600;" title="[목차·순서 편집] 시의 수록 순서를 변경하고 큰 주제별 묶음(부/챕터)을 편집합니다.">📑 목차 편집</button>
+                  <button type="button" class="btn-copy" id="btnEditOpenToc" onclick="openTocEditorModal()" style="padding: 3px 8px; font-size: 0.78rem; color: #92400E; border-color: #FCD34D; background: #FFFDF9; font-weight: 600;" title="[목차·순서 편집] 시의 수록 순서를 변경하고 큰 주제별 묶음(부/챕터)을 편집합니다.">📚 책 구성표</button>
                 </div>
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">
@@ -830,7 +845,7 @@
               </button>
 
               <button id="btnOpenTocEditor" class="nav-btn btn-quick-action" onclick="openTocEditorModal()" style="margin-left: 2px;" title="[시집 목차 & 순서 편집] 큰 주제별 묶음(부/챕터) 구성 및 작품 순서를 자유롭게 변경합니다.">
-                <span>📑 목차·순서</span>
+                <span>📚 책 구성표</span>
               </button>
 
               <!-- 실제 인쇄안전선 안착 상태 배지만 유지 (4쪽 조판, 1부/2부 버튼 제거) -->
@@ -925,8 +940,9 @@
                   <span class="dtp-row-label">글꼴</span>
                   <div class="dtp-row-control">
                     <select id="selectTbFontFamily" onchange="dtpEditor.setFontFamily(this.value)" class="dtp-select-field">
-                      <option value="Batang, KoPub Batang, serif" selected>바탕체 (정통 서정)</option>
-                      <option value="'Nanum Myeongjo', serif">나눔명조</option>
+                      <option value="'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif" selected>부크크 명조 (기본 / 출판 표준)</option>
+                      <option value="'Nanum Myeongjo', '나눔명조', serif">나눔명조</option>
+                      <option value="Batang, KoPub Batang, serif">바탕체 (정통 서정)</option>
                       <option value="'ChosunNm', serif">조선명조</option>
                       <option value="'Gowun Batang', serif">고운바탕</option>
                       <option value="'MaruBuri', serif">마루부리</option>
@@ -935,21 +951,51 @@
                   </div>
                 </div>
 
-                <!-- 5. 크기 -->
+                <!-- 5. 크기 & 미세 증감 -->
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">크기</span>
-                  <div class="dtp-row-control">
-                    <select id="selectTbFontSize" onchange="dtpEditor.setFontSizePt(this.value)" class="dtp-select-field">
+                  <div class="dtp-row-control" style="display: flex; gap: 4px; align-items: center;">
+                    <select id="selectTbFontSize" onchange="dtpEditor.setFontSizePt(this.value)" class="dtp-select-field" style="flex: 1;">
                       <option value="9">9pt</option>
                       <option value="10">10pt</option>
                       <option value="11">11pt</option>
-                      <option value="12" selected>12pt (기본)</option>
-                      <option value="13">13pt</option>
+                      <option value="12">12pt</option>
+                      <option value="13" selected>13pt (기본)</option>
                       <option value="14">14pt</option>
                       <option value="15">15pt</option>
                       <option value="16">16pt</option>
                       <option value="custom">사용자 지정...</option>
                     </select>
+                    <button type="button" class="btn-control-sub" onclick="dtpEditor.adjustFontSize(-1)" title="선택 글자/본문 1pt 축소" style="padding: 4px 7px; font-weight: 700; font-size: 0.72rem;">A-</button>
+                    <button type="button" class="btn-control-sub" onclick="dtpEditor.adjustFontSize(1)" title="선택 글자/본문 1pt 확대" style="padding: 4px 7px; font-weight: 700; font-size: 0.72rem;">A+</button>
+                  </div>
+                </div>
+
+                <!-- 5-1. 선택 글자 서식 (볼드/기울임/밑줄/취소선/지우기) -->
+                <div class="dtp-control-row">
+                  <span class="dtp-row-label">글자 서식</span>
+                  <div class="dtp-row-control dtp-format-btn-group">
+                    <button type="button" class="dtp-btn-format" id="tbBtnBold" onclick="dtpEditor.toggleInlineFormat('bold')" title="굵게 (Bold)"><b>B</b></button>
+                    <button type="button" class="dtp-btn-format" id="tbBtnItalic" onclick="dtpEditor.toggleInlineFormat('italic')" title="기울임 (Italic)"><i>I</i></button>
+                    <button type="button" class="dtp-btn-format" id="tbBtnUnderline" onclick="dtpEditor.toggleInlineFormat('underline')" title="밑줄 (Underline)"><u>U</u></button>
+                    <button type="button" class="dtp-btn-format" id="tbBtnStrike" onclick="dtpEditor.toggleInlineFormat('strikeThrough')" title="취소선 (Strike)"><s>S</s></button>
+                    <button type="button" class="dtp-btn-format" onclick="dtpEditor.clearInlineFormat()" title="서식 지우기" style="color: #C0392B;">⌫</button>
+                  </div>
+                </div>
+
+                <!-- 5-2. 선택 글자 색상 팔레트 -->
+                <div class="dtp-control-row">
+                  <span class="dtp-row-label">글자 색상</span>
+                  <div class="dtp-row-control dtp-color-swatch-group">
+                    <button type="button" class="dtp-color-chip" style="background:#1A120B;" onclick="dtpEditor.applyInlineColor('#1A120B')" title="먹색"></button>
+                    <button type="button" class="dtp-color-chip" style="background:#4A2E18;" onclick="dtpEditor.applyInlineColor('#4A2E18')" title="밤색"></button>
+                    <button type="button" class="dtp-color-chip" style="background:#9C2A2A;" onclick="dtpEditor.applyInlineColor('#9C2A2A')" title="붉은색"></button>
+                    <button type="button" class="dtp-color-chip" style="background:#1B4965;" onclick="dtpEditor.applyInlineColor('#1B4965')" title="청색"></button>
+                    <button type="button" class="dtp-color-chip" style="background:#FFFFFF; border:1px solid #CCC;" onclick="dtpEditor.applyInlineColor('#FFFFFF')" title="백색"></button>
+                    <label class="dtp-color-picker-label" title="사용자 지정 색상">
+                      <input type="color" id="inputInlineColorPicker" onchange="dtpEditor.applyInlineColor(this.value)" style="opacity:0; width:0; height:0; position:absolute;">
+                      <span>🎨</span>
+                    </label>
                   </div>
                 </div>
 
@@ -957,8 +1003,8 @@
                 <div class="dtp-control-row">
                   <span class="dtp-row-label">줄 간격</span>
                   <div class="dtp-row-control">
-                    <input type="range" id="inputTbLineHeight" min="130" max="220" step="5" value="150" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setLineHeight(this.value)">
-                    <span class="tool-val-badge" id="lblTbLineHeightVal">150%</span>
+                    <input type="range" id="inputTbLineHeight" min="130" max="220" step="5" value="160" style="flex: 1; cursor: pointer;" oninput="dtpEditor.setLineHeight(this.value)">
+                    <span class="tool-val-badge" id="lblTbLineHeightVal">160%</span>
                   </div>
                 </div>
 
@@ -1246,6 +1292,9 @@
             <!-- 4) 초과 알림 및 면 번호 -->
             <div class="dtp-overflow-badge" id="dtpOverflowLeft" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
             <div class="dtp-page-folio" id="lblBookFolioLeft">1</div>
+
+            <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
+            <div class="dtp-matter-overlay" id="dtpMatterOverlayLeft" style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;"></div>
           </div>
 
           <!-- 우측 페이지 (Slot B) - 완벽한 좌우 대칭 구조! -->
@@ -1320,6 +1369,9 @@
             <!-- 4) 초과 알림 및 면 번호 -->
             <div class="dtp-overflow-badge" id="dtpOverflowRight" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
             <div class="dtp-page-folio" id="lblBookFolioRight">2</div>
+
+            <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
+            <div class="dtp-matter-overlay" id="dtpMatterOverlayRight" style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;"></div>
           </div>
         </div>
         </div>
@@ -3022,7 +3074,7 @@
     <div class="modal-card modal-large" style="max-width: 860px;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 class="modal-title" style="color: #643E19; display: flex; align-items: center; gap: 6px;">
-          <span>📑</span> 시집 목차 &amp; 순서 편집기
+          <span>📚</span> 책 전체 구성 &amp; 목차 편집기
         </h3>
         <button type="button" class="modal-close-btn" onclick="closeTocEditorModal()">&times;</button>
       </div>
@@ -3570,9 +3622,10 @@
   <!-- 글로벌 고품질 커스텀 툴팁 컨테이너 -->
   <div id="appCustomTooltip" class="app-custom-tooltip"></div>
 
-  <script src="/static/js/app.js?v=v5800"></script>
+  <script src="/static/js/app.js?v=v1793634124"></script>
   <script src="/static/js/poem_video.js?v=20261031_v4400"></script>
-  <script src="/static/js/dtp_editor_core.js?v=v6150"></script>
+  <script src="/static/js/dtp_matter_templates.js?v=v1793677488"></script>
+  <script src="/static/js/dtp_editor_core.js?v=v1793677488"></script>
   <script>
     async function handleLogout() {
       if (confirm("로그아웃하고 집필실을 나가시겠습니까?")) {
@@ -3641,6 +3694,22 @@
         <button type="button" class="btn-primary" onclick="closeDtpManualModal()" style="padding: 6px 18px; font-weight: 700;">확인 완료</button>
       </div>
     </div>
+  </div>
+  <!-- [StoryBook DTP] 플로팅 선택 영역 인라인 서식 바 -->
+  <div id="dtpFloatingFormatBar" class="dtp-floating-toolbar">
+    <button type="button" class="dtp-floating-btn" id="fBtnBold" onclick="dtpEditor.toggleInlineFormat('bold')" title="굵게 (B)"><b>B</b></button>
+    <button type="button" class="dtp-floating-btn" id="fBtnItalic" onclick="dtpEditor.toggleInlineFormat('italic')" title="기울임 (I)"><i>I</i></button>
+    <button type="button" class="dtp-floating-btn" id="fBtnUnderline" onclick="dtpEditor.toggleInlineFormat('underline')" title="밑줄 (U)"><u>U</u></button>
+    <button type="button" class="dtp-floating-btn" id="fBtnStrike" onclick="dtpEditor.toggleInlineFormat('strikeThrough')" title="취소선"><s>S</s></button>
+    <div class="dtp-floating-divider"></div>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.adjustFontSize(-1)" title="글자 축소">A-</button>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.adjustFontSize(1)" title="글자 확대">A+</button>
+    <div class="dtp-floating-divider"></div>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.applyInlineColor('#1A120B')" title="먹색">⚫</button>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.applyInlineColor('#9C2A2A')" title="붉은색" style="color:#F87171;">🔴</button>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.applyInlineColor('#FFFFFF')" title="백색">⚪</button>
+    <div class="dtp-floating-divider"></div>
+    <button type="button" class="dtp-floating-btn" onclick="dtpEditor.clearInlineFormat()" title="서식 지우기" style="color: #FCA5A5;">⌫</button>
   </div>
 </body>
 </html>

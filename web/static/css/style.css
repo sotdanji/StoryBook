@@ -1,6 +1,32 @@
 @charset "UTF-8";
 @import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap');
 
+/* 부크크 전용 출판 서체: 부크크 명조 (Bookk Myungjo) */
+@font-face {
+  font-family: 'BookkMyungjo';
+  src: local('부크크 명조 Light'), local('Bookk Myungjo Light'), local('BookkMyungjo-Lt'), local('부크크 명조'), local('BookkMyungjo'),
+       url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Lt.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BookkMyungjo';
+  src: local('부크크 명조 Light'), local('Bookk Myungjo Light'), local('BookkMyungjo-Lt'), local('부크크 명조'), local('BookkMyungjo'),
+       url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Lt.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BookkMyungjo';
+  src: local('부크크 명조 Bold'), local('Bookk Myungjo Bold'), local('BookkMyungjo-Bd'),
+       url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Bd.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 한국 전통 서정 명조 웹폰트 (마루부리, 조선명조) */
 @font-face {
   font-family: 'MaruBuri';
@@ -281,6 +307,141 @@ body {
   background: var(--accent-primary);
   color: #FFFFFF;
   border-style: solid;
+}
+
+/* ========================================================
+   📚 [Full Book Architecture] 책 전체 구성표 트리 위젯
+   ======================================================== */
+.book-structure-widget {
+  background: #FAF7F2;
+  border: 1px solid #E6D8C8;
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.book-structure-tree {
+  max-height: 280px;
+  overflow-y: auto;
+  background: #FFFDF9;
+  border: 1px solid #EBE0D2;
+  border-radius: 6px;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #D6C2B0 transparent;
+}
+.book-structure-tree::-webkit-scrollbar {
+  width: 5px;
+}
+.book-structure-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+.book-structure-tree::-webkit-scrollbar-thumb {
+  background: #D6C2B0;
+  border-radius: 4px;
+}
+.book-tree-group {
+  margin-bottom: 6px;
+}
+.book-tree-group:last-child {
+  margin-bottom: 0;
+}
+.book-tree-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background: #F4ECE1;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #6C4424;
+  transition: background 0.15s ease;
+}
+.book-tree-group-header:hover {
+  background: #EADBCC;
+}
+.book-tree-group-header .group-title-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.book-tree-group-header .group-chevron {
+  font-size: 0.68rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.book-tree-group.collapsed .group-chevron {
+  transform: rotate(-90deg);
+}
+.book-tree-group.collapsed .book-tree-group-items {
+  display: none;
+}
+.book-tree-group-header .group-page-range {
+  font-size: 0.68rem;
+  color: #8C6A4F;
+  font-weight: 600;
+}
+.book-tree-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 0 3px 4px;
+}
+.book-tree-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  color: #3C2E25;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2.5px solid transparent;
+}
+.book-tree-item:hover {
+  background: #F7EFE6;
+  border-left-color: #C28E5A;
+}
+.book-tree-item.active {
+  background: #EFE3D3;
+  border-left-color: #8C4A1E;
+  font-weight: 700;
+  color: #6A320A;
+}
+.book-tree-item .item-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.book-tree-item .item-page {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  color: #8C6A4F;
+  background: #EFE4D6;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: center;
+}
+.book-tree-item .item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-tree-item .item-status {
+  font-size: 0.68rem;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 /* ========================================================
@@ -4326,13 +4487,14 @@ body.is-app-busy * {
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
   overflow: hidden !important;
 }
 
 /* 빨간색 가이드 박스 */
 .dtp-guide-box {
   position: relative !important;
+  pointer-events: auto !important;
   border: 1.5px dashed #E53E3E !important;
   background: rgba(254, 242, 242, 0.15) !important;
   border-radius: 4px !important;
@@ -4534,12 +4696,13 @@ body.is-app-busy * {
   justify-content: flex-start !important;
   gap: 14px !important;
   z-index: 5 !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
   overflow: visible !important;
 }
 
 .dtp-page .dtp-guide-box {
   position: relative !important;
+  pointer-events: auto !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
@@ -5617,7 +5780,13 @@ body.is-app-busy * {
   position: relative !important;
   overflow: visible !important;
   box-sizing: border-box !important;
+  cursor: grab !important;
+  pointer-events: auto !important;
   transition: width 0.05s ease, height 0.05s ease, margin 0.05s ease !important;
+}
+
+.dtp-image-frame.is-panning {
+  cursor: grabbing !important;
 }
 
 .dtp-image-frame.is-resizing {
@@ -5639,12 +5808,16 @@ body.is-app-busy * {
 
 .dtp-frame-crop img,
 .dtp-image-frame img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
   border-radius: 6px !important;
   display: block !important;
   pointer-events: none !important;
   user-select: none !important;
   -webkit-user-drag: none !important;
   transition: filter 0.2s ease !important;
+  transform-origin: center center !important;
 }
 
 .dtp-frame-handle {
@@ -5825,4 +5998,165 @@ body.is-app-busy * {
   border-left: 2.5px solid #8C3A14 !important;
   padding-left: 5px !important;
   border-radius: 3px !important;
+}
+
+
+/* ========================================================
+   [Phase 1] 선택 영역(Selection) 인라인 서식 툴바 & 칩 스타일
+   ======================================================== */
+.dtp-floating-toolbar {
+  position: absolute;
+  z-index: 1000;
+  display: none;
+  background: #2D241E;
+  color: #FFFFFF;
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  align-items: center;
+  gap: 3px;
+  user-select: none;
+  pointer-events: auto;
+  transition: opacity 0.15s ease;
+  transform: translate(-50%, -100%) translateY(-8px);
+}
+
+.dtp-floating-toolbar::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: #2D241E transparent transparent transparent;
+}
+
+.dtp-floating-btn {
+  background: transparent;
+  border: none;
+  color: #E2D7CE;
+  padding: 4px 7px;
+  font-size: 0.78rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dtp-floating-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.dtp-floating-btn.is-active {
+  background: #C05621 !important;
+  color: #FFFFFF !important;
+}
+
+.dtp-floating-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 2px;
+}
+
+.dtp-format-btn-group {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.dtp-btn-format {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #D6C7B7;
+  background: #FFFDF9;
+  color: #4A3B32;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dtp-btn-format:hover {
+  background: #F3EBE1;
+  border-color: #B8A896;
+}
+
+.dtp-btn-format.is-active {
+  background: #8C3A14 !important;
+  color: #FFFFFF !important;
+  border-color: #702D0E !important;
+}
+
+.dtp-color-swatch-group {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.dtp-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #D6C7B7;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dtp-color-swatch:hover {
+  transform: scale(1.18);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+}
+
+/* ==============================================================================
+   [StoryBook DTP] 부속물 완성형 표준 템플릿 & 인라인 편집 스타일
+   ============================================================================== */
+.matter-page-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.matter-editable {
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: text;
+  word-break: keep-all;
+}
+
+.matter-editable:hover {
+  outline: 1.5px dashed rgba(196, 155, 110, 0.6);
+  border-radius: 4px;
+}
+
+.matter-editable:focus {
+  outline: 2px solid #C89B6D !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(200, 155, 109, 0.2);
+}
+
+/* 테마별 스타일 */
+.matter-theme-lyrical {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', 'KoPub Batang', 'Batang', serif;
+}
+
+.matter-theme-classic {
+  font-family: 'KoPub Batang', 'Batang', serif;
+  background-color: #FBF9F5 !important;
+}
+
+.matter-theme-modern {
+  font-family: 'Pretendard', sans-serif;
 }

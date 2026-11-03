@@ -281,9 +281,19 @@ class ManuscriptManager:
         existing_index = next((i for i, w in enumerate(works) if w.episode_no == work.episode_no), None)
 
         if existing_index is not None:
+            old_w = works[existing_index]
             # 기존 챕터 정보가 있고 새 입력에 없으면 기존 챕터 유지
-            if not getattr(work, 'chapter', '') and getattr(works[existing_index], 'chapter', ''):
-                work.chapter = works[existing_index].chapter
+            if not getattr(work, 'chapter', '') and getattr(old_w, 'chapter', ''):
+                work.chapter = old_w.chapter
+            # 조판 설정 및 4P 모드 보존
+            if not getattr(work, 'layout_config', None) and getattr(old_w, 'layout_config', None):
+                work.layout_config = old_w.layout_config
+            if not getattr(work, 'layout_mode', '') and getattr(old_w, 'layout_mode', ''):
+                work.layout_mode = old_w.layout_mode
+            if not getattr(work, 'part2_mode', '') and getattr(old_w, 'part2_mode', ''):
+                work.part2_mode = old_w.part2_mode
+            if not getattr(work, 'image_file_2', '') and getattr(old_w, 'image_file_2', ''):
+                work.image_file_2 = old_w.image_file_2
             works[existing_index] = work
         else:
             works.append(work)
@@ -377,7 +387,8 @@ class ManuscriptManager:
         episode_no: str,
         layout_config: dict,
         title: Optional[str] = None,
-        poem_body: Optional[str] = None
+        poem_body: Optional[str] = None,
+        status: Optional[str] = None
     ) -> bool:
         """2P/4P/6P 매트릭스 슬롯 조판 설정을 갱신하고 기존 layout_mode/part2_mode 및 직접 편집 텍스트도 동기화"""
         works = self.load_works()
@@ -392,6 +403,8 @@ class ManuscriptManager:
                     w.title = title.strip()
                 if poem_body is not None:
                     w.poem_body = poem_body
+                if status is not None and status.strip():
+                    w.status = status.strip()
                 page_count = layout_config.get("page_count", 2)
                 if page_count >= 4:
                     w.layout_mode = "multi_page"

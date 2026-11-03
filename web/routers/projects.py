@@ -12,7 +12,10 @@ import base64
 from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
+import logging
+logger = logging.getLogger(__name__)
+
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -234,8 +237,14 @@ async def get_status():
                 "episode_no": w.episode_no,
                 "title": w.title,
                 "status": w.status,
+                "chapter": getattr(w, "chapter", ""),
+                "author": getattr(w, "author", ""),
                 "memory_anchor": w.memory_anchor,
                 "image_file": w.image_file,
+                "image_file_2": getattr(w, "image_file_2", ""),
+                "layout_mode": getattr(w, "layout_mode", "compact"),
+                "part2_mode": getattr(w, "part2_mode", "motif_symbol"),
+                "layout_config": getattr(w, "layout_config", None),
                 "recite_file": getattr(w, "recite_file", ""),
                 "music_file": getattr(w, "music_file", ""),
                 "audio_file": getattr(w, "audio_file", "") or getattr(w, "music_file", "") or getattr(w, "recite_file", ""),
@@ -393,7 +402,10 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 "hasPoemVideo": bool(poem_video_path),
                 "poemVideo": poem_video_path,
                 "hasSongVideo": bool(song_video_path),
-                "songVideo": song_video_path
+                "songVideo": song_video_path,
+                "layout_config": getattr(w, "layout_config", None),
+                "chapter": getattr(w, "chapter", "") or "",
+                "author": getattr(w, "author", "") or info.author
             })
 
         projects_list = project_manager.list_projects()
@@ -406,3 +418,36 @@ async def get_gallery_data(project_id: Optional[str] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/api/book/structure")
+async def get_book_structure_api(project_id: Optional[str] = None):
+    """
+    [Full Book Architecture]
+    책 전체의 시퀀스 구조(앞표지 -> 속표지 -> 서문 -> 목차 -> 부/시화 본문 -> 맺음말 -> 판권지 -> 뒤표지)와
+    각 섹션별 페이지 번호, 완성 상태(상태 머신), 세부 데이터를 단일 모델로 반환합니다.
+    """
+    try:
+        struct = project_manager.get_book_structure(project_id)
+        return {"success": True, "data": struct}
+    except Exception as e:
+        logger.error(f"Failed to get book structure: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/api/book/structure/update_section")
+async def update_book_section_api(payload: Dict[str, Any] = Body(...), project_id: Optional[str] = None):
+    """
+    특정 섹션(서문, 에필로그, 판권, 표지 등)의 메타데이터를 실시간 수정하고
+    최신 책 전체 구조를 반환합니다.
+    """
+    try:
+        section_id = payload.get("section_id")
+        if not section_id:
+            return {"success": False, "error": "section_id is required"}
+        data = payload.get("data", {})
+        struct = project_manager.update_section_content(section_id, data, project_id)
+        return {"success": True, "data": struct}
+    except Exception as e:
+        logger.error(f"Failed to update book section: {e}")
+        return {"success": False, "error": str(e)}

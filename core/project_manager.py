@@ -459,6 +459,342 @@ class ProjectManager:
         return self.get_project_dir() / "images"
 
 # 전역 프로젝트 매니저 싱글톤 인스턴스
+    def get_book_structure(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        [Full Book Architecture]
+        책 전체의 시퀀스 구조(앞표지 -> 속표지 -> 서문 -> 목차 -> 부/시화 본문 -> 맺음말 -> 판권지 -> 뒤표지)와
+        각 섹션별 페이지 번호, 완성 상태(상태 머신), 세부 데이터를 단일 모델로 반환합니다.
+        """
+        info = self.get_project_info(project_id)
+        mgr = self.get_manuscript_manager(project_id)
+        works = mgr.load_works()
+
+        sections: List[Dict[str, Any]] = []
+        current_page = 1
+
+        # -------------------------------------------------------------
+        # 1. Front Matter (책의 시작)
+        # -------------------------------------------------------------
+        # 1-1. 앞표지 (Cover - Page 0)
+        has_cover_img = bool(getattr(info, "cover_image", "").strip())
+        sections.append({
+            "id": "cover",
+            "section_type": "cover",
+            "group": "front_matter",
+            "title": "앞표지",
+            "subtitle": info.subtitle or "",
+            "author": info.author or "",
+            "status": "completed" if has_cover_img else "in_progress",
+            "page_start": 0,
+            "page_count": 2,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "cover_image": info.cover_image or "",
+                "title": info.name or "",
+                "subtitle": info.subtitle or "",
+                "author": info.author or ""
+            }
+        })
+
+        # 1-2. 속표지 (도비라 - Page 1~2)
+        sections.append({
+            "id": "half_title",
+            "section_type": "half_title",
+            "group": "front_matter",
+            "title": "속표지 (도비라)",
+            "subtitle": info.subtitle or "",
+            "author": info.author or "",
+            "status": "completed",
+            "page_start": 1,
+            "page_count": 2,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "title": info.name or "",
+                "subtitle": info.subtitle or "",
+                "author": info.author or "",
+                "publisher": getattr(info, "publisher", "부크크 (Bookk) 자가출판")
+            }
+        })
+        current_page = 3
+
+        # 1-3. 시인의 말 (서문 / Prologue - Page 3)
+        prologue_text = (getattr(info, "prologue", "") or "").strip()
+        has_prologue = bool(prologue_text)
+        sections.append({
+            "id": "prologue",
+            "section_type": "prologue",
+            "group": "front_matter",
+            "title": "시인의 말 (서문)",
+            "subtitle": "Prologue",
+            "author": info.author or "",
+            "status": "completed" if has_prologue else "empty",
+            "page_start": current_page,
+            "page_count": 1,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "content": prologue_text,
+                "author": info.author or ""
+            }
+        })
+        current_page += 1
+
+        # 1-4. 차례 (시집 목차 - Page 4~5)
+        sections.append({
+            "id": "toc",
+            "section_type": "toc",
+            "group": "front_matter",
+            "title": "차 례 (목차)",
+            "subtitle": "Table of Contents",
+            "author": "",
+            "status": "completed",
+            "page_start": current_page,
+            "page_count": 2,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "works_count": len(works)
+            }
+        })
+        current_page += 2
+
+        # -------------------------------------------------------------
+        # 2. Body Matter (부 간지 & 시화 본문)
+        # -------------------------------------------------------------
+        current_chapter = None
+        part_idx = 1
+
+        for w in works:
+            ch = getattr(w, "chapter", "").strip()
+            # 새로운 부(Chapter)가 등장하고 비어있지 않은 경우 부 간지(Part Divider) 자동 배치
+            if ch and ch != current_chapter:
+                current_chapter = ch
+                sections.append({
+                    "id": f"part_{part_idx}",
+                    "section_type": "part_divider",
+                    "group": "body_matter",
+                    "title": ch,
+                    "subtitle": f"제{part_idx}부",
+                    "author": "",
+                    "status": "completed",
+                    "page_start": current_page,
+                    "page_count": 2,
+                    "episode_no": "",
+                    "chapter": ch,
+                    "data": {
+                        "chapter_title": ch
+                    }
+                })
+                current_page += 2
+                part_idx += 1
+
+            # 시화 작품 노드
+            cfg = getattr(w, "layout_config", None)
+            lines_cnt = len((getattr(w, "poem_body", "") or "").split("\n"))
+            if cfg and isinstance(cfg, dict) and "slots" in cfg and cfg.get("slots"):
+                page_span = cfg.get("page_count", 2)
+            elif getattr(w, "layout_mode", "compact") == "multi_page" and lines_cnt > 16:
+                page_span = 4
+            else:
+                page_span = 2
+
+            w_status = "completed" if (getattr(w, "status", "") == "완성" or cfg) else "in_progress"
+            sections.append({
+                "id": f"poem_{w.episode_no}",
+                "section_type": "poem",
+                "group": "body_matter",
+                "title": f"[{w.episode_no}] {w.title}",
+                "subtitle": w.title,
+                "author": getattr(w, "author", "") or info.author,
+                "status": w_status,
+                "page_start": current_page,
+                "page_count": page_span,
+                "episode_no": w.episode_no,
+                "chapter": current_chapter or "",
+                "data": {
+                    "episode_no": w.episode_no,
+                    "title": w.title,
+                    "poem_body": getattr(w, "poem_body", ""),
+                    "image_file": getattr(w, "image_file", ""),
+                    "image_file_2": getattr(w, "image_file_2", ""),
+                    "author": getattr(w, "author", "") or info.author,
+                    "layout_config": cfg
+                }
+            })
+            current_page += page_span
+
+        # -------------------------------------------------------------
+        # 3. Back Matter (책의 갈무리)
+        # -------------------------------------------------------------
+        # 3-1. 맺음말 (에필로그 / Epilogue)
+        epilogue_text = (getattr(info, "epilogue", "") or "").strip()
+        has_epilogue = bool(epilogue_text)
+        sections.append({
+            "id": "epilogue",
+            "section_type": "epilogue",
+            "group": "back_matter",
+            "title": "맺음말 (에필로그)",
+            "subtitle": "Epilogue",
+            "author": info.author or "",
+            "status": "completed" if has_epilogue else "empty",
+            "page_start": current_page,
+            "page_count": 1,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "content": epilogue_text,
+                "author": info.author or ""
+            }
+        })
+        current_page += 1
+
+        # 3-2. 정식 출판 판권지 (Colophon)
+        sections.append({
+            "id": "colophon",
+            "section_type": "colophon",
+            "group": "back_matter",
+            "title": "정식 출판 판권지",
+            "subtitle": "Colophon",
+            "author": info.author or "",
+            "status": "completed",
+            "page_start": current_page,
+            "page_count": 1,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "publisher": getattr(info, "publisher", "부크크 (Bookk) 자가출판"),
+                "published_date": getattr(info, "published_date", ""),
+                "price": getattr(info, "price", "13,000원"),
+                "isbn": getattr(info, "isbn", ""),
+                "title": info.name or "",
+                "author": info.author or ""
+            }
+        })
+        current_page += 1
+
+        # 3-3. 뒤표지 (Back Cover)
+        blurb_text = (getattr(info, "back_cover_blurb", "") or "").strip()
+        has_blurb = bool(blurb_text)
+        sections.append({
+            "id": "back_cover",
+            "section_type": "back_cover",
+            "group": "back_matter",
+            "title": "뒤표지 (책 소개 & 바코드)",
+            "subtitle": "Back Cover",
+            "author": "",
+            "status": "completed" if has_blurb else "empty",
+            "page_start": current_page,
+            "page_count": 1,
+            "episode_no": "",
+            "chapter": "",
+            "data": {
+                "blurb": blurb_text,
+                "price": getattr(info, "price", "13,000원"),
+                "isbn": getattr(info, "isbn", "")
+            }
+        })
+
+        # 각 섹션 표준 필드 정규화 (프론트엔드 호환용 start_page, end_page, status_icon, group_label 등)
+        for s in sections:
+            p_start = s.get("page_start", 0)
+            p_cnt = s.get("page_count", 1)
+            s["start_page"] = p_start
+            s["end_page"] = max(p_start, p_start + p_cnt - 1)
+            s["category"] = s.get("section_type", "")
+            
+            st = s.get("status", "empty")
+            if st == "completed":
+                s["status_icon"] = "🟢"
+                s["status_label"] = "완성"
+            elif st == "in_progress":
+                s["status_icon"] = "🟠"
+                s["status_label"] = "작성 중"
+            else:
+                s["status_icon"] = "⚪"
+                s["status_label"] = "미작성"
+
+            grp = s.get("group", "")
+            if grp == "front_matter":
+                s["group_label"] = "앞부속 (표지·서문·목차)"
+            elif grp == "body_matter":
+                s["group_label"] = "본문 시화"
+            else:
+                s["group_label"] = "뒷부속 (맺음말·판권지)"
+
+            s["can_dtp_edit"] = True
+
+        # 상태 머신 통계
+        completed_cnt = sum(1 for s in sections if s["status"] == "completed")
+        empty_cnt = sum(1 for s in sections if s["status"] == "empty")
+        in_prog_cnt = sum(1 for s in sections if s["status"] == "in_progress")
+
+        return {
+            "project_id": info.id,
+            "project_name": info.name,
+            "subtitle": info.subtitle,
+            "author": info.author,
+            "total_pages": current_page,
+            "stats": {
+                "total_sections": len(sections),
+                "completed_sections": completed_cnt,
+                "completed": completed_cnt,
+                "in_progress": in_prog_cnt,
+                "empty": empty_cnt,
+                "total_pages": current_page,
+                "completion_rate": round((completed_cnt / len(sections)) * 100, 1) if sections else 0
+            },
+            "sections": sections
+        }
+
+    def update_section_content(
+        self,
+        section_id: str,
+        payload: Dict[str, Any],
+        project_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        특정 섹션의 콘텐츠(서문, 에필로그, 판권 정보, 표지 등)를 실시간 업데이트하고
+        최신 책 구조를 반환합니다.
+        """
+        info = self.get_project_info(project_id)
+        updated = False
+
+        if section_id in ("prologue", "preface"):
+            if "content" in payload: info.prologue = payload["content"]
+            if "author" in payload and payload["author"]: info.author = payload["author"]
+            updated = True
+        elif section_id == "epilogue":
+            if "content" in payload: info.epilogue = payload["content"]
+            if "author" in payload and payload["author"]: info.author = payload["author"]
+            updated = True
+        elif section_id == "back_cover":
+            if "blurb" in payload: info.back_cover_blurb = payload["blurb"]
+            if "price" in payload: info.price = payload["price"]
+            if "isbn" in payload: info.isbn = payload["isbn"]
+            updated = True
+        elif section_id == "colophon":
+            if "title" in payload and payload["title"]: info.name = payload["title"]
+            if "author" in payload and payload["author"]: info.author = payload["author"]
+            if "publisher" in payload: info.publisher = payload["publisher"]
+            if "published_date" in payload: info.published_date = payload["published_date"]
+            if "price" in payload: info.price = payload["price"]
+            if "isbn" in payload: info.isbn = payload["isbn"]
+            updated = True
+        elif section_id in ("cover", "half_title"):
+            if "cover_image" in payload: info.cover_image = payload["cover_image"]
+            if "title" in payload and payload["title"]: info.name = payload["title"]
+            if "subtitle" in payload: info.subtitle = payload["subtitle"]
+            if "author" in payload and payload["author"]: info.author = payload["author"]
+            if "publisher" in payload and payload["publisher"]: info.publisher = payload["publisher"]
+            updated = True
+
+        if updated:
+            self.update_project_info(info.id, asdict(info))
+
+        return self.get_book_structure(project_id)
+
 project_manager = ProjectManager()
 
 
