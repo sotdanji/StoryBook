@@ -168,7 +168,7 @@ def build_sdxl_image_notebook_dict(
             "metadata": {},
             "outputs": [],
             "source": [
-                "# [4단계] SDXL-Lightning 파이프라인 로드 및 2가지 시안 렌더링 (단 5~10초 소요)\n",
+                "# [4단계] SDXL-Lightning 파이프라인 로드 및 2가지 시안 렌더링 (생성 대기 필요)\n",
                 "import torch\n",
                 "from diffusers import StableDiffusionXLPipeline, UNet2DConditionModel, EulerDiscreteScheduler\n",
                 "from huggingface_hub import hf_hub_download\n",

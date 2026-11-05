@@ -17,7 +17,7 @@ from core.manuscript import ManuscriptManager
 from core.csv_builder import build_canva_csv
 from core.book_spec import calculate_spine_and_cover, inspect_images
 from core.interview import InterviewEngine
-from core.pdf_builder import build_pdf_book
+from core.bookk_pdf_builder import build_pdf_book
 
 console = Console()
 

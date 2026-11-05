@@ -1,0 +1,16 @@
+{
+  "name": "@storybook-studio/dtp-spread-ui",
+  "version": "1.0.0",
+  "description": "Standalone 2-Page Book Spread Viewer & W3C Web Component (<storybook-dtp-spread>)",
+  "type": "module",
+  "main": "./dtp_spread_ui.js",
+  "module": "./dtp_spread_ui.esm.js",
+  "exports": {
+    ".": {
+      "import": "./dtp_spread_ui.esm.js",
+      "default": "./dtp_spread_ui.js"
+    }
+  },
+  "sideEffects": true
+}
+

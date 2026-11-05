@@ -98,15 +98,31 @@ class ProjectManager:
         self._ensure_default_project()
         return "노을빛_기억"
 
+    def _safe_project_dir(self, project_id: str) -> Path:
+        """project_id가 projects 폴더 바로 아래 단일 폴더명인지 검증 (경로 탈출 차단)"""
+        pid = (project_id or "").strip()
+        if (
+            not pid
+            or pid in (".", "..")
+            or any(ch in pid for ch in ("/", "\\", ":", "\x00"))
+            or ".." in pid
+        ):
+            raise ValueError(f"잘못된 시집 프로젝트 식별자입니다: {project_id}")
+        base = self.projects_dir.resolve()
+        target = (base / pid).resolve()
+        if target.parent != base:
+            raise ValueError(f"잘못된 시집 프로젝트 식별자입니다: {project_id}")
+        return base / pid
+
     def set_active_project_id(self, project_id: str):
-        target_dir = self.projects_dir / project_id
+        target_dir = self._safe_project_dir(project_id)
         if not target_dir.exists():
             raise ValueError(f"존재하지 않는 시집 프로젝트입니다: {project_id}")
-        ACTIVE_PROJECT_FILE.write_text(project_id, encoding="utf-8")
+        ACTIVE_PROJECT_FILE.write_text(project_id.strip(), encoding="utf-8")
 
     def get_project_dir(self, project_id: Optional[str] = None) -> Path:
         pid = project_id or self.get_active_project_id()
-        return self.projects_dir / pid
+        return self._safe_project_dir(pid)
 
     def get_project_info(self, project_id: Optional[str] = None) -> ProjectInfo:
         pdir = self.get_project_dir(project_id)
@@ -377,8 +393,8 @@ class ProjectManager:
         if len(existing) <= 1:
             raise ValueError("서재에 최소 1권의 시집 프로젝트는 보관되어야 하므로 삭제할 수 없습니다.")
 
-        target_dir = self.projects_dir / project_id
-        if not target_dir.exists():
+        target_dir = self._safe_project_dir(project_id)
+        if not target_dir.exists() or not target_dir.is_dir():
             raise ValueError(f"존재하지 않는 시집 프로젝트입니다: {project_id}")
 
         # 현재 활성 프로젝트를 삭제하는 경우 남아있는 다른 프로젝트로 자동 복귀
@@ -437,6 +453,332 @@ class ProjectManager:
                     zf.write(file, arcname)
 
         return zip_path
+
+    def export_gallery_web_zip(self, project_id: Optional[str] = None) -> Path:
+        """
+        웹 배포용 단일 정적 갤러리 ZIP 패키지 생성:
+        - 시화집_갤러리.html -> index.html
+        - images/, music/, videos/ 에셋 포함
+        - Netlify, GitHub Pages, Vercel 등에 바로 배포 가능한 구조
+        """
+        import zipfile
+        from core.gallery_builder import sync_project_gallery_html
+
+        pid = project_id or self.get_active_project_id()
+        pdir = self.get_project_dir(pid)
+        info = self.get_project_info(pid)
+
+        # 최신 갤러리 HTML 동기화
+        try:
+            sync_project_gallery_html(pid)
+        except Exception as e:
+            print(f"Gallery sync error before export: {e}")
+
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = export_dir / f"{info.id}_web_gallery.zip"
+
+        gallery_html = pdir / "시화집_갤러리.html"
+
+        # 웹 배포 가이드 문서 생성
+        guide_html = self._generate_deployment_guide_html(info)
+        guide_txt = self._generate_deployment_guide_txt(info)
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            if gallery_html.exists():
+                zf.write(gallery_html, "index.html")
+
+            # 배포 가이드 문서 동봉
+            zf.writestr("배포가이드_클릭하여열기.html", guide_html.encode("utf-8"))
+            zf.writestr("README_웹배포_안내.txt", guide_txt.encode("utf-8"))
+
+            for folder_name in ("images", "music", "videos"):
+                folder_path = pdir / folder_name
+                if folder_path.exists() and folder_path.is_dir():
+                    for file in folder_path.rglob("*"):
+                        if file.is_file():
+                            arcname = file.relative_to(pdir)
+                            zf.write(file, arcname)
+
+        return zip_path
+
+    def _generate_deployment_guide_html(self, info: ProjectInfo) -> str:
+        """독립 웹 갤러리 배포 가이드 HTML"""
+        return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌐 온라인 시화 갤러리 무료 웹 배포 가이드 - {info.name}</title>
+  <style>
+    :root {{
+      --bg: #F9F6F0;
+      --card-bg: #FFFFFF;
+      --primary: #4A3525;
+      --accent: #8B5A2B;
+      --gold: #C59B27;
+      --text: #2C221E;
+      --muted: #6B5B52;
+      --border: #E8DFD5;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 40px 20px;
+    }}
+    .container {{
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }}
+    header {{
+      text-align: center;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 2px dashed var(--border);
+    }}
+    .badge {{
+      display: inline-block;
+      background: #F4EAD4;
+      color: #7A4B1A;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }}
+    h1 {{
+      font-size: 1.85rem;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }}
+    .subtitle {{
+      color: var(--muted);
+      font-size: 0.96rem;
+    }}
+    .structure-box {{
+      background: #FAF8F5;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 30px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #4A3B32;
+    }}
+    .method-card {{
+      background: #FFFFFF;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }}
+    .method-card.featured {{
+      border-color: var(--gold);
+      background: #FFFDF9;
+      box-shadow: 0 6px 20px rgba(197, 155, 39, 0.12);
+    }}
+    .card-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }}
+    .card-title {{
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }}
+    .tag {{
+      background: #EAF7EE;
+      color: #1E7E34;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }}
+    ol {{
+      padding-left: 22px;
+      margin-bottom: 16px;
+    }}
+    li {{
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }}
+    .btn-action {{
+      display: inline-block;
+      background: var(--accent);
+      color: #FFFFFF;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 10px 18px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }}
+    .btn-action:hover {{
+      background: #6A4420;
+    }}
+    .tip-box {{
+      background: #F1F6FB;
+      border-left: 4px solid #3182CE;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      color: #2C5282;
+      margin-top: 24px;
+    }}
+    footer {{
+      text-align: center;
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">StoryBook Studio 배포 가이드</span>
+      <h1>🌐 온라인 시화 갤러리 무료 웹 배포 안내</h1>
+      <p class="subtitle">작품집: <strong>「{info.name}」</strong> (저자: {info.author or "작가"})</p>
+    </header>
+
+    <div class="structure-box">
+      <strong>📁 배포 패키지 파일 구성</strong><br>
+      ├── 📄 index.html (온라인 시화 갤러리 메인 웹페이지)<br>
+      ├── 📁 images/    (시화 고해상도 삽화 이미지)<br>
+      ├── 📁 music/     (시 낭송 및 서정 노래 음원)<br>
+      ├── 📁 videos/    (시화 영상 및 서정 노래 영상)<br>
+      └── 📄 배포가이드_클릭하여열기.html (본 안내서)
+    </div>
+
+    <!-- 방법 1: Netlify Drop -->
+    <div class="method-card featured">
+      <div class="card-header">
+        <div class="card-title">1. [가장 추천] Netlify Drop 무료 배포 (10초 완성)</div>
+        <span class="tag">무료 / 코딩 불필요</span>
+      </div>
+      <p style="margin-bottom: 12px; color: var(--muted); font-size: 0.92rem;">
+        서버 설정이나 코딩 없이, 압축 푼 폴더를 마우스로 브라우저에 끌어다 놓기만 하면 즉시 전 세계에 공개됩니다.
+      </p>
+      <ol>
+        <li>이 ZIP 파일의 <strong>압축을 해제</strong>합니다. (index.html이 들어있는 폴더 확인)</li>
+        <li>아래 버튼을 눌러 <strong>Netlify Drop</strong> 사이트에 접속합니다. (무료 계정 로그인 권장)</li>
+        <li>화면 중앙의 점선 박스(<em>"Drag and drop your site folder here"</em>)로 <strong>압축이 풀린 폴더 전체를 드래그 & 드롭</strong>합니다.</li>
+        <li>약 5~10초 후 배포가 완료되며, 나만의 고유 웹 주소(예: <code>https://glowing-gallery.netlify.app</code>)가 즉시 생성됩니다!</li>
+        <li><em>[Site configuration] → [Change site name]</em> 메뉴에서 원하는 주소 이름으로 변경할 수 있습니다.</li>
+      </ol>
+      <a href="https://app.netlify.com/drop" target="_blank" rel="noopener" class="btn-action">
+        🚀 Netlify Drop 사이트 열기 (app.netlify.com/drop) ↗
+      </a>
+    </div>
+
+    <!-- 방법 2: GitHub Pages -->
+    <div class="method-card">
+      <div class="card-header">
+        <div class="card-title">2. GitHub Pages 무료 배포 (영구 무료 / 커스텀 도메인)</div>
+        <span class="tag">무료 / 개발자 추천</span>
+      </div>
+      <ol>
+        <li><strong>GitHub.com</strong>에 로그인 후 새 저장소(New Repository)를 만듭니다 (예: <code>my-poem-gallery</code>, Public 설정).</li>
+        <li>압축 푼 파일들(<code>index.html</code>, <code>images/</code>, <code>music/</code>, <code>videos/</code>)을 저장소 루트에 업로드(커밋 & 푸시)합니다.</li>
+        <li>저장소 상단 <strong>[Settings]</strong> → 좌측 <strong>[Pages]</strong> 메뉴로 이동합니다.</li>
+        <li>Branch를 <code>main</code> (또는 <code>master</code>)의 <code>/ (root)</code>로 선택하고 <strong>[Save]</strong>를 누릅니다.</li>
+        <li>1~2분 뒤 <code>https://&lt;내아이디&gt;.github.io/&lt;저장소이름&gt;/</code> 주소로 전 세계에 자동 공개됩니다.</li>
+      </ol>
+      <a href="https://github.com" target="_blank" rel="noopener" class="btn-action" style="background: #24292E;">
+        🐙 GitHub 바로가기 ↗
+      </a>
+    </div>
+
+    <!-- 방법 3: Vercel -->
+    <div class="method-card">
+      <div class="card-header">
+        <div class="card-title">3. Vercel 배포 (초고속 글로벌 CDN)</div>
+        <span class="tag">무료 / 글로벌 고속</span>
+      </div>
+      <ol>
+        <li><strong>Vercel.com</strong> 무료 가입 후 [Add New Project]를 클릭합니다.</li>
+        <li>GitHub 저장소를 연결하거나 Vercel CLI(<code>npx vercel</code>)를 통해 압축 푼 폴더를 연결합니다.</li>
+        <li>[Deploy] 버튼을 누르면 10초 만에 글로벌 고속 웹사이트가 완성됩니다.</li>
+      </ol>
+      <a href="https://vercel.com" target="_blank" rel="noopener" class="btn-action" style="background: #000000;">
+        ▲ Vercel 바로가기 ↗
+      </a>
+    </div>
+
+    <div class="tip-box">
+      <strong>💡 소통방 연계 안내</strong><br>
+      배포된 웹 갤러리 주소를 복사하여 StoryBook Studio 소통방(1:1 상담실)의 
+      <strong>[내 갤러리 구경 오세요]</strong> 기능으로 공유하시면 다른 작가님들과 함께 시화를 감상하고 따뜻한 피드백을 나눌 수 있습니다.
+    </div>
+
+    <footer>
+      StoryBook Studio &copy; 2026. 모든 기억은 한 편의 시가 되고 예술이 됩니다.
+    </footer>
+  </div>
+</body>
+</html>
+"""
+
+    def _generate_deployment_guide_txt(self, info: ProjectInfo) -> str:
+        """독립 웹 갤러리 배포 가이드 텍스트 파일"""
+        return f"""================================================================================
+   📖 StoryBook Studio - 온라인 시화 갤러리 무료 웹 배포 안내서
+   시화집 제목: {info.name} (저자: {info.author or "작가"})
+================================================================================
+
+본 ZIP 파일은 웹 서버(Netlify, GitHub Pages, Vercel 등)에 바로 업로드하여 
+전 세계 독자들에게 나만의 온라인 시화 갤러리를 선보일 수 있는 순수 정적 웹 패키지입니다.
+
+[폴더 및 파일 구성]
+- index.html           : 온라인 시화 갤러리 메인 웹페이지 (동영상, 낭송, 음악, DTP 조판 내장)
+- images/              : 시화별 고해상도 삽화 이미지 폴더
+- music/               : 시 낭송 음원 및 노래 음원 폴더
+- videos/              : 시화 영상 및 노래 영상 폴더
+- 배포가이드_클릭하여열기.html : 브라우저로 볼 수 있는 시각적 배포 설명서 (더블클릭 추천!)
+
+--------------------------------------------------------------------------------
+방법 1. [가장 추천 / 10초 완성] Netlify Drop 무료 배포 (코딩 0%, 비용 0원)
+--------------------------------------------------------------------------------
+1. 브라우저에서 https://app.netlify.com/drop 에 접속합니다.
+2. 다운로드받은 이 ZIP 파일의 압축을 해제합니다.
+3. 압축이 풀린 폴더 전체(index.html과 images, music, videos가 들어있는 폴더)를 
+   브라우저의 점선 네모 박스("Drag and drop your site folder here") 안으로 끌어다 놓습니다(Drag & Drop).
+4. 약 5~10초 후 배포가 완료되며, 영구적인 무료 웹 주소(예: https://glowing-poem-12345.netlify.app)가 
+   즉시 생성됩니다!
+5. Site configuration > Change site name 메뉴에서 원하는 주소(예: https://my-poem-gallery.netlify.app)로 
+   이름을 자유롭게 변경할 수 있습니다.
+
+--------------------------------------------------------------------------------
+방법 2. GitHub Pages 무료 배포 (개발자 / 블로그 / 무료 커스텀 도메인)
+--------------------------------------------------------------------------------
+1. github.com 로그인 후 새 저장소(New Repository)를 만듭니다 (예: my-poem-gallery, Public 설정).
+2. 압축을 푼 파일 전체(index.html, images/, music/, videos/ 등)를 해당 저장소의 루트에 업로드(커밋 & 푸시)합니다.
+3. 저장소 상단 [Settings] -> 좌측 [Pages] 메뉴로 이동합니다.
+4. [Build and deployment]의 Branch를 'main' (또는 'master')의 '/ (root)'로 선택하고 [Save]를 누릅니다.
+5. 1~2분 뒤 https://<사용자아이디>.github.io/<저장소이름>/ 주소로 전 세계에 자동 공개됩니다.
+
+--------------------------------------------------------------------------------
+방법 3. Vercel 무료 배포
+--------------------------------------------------------------------------------
+1. https://vercel.com 에 접속하여 무료 회원가입 후 로그인합니다.
+2. [Add New...] -> [Project]를 클릭하고 압축 푼 폴더를 연결하거나 GitHub 저장소를 선택합니다.
+3. [Deploy] 버튼을 누르면 10초 만에 글로벌 고속 CDN(https://<프로젝트명>.vercel.app)으로 배포됩니다.
+
+독자들과 링크를 나누며 소통방(1:1 상담실)의 [내 갤러리 구경 오세요] 기능도 함께 활용해 보세요!
+"""
 
     def get_active_project_info(self) -> ProjectInfo:
         return self.get_project_info()

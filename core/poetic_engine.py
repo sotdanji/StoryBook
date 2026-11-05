@@ -442,7 +442,9 @@ class PoeticEngine:
             if matched_guides:
                 guide_phrase = ", " + ", ".join(matched_guides)
             else:
-                guide_phrase = f", {cg}"
+                from core.skill_pack import translate_korean_scene_to_english
+                translated_cg = translate_korean_scene_to_english(cg)
+                guide_phrase = f", {translated_cg}"
 
         # [골든 프롬프트]: 핵심 모티프 최우선 + 화풍 디테일 + 공통 5% 미세 페이드아웃 여백 & 300 DPI
         final_prompt = (

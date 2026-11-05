@@ -614,6 +614,136 @@ def strip_style_contamination(raw_prompt: str) -> str:
     text = re.sub(r"\s+", " ", text).strip(" ,.-")
     return text
 
+
+KEYWORD_EN_MAP = {
+    # 목화, 직조, 가옥 소품
+    "솜": "soft fluffy white raw cotton",
+    "소쿠리": "traditional woven bamboo basket (sokuri)",
+    "소북히": "piled high with",
+    "소복이": "piled high with",
+    "소복하게": "abundantly filled with",
+    "바구니": "woven rustic basket",
+    "목화": "white cotton bolls and raw fibers",
+    "목화밭": "rural cotton field with blooming white bolls",
+    "다래": "green wild sweet actinidia fruit",
+    "무시": "rustic Korean white radish freshly pulled from soil",
+    "무": "rustic Korean white radish freshly pulled from soil",
+    "무우": "rustic Korean white radish freshly pulled from soil",
+    "고치말이": "rolled fluffy cotton slivers prepared for spinning",
+    "물레": "traditional wooden spinning wheel (mulle)",
+    "베틀": "traditional wooden weaving loom (beteul)",
+    "베솔": "traditional starching brush for weaving",
+    "호롱불": "warm glowing kerosene oil lamp",
+    "등불": "hanging paper lantern glowing warmly",
+    "촛불": "gentle flickering candle light",
+    "화로": "traditional clay brazier with glowing charcoal embers",
+    "대청": "wooden floor daecheongmaru veranda of traditional hanok",
+    "대청마루": "wooden floor daecheongmaru veranda of traditional hanok",
+    "툇마루": "sunlit wooden toetmaru porch of rural house",
+    "토방": "earthen porch with stepping stones",
+    "마당": "peaceful rustic courtyard with golden sunlight",
+    "장독대": "traditional Korean glazed earthenware pots (jangdokdae)",
+    "고무신": "pair of nostalgic rubber shoes (gomusin)",
+    "도토리묵": "traditional Korean acorn jelly (dotori-muk) on rustic earthenware plate",
+    "도토리 묵": "traditional Korean acorn jelly (dotori-muk) on rustic earthenware plate",
+    "도토리": "autumn plump acorns on oak leaves",
+    "막걸리": "traditional milky rice wine in brass bowl",
+    "따순굼턱": "sunny sheltered earthen mound with sweet country children playing",
+    "굼턱": "sunny sheltered earthen mound blocking cold winter wind",
+    "빠끔살이": "rustic children playing house with smooth pebbles and sea shells",
+    "소꿉놀이": "rustic children playing house with smooth pebbles and sea shells",
+    "몽돌": "smooth round coastal pebbles glistening softly",
+    "소라": "weathered sea snail shells on the ground",
+    "조개": "small sea shells on dirt",
+    "전복": "rustic iridescent abalone shells",
+    "초가": "traditional thatched roof cottage",
+    "초가집": "traditional thatched roof cottage",
+    "돌담": "mossy country stone wall",
+    "부엌": "rustic Korean country kitchen with clay hearth",
+    "아궁이": "warm wood embers in traditional clay fireplace",
+    "가마솥": "large traditional cast iron cauldron",
+    "다듬이": "traditional smooth beating stones and wooden clubs",
+    "다듬잇돌": "traditional smooth beating stones and wooden clubs",
+    "맷돌": "traditional stone hand mill",
+    "지게": "traditional wooden A-frame carrying pack",
+    "멍석": "woven straw mat spread in the courtyard",
+    "감나무": "persimmon tree laden with ripe orange fruits",
+    "처마": "curved traditional wooden eaves",
+    "창문": "traditional paper sliding window glowing softly",
+    "문살": "wooden lattice hanji door pattern",
+    "억새": "golden silver grass fields waving under afternoon light",
+    "갈대": "swaying reed grass",
+    "노을": "warm golden sunset glow over the hills",
+    "석양": "warm golden sunset glow over the hills",
+    "새벽": "quiet misty dawn twilight over peaceful village",
+    "아침": "fresh morning sunlight casting soft shadows",
+    "아이들": "innocent rural children in comfortable country attire",
+    "어머니": "warm affectionate mother silhouette in simple hanbok",
+    "할머니": "wrinkled gentle grandmother in traditional clothing",
+    "풍경만": "pure serene uninhabited landscape with no people",
+    "인물 제외": "pure tranquil landscape without any people",
+    "정물": "intimate poetic still life setting",
+    "클로즈업": "tender poetic close-up view"
+}
+
+def translate_korean_scene_to_english(clean_scene_ko: str, custom_guide_ko: str = "", title: str = "", memory_anchor: str = "") -> str:
+    import os
+    try:
+        from core.config import GEMINI_API_KEY
+        key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
+    except Exception:
+        key = os.getenv("GEMINI_API_KEY")
+
+    if key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=key)
+            prompt_trans = (
+                "You are an expert bilingual visual art director for Korean poetry illustrations.\n"
+                "Translate and expand the following Korean scene and additional direction into a concise, vivid English diffusion prompt for FLUX / SDXL (1-2 sentences):\n"
+                f"- Scene / Title: {title} - {clean_scene_ko}\n"
+                f"- User's Additional Direction: {custom_guide_ko or 'None'}\n"
+                "CRITICAL RULES:\n"
+                "1. If User's Additional Direction is present, you MUST give it HIGHEST PRIORITY and place it as the primary visual subject (e.g. 'a round woven bamboo basket piled high with soft, fluffy white raw cotton').\n"
+                "2. Describe only visual subjects, props, lighting, environment, and atmosphere in clear English.\n"
+                "3. Do NOT include style names (like watercolor, painting) or negative prompts. Output English text only."
+            )
+            res = client.models.generate_content(
+                model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+                contents=prompt_trans
+            )
+            if res and res.text:
+                t = res.text.strip().strip('"').strip("'")
+                if len(t) > 15:
+                    return t
+        except Exception:
+            pass
+
+    # Fallback: Rule & Dictionary based translation
+    guide_matched = []
+    if custom_guide_ko:
+        for kw, en_desc in KEYWORD_EN_MAP.items():
+            if kw in custom_guide_ko and en_desc not in guide_matched:
+                guide_matched.append(en_desc)
+                
+    combined = f"{clean_scene_ko} {memory_anchor} {title}"
+    scene_matched = []
+    for kw, en_desc in KEYWORD_EN_MAP.items():
+        if kw in combined and en_desc not in guide_matched and en_desc not in scene_matched:
+            scene_matched.append(en_desc)
+
+    parts = []
+    if guide_matched:
+        parts.append(", ".join(guide_matched))
+    if scene_matched:
+        parts.append(", ".join(scene_matched[:3]))
+        
+    if parts:
+        desc = ", featuring ".join(parts) if len(parts) > 1 else parts[0]
+        return f"traditional Korean nostalgic scene of {desc}, peaceful warm morning daylight"
+    else:
+        return f"peaceful traditional Korean nostalgic scene of {title or 'rural village'}, warm morning daylight and gentle shadows"
+
 def build_modular_art_prompt(
     raw_prompt: str,
     art_style: str = "watercolor",
@@ -634,15 +764,28 @@ def build_modular_art_prompt(
         clean_scene = memory_anchor or title or "고향의 따스한 정경"
 
     # 추가 연출 가이드가 있을 경우 결합
+    clean_guide = ""
     if custom_guide and custom_guide.strip():
         clean_guide = strip_style_contamination(custom_guide.strip())
         if clean_guide:
             clean_scene = f"{clean_scene}, 추가 연출: {clean_guide}"
 
+    # 영문 이미지 생성 엔진(FLUX / Pollinations / SDXL)용 정경 영문 번역 (추가 연출 최우선 반영)
+    scene_en = translate_korean_scene_to_english(
+        clean_scene_ko=clean_scene,
+        custom_guide_ko=clean_guide,
+        title=title,
+        memory_anchor=memory_anchor
+    )
+
     # 2. 블록 A: 선택된 화풍 전용 고유 블록 (Exclusive Style Block)
     name_ko = style_info["name_ko"]
     guide_ko = style_info["guide_ko"]
-    prefix_en = style_info["prefix_en"]
+    prefix_en = style_info["prefix_en"].strip()
+    if prefix_en.endswith(" of"):
+        prefix_clean = prefix_en
+    else:
+        prefix_clean = f"{prefix_en} of"
     negative_en = style_info["negative_en"]
 
     # 3. 블록 C: 공통 출판 표준 블록 (Common Standards Block)
@@ -661,8 +804,8 @@ def build_modular_art_prompt(
         f"• {common_c_ko}"
     )
 
-    # B) 영문 AI 및 오픈 AI용 모듈러 프롬프트
-    guarded_en_prompt = f"{prefix_en} of {clean_scene}, {common_c_en}"
+    # B) 영문 AI 및 오픈 AI용 모듈러 프롬프트 (정경 영문 번역 완벽 결합)
+    guarded_en_prompt = f"{prefix_clean} {scene_en}, {common_c_en}"
 
     # C) 사용자 화면 표시용 직관적 한국어 프롬프트
     display_ko_prompt = f"[{name_ko}] {clean_scene} ({name_ko} 고유 화풍, 3:4 세로형, 300 DPI)"
@@ -671,6 +814,7 @@ def build_modular_art_prompt(
         "art_style": clean_style,
         "name_ko": name_ko,
         "clean_scene": clean_scene,
+        "clean_scene_en": scene_en,
         "gemini_ko_content": gemini_ko_content,
         "guarded_en_prompt": guarded_en_prompt,
         "display_ko_prompt": display_ko_prompt,

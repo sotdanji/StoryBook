@@ -12,8 +12,8 @@ echo   잠시 후 웹 브라우저가 열리며 집필실 화면이 나타납니
 echo   (종료하시려면 이 창을 닫으시면 됩니다)
 echo.
 
-:: 바탕화면에 '시집만들기' 바로가기가 없으면 자동으로 생성 (OneDrive 바탕화면 완벽 호환)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desk = $ws.SpecialFolders('Desktop'); $lnk = Join-Path $desk '시집만들기.lnk'; if (-not (Test-Path $lnk)) { $sc = $ws.CreateShortcut($lnk); $sc.TargetPath = '%~dp0시집만들기.bat'; $sc.WorkingDirectory = '%~dp0'; $sc.IconLocation = 'shell32.dll,130'; $sc.Description = 'StoryBook Studio - 기억 기반 나만의 시화집 만들기'; $sc.Save(); Write-Host '  [안내] 바탕화면에 [시집만들기] 바로가기 아이콘을 생성하였습니다.' }" 2>nul
+:: 바탕화면에 '시화집 창작' 바로가기가 없으면 자동으로 생성 (최초 1회 자동 생성)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desk = $ws.SpecialFolders('Desktop'); $lnk = Join-Path $desk '시화집 창작.lnk'; if (-not (Test-Path $lnk)) { $sc = $ws.CreateShortcut($lnk); $sc.TargetPath = '%~dp0실행하기.bat'; $sc.WorkingDirectory = '%~dp0'; if (Test-Path '%~dp0web\static\favicon.ico') { $sc.IconLocation = '%~dp0web\static\favicon.ico,0' } else { $sc.IconLocation = 'shell32.dll,130' }; $sc.Description = 'StoryBook Studio - 기억 기반 감성 시화집 창작소'; $sc.Save(); Write-Host '  [안내] 바탕화면에 [시화집 창작] 바로가기 아이콘을 생성하였습니다.' }" 2>nul
 
 if exist "%~dp0_internal\python.exe" (
     "%~dp0_internal\python.exe" run_web.py

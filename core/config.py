@@ -108,7 +108,7 @@ def get_supabase_config() -> dict:
 # -------------------------------------------------------------
 ADMIN_EMAILS = [
     email.strip().lower()
-    for email in os.getenv("ADMIN_EMAILS", "sotdanjii@gmail.com,sotdanji@gmail.com").split(",")
+    for email in os.getenv("ADMIN_EMAILS", "").split(",")
     if email.strip()
 ]
 

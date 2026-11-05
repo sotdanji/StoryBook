@@ -1,0 +1,2839 @@
+/* ========================================================== */
+/* [조판실] 책장 하단 양쪽 연속 페이지 넘김 바 (Page Turn Navigation) */
+/* ========================================================== */
+.book-page-turn-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 960px;
+  margin: 14px auto 0 auto;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.btn-page-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFDF9;
+  border: 1.5px solid #D4A373;
+  color: #643E19;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(100, 62, 25, 0.08);
+  user-select: none;
+}
+
+.btn-page-turn:hover:not(:disabled) {
+  background: #FDF4EB;
+  border-color: #C85A17;
+  color: #9A3412;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(200, 90, 23, 0.15);
+}
+
+.btn-page-turn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-page-turn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #E2D3C1;
+  color: #A89582;
+  box-shadow: none;
+}
+
+.btn-page-turn .turn-arrow {
+  font-size: 1.05rem;
+  color: #C85A17;
+  transition: transform 0.2s ease;
+}
+
+.btn-page-turn:hover:not(:disabled) .turn-arrow {
+  transform: scale(1.15);
+}
+
+.btn-page-turn:disabled .turn-arrow {
+  color: #A89582;
+}
+
+.page-turn-indicator {
+  font-size: 0.86rem;
+  color: #7C4A1E;
+  font-weight: 600;
+  background: #FAF6EE;
+  border: 1px solid #EADBCC;
+  padding: 6px 16px;
+  border-radius: 20px;
+  letter-spacing: -0.2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* ========================================================
+   🎨 상하 혼합 슬롯: 수채 그라데이션 블렌딩 마스크 (Soft Gradient Blend)
+   ======================================================== */
+.slot-mixed-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: transparent;
+}
+
+.slot-mixed-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+/* 상단/하단 그림 공통 컨테이너 */
+.slot-mixed-image {
+  width: 100%;
+  height: 42%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.slot-mixed-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* 🖼️ 상단 그림형: 아랫단 35%가 글자 쪽으로 수채 물빛처럼 스며들며 페이드아웃 */
+.slot-mixed-image.fade-bottom {
+  border-bottom: none;
+}
+
+.slot-mixed-image.fade-bottom img {
+  -webkit-mask-image: linear-gradient(to bottom, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+  mask-image: linear-gradient(to bottom, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+}
+
+/* 🖼️ 하단 그림형: 윗단 35%가 글자 쪽으로 은은하게 번지며 페이드인 */
+.slot-mixed-image.fade-top {
+  border-top: none;
+}
+
+.slot-mixed-image.fade-top img {
+  -webkit-mask-image: linear-gradient(to top, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+  mask-image: linear-gradient(to top, 
+    rgba(0, 0, 0, 1.0) 0%, 
+    rgba(0, 0, 0, 1.0) 45%, 
+    rgba(0, 0, 0, 0.75) 68%, 
+    rgba(0, 0, 0, 0.25) 86%, 
+    rgba(0, 0, 0, 0.0) 100%
+  );
+}
+
+/* 상하 혼합 본문 영역 (시 텍스트) */
+.slot-mixed-text {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0.8rem 2.2rem 1.6rem 2.2rem;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.slot-mixed-text.text-top {
+  padding-top: 1.8rem;
+  padding-bottom: 0.6rem;
+}
+
+.slot-mixed-text.text-bottom {
+  padding-top: 0.4rem;
+  padding-bottom: 1.6rem;
+}
+
+.slot-mixed-text .poem-header-area {
+  margin-bottom: 0.7rem;
+  text-align: left;
+}
+
+.slot-mixed-text .poem-header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #382414;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.slot-mixed-text .poem-display-body {
+  font-family: var(--font-myeongjo), 'Noto Serif KR', serif;
+  color: #2F241E;
+  text-align: left;
+  line-height: 1.65;
+}
+
+/* ========================================================
+   🎬 영상 만들기 탭 (2-Track Video Studio) 레이아웃
+   ======================================================== */
+.video-grid-2col {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .video-grid-2col {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}
+
+/* ========================================================
+   🎬 영상 만들기 탭 - 우측으로 움직이는 활동형 진행 바 애니메이션
+   ======================================================== */
+@keyframes videoProgressStripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 36px 0;
+  }
+}
+
+.video-progress-track {
+  background: #E8DFD3;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.video-progress-fill-active {
+  height: 100%;
+  border-radius: 5px;
+  background-color: #2B7A4B;
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.28) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.28) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 36px 36px;
+  animation: videoProgressStripes 0.9s linear infinite;
+  transition: width 0.35s ease;
+}
+
+/* ========================================================
+   📖 2-Layer 유연 조판 시스템 (InDesign식 DTP 프레임워크)
+   ======================================================== */
+.page-container-2layer {
+  position: relative !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Layer 1: Background Layer (뒷층 - 배경 그림) */
+.page-layer-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.layer-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 상단형/하단형 그림 */
+.page-layer-bg.mode-image_top .layer-bg-image {
+  height: 48%;
+  align-self: flex-start;
+  mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+}
+
+.page-layer-bg.mode-image_bottom .layer-bg-image {
+  height: 48%;
+  align-self: flex-end;
+  mask-image: linear-gradient(to top, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 85%, transparent 100%);
+}
+
+/* 문학적 여백 심볼 */
+.layer-bg-blank-symbol {
+  text-align: center;
+  color: #B5A290;
+}
+.layer-bg-blank-symbol span {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 6px;
+}
+.layer-bg-blank-symbol p {
+  font-size: 0.82rem;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Layer 2: Foreground Layer (앞층 - 글 상자들) */
+.page-layer-fg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+/* 인쇄 안전 기준선 (위/아래 침범 불가 가이드) */
+.print-safety-guide {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  border-top: 1.5px dashed rgba(220, 53, 69, 0.45);
+  pointer-events: none;
+  z-index: 10;
+}
+.print-safety-guide.safety-top {
+  top: 24px;
+}
+.print-safety-guide.safety-bottom {
+  bottom: 24px;
+}
+
+/* DTP 빨간 가이드 네모상자 공통 */
+.dtp-box {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  border: 1.5px dashed rgba(220, 53, 69, 0.75);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(1px);
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.dtp-box:hover {
+  border-color: rgba(220, 53, 69, 1);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.dtp-box-tag {
+  position: absolute;
+  top: -10px;
+  right: 6px;
+  background: rgba(220, 53, 69, 0.85);
+  color: #FFF;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  pointer-events: none;
+  letter-spacing: -0.3px;
+}
+
+/* 1) 제목 상자 (상단 고정) */
+.dtp-box-title {
+  top: 28px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+.dtp-title-text {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2F241E;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.9);
+}
+
+/* 2) 지은이 상자 (상단 고정) */
+.dtp-box-author {
+  top: 76px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+.dtp-author-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6E5340;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.9);
+}
+
+/* 3) 본문 글상자 (상·하단 신축성 드래그) */
+.dtp-box-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 14px 10px;
+  overflow: hidden;
+}
+
+.dtp-body-content {
+  flex: 1;
+  overflow: hidden;
+  font-family: var(--font-myeongjo), 'Noto Serif KR', serif;
+  color: #261B14;
+  text-align: left;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.85);
+}
+
+.dtp-body-content .poem-line {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+/* 상/하단 리사이즈 마우스 드래그 핸들 */
+.dtp-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  z-index: 20;
+}
+
+.dtp-resize-handle.handle-top {
+  top: -6px;
+}
+
+.dtp-resize-handle.handle-bottom {
+  bottom: -6px;
+}
+
+.dtp-resize-handle .handle-bar,
+.dtp-resize-handle .handle-bar-pill {
+  width: 54px;
+  height: 6px;
+  background: #DC3545;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.dtp-resize-handle:hover .handle-bar,
+.dtp-resize-handle:hover .handle-bar-pill {
+  transform: scale(1.15, 1.4);
+  background: #B02A37;
+}
+
+.dtp-box.is-resizing {
+  border-color: #DC3545 !important;
+  background: rgba(220, 53, 69, 0.08) !important;
+  box-shadow: 0 0 10px rgba(220, 53, 69, 0.25);
+}
+
+.layer-bg-paper-texture {
+  width: 100%;
+  height: 100%;
+  background: #FDFBF7;
+  background-image: radial-gradient(rgba(180, 160, 140, 0.08) 1px, transparent 0);
+  background-size: 16px 16px;
+}
+
+.dtp-resize-handle .handle-label {
+  display: none;
+  position: absolute;
+  background: #2C2520;
+  color: #FFF;
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dtp-resize-handle:hover .handle-label {
+  display: block;
+}
+
+.dtp-resize-handle.handle-top:hover .handle-label {
+  top: -22px;
+}
+
+.dtp-resize-handle.handle-bottom:hover .handle-label {
+  bottom: -22px;
+}
+
+/* 가이드선 숨김 모드 (인쇄 / 감상 모드) */
+.page-layer-fg.hide-guides .dtp-box {
+  border-color: transparent !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+.page-layer-fg.hide-guides .dtp-box-tag,
+.page-layer-fg.hide-guides .print-safety-guide,
+.page-layer-fg.hide-guides .dtp-resize-handle {
+  display: none !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* ========================================================
+   StoryBook Studio - DTP 오버레이 가이드 & 핸들 스타일
+   ======================================================== */
+.dtp-box-wrapper {
+  position: relative !important;
+  border: 1.5px dashed rgba(220, 53, 69, 0.75) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.dtp-box-wrapper:hover {
+  border-color: rgba(220, 53, 69, 1) !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+
+.dtp-box-title-author {
+  margin-bottom: 12px !important;
+  padding: 6px 12px 10px 12px !important;
+}
+
+.dtp-author-display {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #6E5340;
+  margin-top: 4px;
+}
+
+.dtp-box-body {
+  flex: none !important;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 14px 12px;
+  min-height: 110px;
+  box-sizing: border-box !important;
+  transition: none !important;
+  position: relative !important;
+}
+
+.book-spread.hide-dtp-guides .dtp-box-wrapper {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.book-spread.hide-dtp-guides .dtp-box-tag,
+.book-spread.hide-dtp-guides .dtp-resize-handle,
+.book-spread.hide-dtp-guides .print-safety-guide {
+  display: none !important;
+}
+
+/* [StoryBook DTP] 전면그림 + 글 오버레이 스타일 */
+.overlay-text-holder {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  padding: 2.4rem 2.0rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.overlay-text-holder.is-hidden,
+.overlay-text-holder[style*="display: none"] {
+  display: none !important;
+}
+
+.dtp-box-overlay {
+  pointer-events: auto !important;
+  width: 90% !important;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(6px) !important;
+  border: 1.5px dashed #DC3545 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  padding: 16px 18px !important;
+  position: relative !important;
+  box-sizing: border-box;
+}
+
+.dtp-overlay-content {
+  outline: none;
+  min-height: 80px;
+  max-height: 480px;
+  overflow-y: auto;
+  font-family: var(--font-myeongjo), 'Noto Serif KR', serif;
+  color: #1F1610;
+  text-align: left;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  cursor: text;
+}
+
+.dtp-overlay-content:focus {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+}
+
+.overlay-on-image {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(6px) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 6px !important;
+  padding: 18px !important;
+  z-index: 10 !important;
+}
+
+/* ========================================================
+   StoryBook DTP - 제목/지은이 고정 및 실시간 드래그 상자 스타일
+   ======================================================== */
+.dtp-box-title-author {
+  position: relative !important;
+  margin-bottom: 22px !important;
+  padding: 10px 14px !important;
+  min-height: 64px !important;
+  display: block !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+  z-index: 5 !important;
+}
+
+.dtp-header-tag {
+  top: -11px !important;
+  left: 8px !important;
+  right: auto !important;
+  background: #B91C1C !important;
+}
+
+.dtp-body-tag {
+  top: -11px !important;
+  right: 8px !important;
+  background: #DC2626 !important;
+}
+
+.dtp-box-body.is-resizing {
+  user-select: none !important;
+}
+
+.dtp-overflow-badge {
+  display: none;
+  align-self: center;
+  margin-top: 8px;
+  background: #FFF1F2;
+  border: 1.5px solid #FDA4AF;
+  color: #BE123C;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(190, 18, 60, 0.15);
+  animation: pulse 1.2s infinite alternate;
+  z-index: 20;
+}
+
+.dtp-overflow-badge:hover {
+  background: #FFE4E6;
+  transform: scale(1.04);
+}
+
+/* [StoryBook DTP] 구버전 인쇄안전선 마커 숨김 (글자 중간 갈라짐 방지) */
+#printSafetyLine,
+.print-safety-line {
+  display: none !important;
+}
+
+/* 실제 종이 하단 인쇄 안전선 (고정 가이드선) */
+/* 불필요한 바닥 안전선 노이즈 완전 제거: 글상자 자체의 내부 가드로 완전 대체 */
+.print-safety-guide,
+.print-safety-line,
+#printSafetyLine {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* [StoryBook DTP] 시구 개별 글자 크기(pt) 지정용 인라인 스타일 */
+.poem-custom-pt {
+  display: inline;
+  line-height: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  transition: font-size 0.2s ease;
+}
+
+
+/* [StoryBook DTP] 좌측 펼침면 본문 상자 레이아웃 정규화 (우측 본문 상자와 완전 대칭) */
+/* 주의: display 속성은 JS의 슬롯 상태(image/text/blank)에 따라 제어되므로 !important 절대 금지! */
+.part2-left-holder {
+  width: 100% !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  padding: 1.2rem 24px 24px 24px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  position: relative !important;
+}
+
+#viewerPart2PoemArea,
+.part2-poem-area {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 auto !important;
+  padding: 10px 16px 14px 16px !important;
+  flex-direction: column !important;
+  position: relative !important;
+}
+
+#viewerPart2PoemArea.dtp-box-wrapper {
+  border: 1.5px dashed rgba(220, 53, 69, 0.75) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-radius: 4px !important;
+}
+
+/* ==========================================================================
+   [StoryBook DTP Core v3.0] 모듈형 2-Layer 대칭형 조판 엔진 스타일
+   ========================================================================== */
+
+/* 1. 대칭형 페이지 레이아웃 */
+.dtp-spread-container {
+  display: flex !important;
+  position: relative !important;
+  width: 100% !important;
+  max-width: 980px !important;
+  aspect-ratio: 1.414 / 1 !important;
+  min-height: 580px !important;
+  margin: 0 auto !important;
+  background: #FCF9F2 !important;
+  box-shadow: 0 10px 30px rgba(80, 50, 20, 0.15) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  transition: transform 0.3s ease !important;
+}
+
+.dtp-spread-container.real-scale-100 {
+  transform: scale(1.15) !important;
+  transform-origin: center top !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dtp-page {
+  flex: 1 !important;
+  height: 100% !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #FCF9F2 !important;
+}
+
+.dtp-page-left {
+  border-right: 1px solid #E5D8C5 !important;
+}
+
+.dtp-page-right {
+  border-left: 1px solid #F0E6D8 !important;
+}
+
+/* 2. 상단 페이지 헤더 */
+.dtp-page-header {
+  height: 38px !important;
+  background: rgba(247, 241, 232, 0.95) !important;
+  border-bottom: 1px solid #E8DDD0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 12px !important;
+  z-index: 20 !important;
+  gap: 8px !important;
+}
+
+.dtp-header-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+.dtp-page-badge {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: #7C4A27 !important;
+  background: #EFE4D6 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+}
+
+.dtp-select {
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  color: #4A3319 !important;
+  background: #FFF !important;
+  border: 1px solid #D5C2B0 !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+.dtp-select-role {
+  border-color: #8C3B14 !important;
+  color: #8C3B14 !important;
+  font-weight: 700 !important;
+}
+
+.btn-dtp-art {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  background: #FFF !important;
+  border: 1px solid #D5C2B0 !important;
+  color: #6B4226 !important;
+  border-radius: 4px !important;
+  padding: 2px 7px !important;
+  cursor: pointer !important;
+}
+.btn-dtp-art:hover {
+  background: #F5EBE1 !important;
+}
+
+/* 3. Layer 1: 그림 레이어 */
+.dtp-layer-image {
+  position: absolute !important;
+  top: 38px !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+.dtp-art-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.dtp-art-placeholder {
+  display: flex;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #A38F7E !important;
+  font-size: 0.85rem !important;
+  gap: 8px !important;
+  background: #F7F1E8 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.dtp-art-placeholder .placeholder-icon {
+  font-size: 2.2rem !important;
+}
+
+.dtp-blank-content {
+  display: flex;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #8C6D58 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #FAF6EE !important;
+  gap: 10px !important;
+}
+.dtp-blank-content .blank-symbol {
+  font-size: 2rem !important;
+}
+.dtp-blank-content .blank-text {
+  font-size: 0.88rem !important;
+  font-family: var(--font-serif) !important;
+}
+
+/* 4. Layer 2: 글 레이어 & 한지 패널 */
+.dtp-layer-text {
+  position: absolute !important;
+  top: 38px !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+}
+
+.dtp-hanji-panel {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.dtp-safe-boundary {
+  position: absolute !important;
+  top: 24px !important;
+  bottom: 36px !important;
+  left: 28px !important;
+  right: 28px !important;
+  z-index: 6 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* 빨간색 가이드 박스 */
+.dtp-guide-box {
+  position: relative !important;
+  pointer-events: auto !important;
+  border: 1.5px dashed #E53E3E !important;
+  background: rgba(254, 242, 242, 0.15) !important;
+  border-radius: 4px !important;
+  margin-bottom: 12px !important;
+  transition: border-color 0.2s ease, background 0.2s ease !important;
+}
+
+.dtp-guide-box.guides-hidden {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.dtp-guide-box.guides-hidden .dtp-guide-label {
+  display: none !important;
+}
+
+.dtp-guide-label {
+  position: absolute !important;
+  top: -10px !important;
+  left: 8px !important;
+  background: #E53E3E !important;
+  color: #FFF !important;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 3px !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* 제목/지은이 상자 */
+.dtp-box-title {
+  padding: 8px 12px 6px 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.dtp-title-text {
+  font-family: var(--font-serif);
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  color: #2D1A0E !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+  outline: none !important;
+}
+
+.dtp-author-text {
+  font-family: var(--font-serif);
+  font-size: 0.85rem !important;
+  color: #7A583A !important;
+  text-align: right !important;
+  margin-top: 4px !important;
+  outline: none !important;
+}
+
+.dtp-title-divider {
+  width: 100% !important;
+  height: 1px !important;
+  background: #D8C7B4 !important;
+  margin-top: 6px !important;
+}
+
+/* 본문 상자 */
+.dtp-box-body {
+  flex: 1 !important;
+  padding: 14px 12px !important;
+  display: flex;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  margin-bottom: 0 !important;
+}
+
+.dtp-body-text {
+  width: 100% !important;
+  height: 100% !important;
+  font-family: var(--font-serif);
+  color: #2C2219 !important;
+  word-break: keep-all !important;
+  outline: none !important;
+  overflow: hidden !important;
+  cursor: text !important;
+  user-select: text !important;
+}
+
+.dtp-body-text .poem-line {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: inherit !important;
+  word-break: keep-all !important;
+}
+
+/* 글자색 순백색 모드 */
+.dtp-layer-text.text-color-light .dtp-title-text,
+.dtp-layer-text.text-color-light .dtp-body-text {
+  color: #FFFFFF !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important;
+}
+.dtp-layer-text.text-color-light .dtp-author-text {
+  color: #E2E8F0 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important;
+}
+
+/* 5. 초과 알림 배지 & 면번호 */
+.dtp-overflow-badge {
+  position: absolute !important;
+  bottom: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: #DC2626 !important;
+  color: #FFF !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4) !important;
+  z-index: 30 !important;
+  animation: pulse 1.8s infinite !important;
+  white-space: nowrap !important;
+}
+
+.dtp-page-folio {
+  position: absolute !important;
+  bottom: 10px !important;
+  font-size: 0.76rem !important;
+  font-family: var(--font-serif) !important;
+  font-weight: 600 !important;
+  color: #8C6D58 !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+}
+.dtp-page-left .dtp-page-folio {
+  left: 28px !important;
+}
+.dtp-page-right .dtp-page-folio {
+  right: 28px !important;
+}
+
+/* 6. Undo/Redo & 한지 컨트롤 툴바 */
+.dtp-toolbar-hanji-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #FFF !important;
+  border: 1.5px solid #D5C2B0 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+}
+
+
+
+/* [StoryBook DTP Core v3.1] 숨김 속성 무조건 100% 보장 규칙 */
+.dtp-page [style*="display: none"],
+.dtp-page .dtp-guide-box[style*="display: none"],
+.dtp-page .dtp-layer-text[style*="display: none"],
+.dtp-page .dtp-layer-image[style*="display: none"],
+.dtp-page .dtp-art-image[style*="display: none"],
+.dtp-page .dtp-art-placeholder[style*="display: none"],
+.dtp-page .dtp-blank-content[style*="display: none"],
+.dtp-page .dtp-box-title[style*="display: none"],
+.dtp-page .dtp-box-body[style*="display: none"] {
+  display: none !important;
+}
+
+/* 그림 레이어와 글 레이어의 완벽한 z-index 및 포지셔닝 */
+.dtp-page {
+  position: relative !important;
+  overflow: hidden !important;
+}
+.dtp-layer-image {
+  position: absolute !important;
+  inset: 38px 0 0 0 !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  height: calc(100% - 38px) !important;
+}
+.dtp-art-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+.dtp-layer-text {
+  position: absolute !important;
+  inset: 38px 0 0 0 !important;
+  z-index: 5 !important;
+  width: 100% !important;
+  height: calc(100% - 38px) !important;
+}
+
+/* ========================================================
+   [StoryBook DTP Core v4.0] 박스 레이아웃 & 가이드 라벨 클리핑 완벽 보정
+   ======================================================== */
+.dtp-page .dtp-safe-boundary {
+  position: absolute !important;
+  top: 28px !important;
+  bottom: 34px !important;
+  left: 32px !important;
+  right: 32px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 14px !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+}
+
+.dtp-page .dtp-guide-box {
+  position: relative !important;
+  pointer-events: auto !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  border: 1.5px dashed #E53E3E !important;
+  background: rgba(254, 242, 242, 0.14) !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.dtp-page .dtp-guide-box.guides-hidden {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.dtp-page .dtp-guide-box.guides-hidden .dtp-guide-label {
+  display: none !important;
+}
+
+.dtp-page .dtp-guide-label {
+  position: absolute !important;
+  top: -11px !important;
+  left: 10px !important;
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  line-height: 1.2 !important;
+  z-index: 15 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+}
+
+.dtp-page .dtp-box-title {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 64px !important;
+  padding: 14px 14px 10px 14px !important;
+  margin: 0 !important;
+  display: block;
+}
+
+.dtp-page .dtp-box-body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  padding: 14px !important;
+  margin: 0;
+  display: flex;
+  flex-direction: column !important;
+}
+
+.dtp-page .dtp-body-text {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+
+/* ========================================================
+   [StoryBook DTP Core v4.4] 리사이즈 핸들 및 본문 시작점 일치
+   ======================================================== */
+.dtp-page .dtp-safe-boundary {
+  position: absolute !important;
+  top: 28px !important;
+  bottom: 34px !important;
+  left: 32px !important;
+  right: 32px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
+  overflow: visible !important;
+}
+
+/* 제목 상자가 없는 시 이어짐(continue) 면의 제목 플레이스홀더: 상단 높이 64px 완벽 유지 */
+.dtp-page .dtp-box-title.dtp-title-placeholder {
+  visibility: hidden !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  min-height: 64px !important;
+  height: 64px !important;
+  margin: 0 !important;
+  padding: 14px 14px 10px 14px !important;
+}
+
+.dtp-page .dtp-box-title.dtp-title-placeholder * {
+  display: none !important;
+}
+
+/* 본문 상자 기본 스타일 */
+.dtp-page .dtp-box-body {
+  position: relative !important;
+  max-height: 522px !important;
+  box-sizing: border-box !important;
+  transition: margin-top 0.05s ease;
+}
+
+/* 드래그 중일 때 본문 상자 */
+.dtp-page .dtp-box-body.is-resizing {
+  user-select: none !important;
+  transition: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* 리사이즈 드래그 핸들 (본문 상자 상단 & 하단) */
+.dtp-page .dtp-guide-box .dtp-resize-handle {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: ns-resize !important;
+  z-index: 50 !important;
+  pointer-events: auto !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-top {
+  top: -10px !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-bottom {
+  bottom: -10px !important;
+}
+
+/* 좌측 및 우측 리사이즈 핸들 (본문 폭 및 좌우 여백 조절) */
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-left,
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-right {
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 20px !important;
+  height: auto !important;
+  cursor: ew-resize !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-left {
+  left: -10px !important;
+  right: auto !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-right {
+  right: -10px !important;
+  left: auto !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-left .handle-bar-pill,
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-right .handle-bar-pill {
+  width: 4.5px !important;
+  height: 40px !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-left:hover .handle-label {
+  left: 24px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-right:hover .handle-label {
+  right: 24px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle .handle-bar-pill {
+  width: 44px !important;
+  height: 4.5px !important;
+  background: #C2410C !important;
+  border: 1px solid #9A3412 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+  transition: transform 0.15s, background-color 0.15s !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle:hover .handle-bar-pill,
+.dtp-page .dtp-box-body.is-resizing .dtp-resize-handle .handle-bar-pill {
+  transform: scale(1.18, 1.45) !important;
+  background: #2563EB !important;
+  border-color: #1D4ED8 !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle .handle-label {
+  display: none !important;
+  position: absolute !important;
+  background: #111827 !important;
+  color: #FFF !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
+  z-index: 60 !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle:hover .handle-label,
+.dtp-page .dtp-box-body.is-resizing .dtp-resize-handle .handle-label {
+  display: block !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-top .handle-label {
+  top: -26px !important;
+}
+
+.dtp-page .dtp-guide-box .dtp-resize-handle.handle-bottom .handle-label {
+  bottom: -26px !important;
+}
+
+/* 초과 배지는 하단 핸들과 겹치지 않도록 안전선 아래로 배치 */
+.dtp-page .dtp-overflow-badge {
+  position: absolute !important;
+  bottom: -28px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: #DC2626 !important;
+  color: #FFF !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 3px 12px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4) !important;
+  z-index: 40 !important;
+}
+
+/* 가이드선 껐을 때 핸들도 자동 숨김 */
+.dtp-page .dtp-guide-box.guides-hidden .dtp-resize-handle {
+  display: none !important;
+}
+
+/* 본문 줄 및 빈 줄 스타일 - 150% 줄간격 정확 준수 */
+.dtp-page .poem-line {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: inherit !important;
+}
+.dtp-page .poem-line.empty-line {
+  min-height: 1em;
+}
+
+
+/* ========================================================
+   [StoryBook DTP] 듀얼 그림 분할 레이아웃 스타일
+   ======================================================== */
+.dtp-img-layout-select {
+  font-size: 0.72rem !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+  border: 1px solid #D5C2B0 !important;
+  background: #FFFDF9 !important;
+  color: #553412 !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+}
+
+.dtp-layer-image.layout-split_vertical,
+.dtp-layer-image.layout-split_horizontal,
+.dtp-layer-image.layout-main_detail {
+  position: absolute !important;
+  inset: 38px 0 0 0 !important;
+  width: 100% !important;
+  height: calc(100% - 38px) !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.dtp-layer-image.layout-split_vertical .dtp-image-frame,
+.dtp-layer-image.layout-split_horizontal .dtp-image-frame,
+.dtp-layer-image.layout-main_detail .dtp-image-frame {
+  position: absolute !important;
+  box-sizing: border-box !important;
+}
+
+.dtp-image-frame {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
+  background: #F5EFEB !important;
+  border: 1.5px dashed #2563EB !important;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15) inset !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+}
+
+.dtp-image-frame img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.dtp-image-frame .frame-tag {
+  position: absolute !important;
+  top: 8px !important;
+  left: 8px !important;
+  background: rgba(30, 64, 175, 0.88) !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  color: #FFF !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 2px 7px !important;
+  border-radius: 4px !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  backdrop-filter: blur(2px) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+}
+
+.dtp-image-frame .btn-frame-change {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #643E19 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 4px !important;
+  border: 1px solid #D5C2B0 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  opacity: 0.9 !important;
+  transition: all 0.15s ease !important;
+  z-index: 10 !important;
+}
+
+.dtp-image-frame .btn-frame-change:hover {
+  background: #643E19 !important;
+  color: #FFF !important;
+  border-color: #643E19 !important;
+  opacity: 1 !important;
+}
+
+
+/* ==========================================================================
+   DTP Toolbox Styles (Auto-injected)
+   ========================================================================== */
+/* ==========================================================================
+   StoryBook Studio — DTP 편집 도구상자 (Canva 대체형 사이드 DTP 패널)
+   ========================================================================== */
+
+/* 1. 도구상자 + 2면 스프레드를 감싸는 작업 공간 래퍼 */
+.dtp-workspace-area {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 1560px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 2. 도구상자 메인 패널 (사이드바와 편집 페이지 사이) */
+.dtp-toolbox-panel {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  background: #FFFDF9;
+  border: 1.5px solid #E6DDD0;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(90, 60, 30, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  z-index: 40;
+  transition: width 0.28s ease, min-width 0.28s ease, transform 0.28s ease, opacity 0.28s ease;
+}
+
+/* 접힌 상태 (Collapsed) */
+.dtp-toolbox-panel.is-collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  background: #FAF6F0;
+  border-color: #E2D7C8;
+}
+
+.dtp-toolbox-panel.is-collapsed .dtp-toolbox-body,
+.dtp-toolbox-panel.is-collapsed .dtp-tab-bar,
+.dtp-toolbox-panel.is-collapsed .toolbox-title-text {
+  display: none !important;
+}
+
+.dtp-toolbox-panel.is-collapsed .toolbox-header {
+  padding: 12px 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dtp-toolbox-panel.is-collapsed .btn-toolbox-toggle {
+  transform: rotate(180deg);
+}
+
+/* 3. 도구상자 헤더 */
+.toolbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #F7F1E7;
+  border-bottom: 1px solid #E8DFD3;
+}
+
+.toolbox-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #4A3319;
+}
+
+.btn-toolbox-toggle {
+  background: #FFFFFF;
+  border: 1px solid #D5C5B2;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #643E19;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-toolbox-toggle:hover {
+  background: #EFE6D8;
+  border-color: #BFA58C;
+}
+
+/* 4. 도구상자 3대 탭 스위처 */
+.dtp-tab-bar {
+  display: flex;
+  background: #EFE9DE;
+  border-bottom: 1px solid #E0D4C3;
+  padding: 4px 6px 0 6px;
+  gap: 4px;
+}
+
+.dtp-tab-btn {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7A6247;
+  background: transparent;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.dtp-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #4A3319;
+}
+
+.dtp-tab-btn.active {
+  background: #FFFDF9;
+  color: #8C3A14;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+  font-weight: 800;
+  border-top: 2px solid #C85A2A;
+}
+
+/* 5. 도구상자 본문 (스크롤 영역) */
+.dtp-toolbox-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - 220px);
+}
+
+.dtp-toolbox-body::-webkit-scrollbar {
+  width: 5px;
+}
+.dtp-toolbox-body::-webkit-scrollbar-thumb {
+  background: #D8CBB9;
+  border-radius: 4px;
+}
+
+.dtp-tool-group {
+  background: #FFFFFF;
+  border: 1px solid #EFE6D8;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dtp-tool-group-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #6E5338;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed #EDE3D4;
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+}
+
+/* 6. 정렬 버튼 그룹 (4종: 왼쪽, 가운데, 오른쪽, 양끝 배분) */
+.align-btn-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.btn-align {
+  background: #FBF8F3;
+  border: 1.5px solid #D8C7B2;
+  border-radius: 6px;
+  padding: 6px 2px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #553B20;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+
+.btn-align:hover {
+  background: #F3E9DA;
+  border-color: #BFA58C;
+}
+
+.btn-align.active {
+  background: #8B3A1A;
+  border-color: #6E2D13;
+  color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(139, 58, 26, 0.3);
+}
+
+/* 7. 미니 슬라이더 및 입력 콤포넌트 */
+.tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.tool-label {
+  font-weight: 700;
+  color: #634C33;
+  white-space: nowrap;
+}
+
+.tool-val-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #8C3A14;
+  background: #FFF3EB;
+  border: 1px solid #FCD9C6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* 8. 그림 분할 레이아웃 선택 카드 (그림 탭) */
+.img-layout-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.layout-card {
+  background: #FAF6F0;
+  border: 1.5px solid #E2D7C8;
+  border-radius: 6px;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.layout-card:hover {
+  background: #F3ECE1;
+  border-color: #BFA58C;
+}
+
+.layout-card.active {
+  background: #FEF6F0;
+  border-color: #C85A2A;
+  color: #8C3A14;
+  font-weight: 800;
+  box-shadow: 0 0 0 1.5px rgba(200, 90, 42, 0.3);
+}
+
+.layout-card-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.layout-card-name {
+  font-size: 0.72rem;
+}
+
+/* --- DTP Toolbox Tabs (탭 분리 제어) --- */
+.dtp-tab-content {
+  display: none !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.dtp-tab-content.active {
+  display: flex !important;
+}
+
+.dtp-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #FFFFFF;
+  border: 1px solid #EFE6D8;
+  border-radius: 7px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dtp-row-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #553412;
+  min-width: 62px;
+  flex-shrink: 0;
+  letter-spacing: -0.2px;
+}
+
+.dtp-row-control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.dtp-select-field {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4A3319;
+  background: #FAF6F0;
+  border: 1px solid #D5C5B2;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.dtp-select-field:focus {
+  border-color: #8B3A1A;
+  background: #FFF;
+}
+
+.btn-control-sub {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #D5C5B2;
+  border-radius: 5px;
+  background: #FDFBF7;
+  color: #553412;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-control-sub:hover {
+  background: #F3ECE1;
+  border-color: #BFA58C;
+}
+
+.btn-control-sub.active {
+  background: #8B3A1A;
+  border-color: #6E2D13;
+  color: #FFFFFF;
+}
+
+/* --- Canva풍 AI 어시스턴트 스타일 (Magic Studio 컨셉) --- */
+.dtp-canva-ai-container {
+  display: flex;
+  flex-direction: column;
+  height: 480px;
+  background: #FAF9F6;
+  border: 1px solid #E5E1D8;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.canva-ai-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #EFEAE2;
+}
+
+.canva-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: #4B5563;
+  background: #F3F4F6;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canva-context-chip .chip-arrow {
+  color: #8B5CF6;
+  font-weight: 800;
+}
+
+.btn-canva-reset {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-canva-reset:hover {
+  background: #EDE9FE;
+  color: #7C3AED;
+}
+
+.canva-ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.8rem;
+}
+
+.canva-user-bubble {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #E0F2FE 0%, #EDE9FE 100%);
+  color: #1E1B4B;
+  border: 1px solid #C7D2FE;
+  border-radius: 16px 16px 4px 16px;
+  padding: 9px 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  max-width: 86%;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.08);
+  word-break: break-word;
+}
+
+.canva-ai-bubble {
+  align-self: flex-start;
+  background: #FFFFFF;
+  color: #1F2937;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+  font-size: 0.79rem;
+  line-height: 1.55;
+  max-width: 92%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  word-break: break-word;
+}
+
+.canva-ai-bubble strong {
+  color: #111827;
+}
+
+.canva-ai-bubble code {
+  background: #F3F4F6;
+  color: #4B5563;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-family: monospace;
+}
+
+.canva-quick-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 10px;
+  background: #FAF9F6;
+  border-top: 1px solid #EFEAE2;
+  scrollbar-width: none;
+}
+
+.canva-quick-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.canva-chip-btn {
+  background: #FFFFFF;
+  border: 1px solid #DDD6FE;
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6D28D9;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.canva-chip-btn:hover {
+  background: #EDE9FE;
+  border-color: #8B5CF6;
+}
+
+.canva-input-wrapper {
+  padding: 8px 10px 10px 10px;
+  background: #FFFFFF;
+  border-top: 1px solid #EFEAE2;
+}
+
+.canva-prompt-card {
+  background: #FFFFFF;
+  border: 1.5px solid #DDD6FE;
+  border-radius: 16px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.canva-prompt-card:focus-within {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.canva-prompt-input {
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #1F2937;
+  font-family: inherit;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+}
+
+.canva-prompt-input::placeholder {
+  color: #9CA3AF;
+  font-size: 0.78rem;
+}
+
+.canva-card-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.canva-tool-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.05rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.canva-tool-btn:hover {
+  color: #7C3AED;
+  background: #EDE9FE;
+}
+
+.btn-canva-send {
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-canva-send:hover {
+  background: #5B21B6;
+}
+
+
+/* --- [DTP 엔진] 정렬 4종 및 서체 상속 강제 규칙 --- */
+.dtp-body-content,
+.dtp-body-text {
+  transition: text-align 0.15s ease;
+}
+
+.dtp-body-content .poem-line,
+.dtp-body-text .poem-line {
+  font-family: inherit !important;
+}
+
+/* 1) 양끝 배분 정렬 (시의 짧은 구절도 지면 좌우에 고르게 배분) */
+.text-align-justify,
+.text-align-justify .poem-line {
+  text-align: justify !important;
+  text-align-last: justify !important;
+  text-justify: inter-word !important;
+}
+
+/* 2) 가운데 정렬 */
+.text-align-center,
+.text-align-center .poem-line {
+  text-align: center !important;
+  text-align-last: center !important;
+}
+
+/* 3) 오른쪽 정렬 */
+.text-align-right,
+.text-align-right .poem-line {
+  text-align: right !important;
+  text-align-last: right !important;
+}
+
+/* 4) 왼쪽 정렬 */
+.text-align-left,
+.text-align-left .poem-line {
+  text-align: left !important;
+  text-align-last: left !important;
+}
+
+
+/* --- [DTP 이미지 프레임 가이드라인, 선택 하이라이트 & 드래그 패닝] --- */
+.dtp-image-frame {
+  position: relative;
+  overflow: hidden;
+  cursor: grab !important;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow 0.15s ease, outline 0.15s ease;
+}
+
+.dtp-image-frame img,
+.dtp-layer-image > img {
+  pointer-events: none; /* 마우스 이벤트가 부모 프레임으로 가도록 */
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.dtp-layer-image {
+  cursor: grab;
+}
+
+.dtp-image-frame.is-panning,
+.dtp-layer-image.is-panning {
+  cursor: grabbing !important;
+}
+
+/* 1) 선택된 프레임 하이라이트 (시원한 코발트 블루 또렷한 테두리) */
+.dtp-image-frame.is-selected {
+  outline: 2.5px solid #2563EB !important;
+  outline-offset: -2.5px;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.5) !important;
+  z-index: 5;
+}
+
+/* 2) 가이드선 켬 상태일 때 그림틀 점선 테두리 (파랑 가이드선) */
+.guides-active .dtp-image-frame,
+.guides-active .dtp-layer-image {
+  border: 1.5px dashed #2563EB !important;
+}
+
+/* ==========================================================================
+   [샌드위치 분할 & 국소 스마트 한지 필터 & 그림틀 리사이즈 핸들]
+   ========================================================================== */
+
+/* 1. 상·하 샌드위치 레이아웃 (상단 그림 + 중앙 글 여백 + 하단 그림) */
+.dtp-layer-image.layout-split_sandwich {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  gap: 0 !important;
+}
+
+.dtp-layer-image.layout-split_sandwich .dtp-image-frame[data-sub-frame="1"] {
+  flex: none !important;
+  width: 100% !important;
+  height: 32% !important;
+  min-height: 40px !important;
+  max-height: 45% !important;
+}
+
+.dtp-layer-image.layout-split_sandwich .dtp-image-frame[data-sub-frame="2"] {
+  flex: none !important;
+  width: 100% !important;
+  height: 32% !important;
+  min-height: 40px !important;
+  max-height: 45% !important;
+}
+
+/* 2. 그림틀(프레임) 리사이즈 핸들 */
+/* 그림틀(프레임) 4변 리사이즈 핸들 (글상자와 100% 동일한 핸들 규격 및 overflow 보장) */
+.dtp-image-frame {
+  position: relative !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  cursor: grab !important;
+  pointer-events: auto !important;
+  transition: width 0.05s ease, height 0.05s ease, margin 0.05s ease !important;
+}
+
+.dtp-image-frame.is-panning {
+  cursor: grabbing !important;
+}
+
+.dtp-image-frame.is-resizing {
+  transition: none !important;
+  user-select: none !important;
+}
+
+/* 창문 마스크 레이어 (overflow: hidden으로 내부 그림을 깔끔하게 크롭, 핸들은 바깥에 노출) */
+.dtp-frame-crop {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
+  pointer-events: auto !important;
+  cursor: grab !important;
+  background: #F5EFEB !important;
+}
+
+.dtp-image-frame {
+  cursor: grab !important;
+}
+
+.dtp-image-frame.is-panning,
+.dtp-image-frame.is-panning .dtp-frame-crop {
+  cursor: grabbing !important;
+}
+
+.dtp-frame-crop img,
+.dtp-image-frame img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 6px !important;
+  display: block !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  transition: filter 0.2s ease !important;
+  transform-origin: center center !important;
+}
+
+.dtp-frame-handle {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 65 !important;
+  pointer-events: auto !important;
+}
+
+.dtp-frame-handle.handle-top {
+  top: -10px !important;
+  bottom: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  width: auto !important;
+  cursor: ns-resize !important;
+}
+
+.dtp-frame-handle.handle-bottom {
+  bottom: -10px !important;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  width: auto !important;
+  cursor: ns-resize !important;
+}
+
+.dtp-frame-handle.handle-left {
+  left: -10px !important;
+  right: auto !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 20px !important;
+  height: auto !important;
+  cursor: ew-resize !important;
+}
+
+.dtp-frame-handle.handle-right {
+  right: -10px !important;
+  left: auto !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 20px !important;
+  height: auto !important;
+  cursor: ew-resize !important;
+}
+
+.dtp-frame-handle.handle-top .handle-bar-pill,
+.dtp-frame-handle.handle-bottom .handle-bar-pill {
+  width: 44px !important;
+  height: 4.5px !important;
+  background: #2563EB !important;
+  border: 1px solid #1D4ED8 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4) !important;
+  transition: transform 0.15s, background-color 0.15s !important;
+}
+
+.dtp-frame-handle.handle-left .handle-bar-pill,
+.dtp-frame-handle.handle-right .handle-bar-pill {
+  width: 4.5px !important;
+  height: 40px !important;
+  background: #2563EB !important;
+  border: 1px solid #1D4ED8 !important;
+  border-radius: 2.5px !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.4) !important;
+  transition: transform 0.15s, background-color 0.15s !important;
+}
+
+.dtp-frame-handle:hover .handle-bar-pill,
+.dtp-image-frame.is-resizing .dtp-frame-handle .handle-bar-pill {
+  transform: scale(1.18, 1.45) !important;
+  background: #60A5FA !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.6) !important;
+}
+
+.dtp-frame-handle .handle-label {
+  display: none !important;
+  position: absolute !important;
+  background: #1E3A8A !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  color: #FFF !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
+  z-index: 40 !important;
+}
+
+.dtp-frame-handle:hover .handle-label,
+.dtp-image-frame.is-resizing .dtp-frame-handle .handle-label {
+  display: block !important;
+}
+
+.dtp-frame-handle.handle-bottom .handle-label {
+  bottom: -22px !important;
+}
+
+.dtp-frame-handle.handle-top .handle-label {
+  top: -22px !important;
+}
+
+/* 3. 스마트 국소 한지 패널 스타일 (글상자/제목상자 배경) */
+.dtp-box-body.hanji-backdrop,
+.dtp-box-title.hanji-backdrop {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+
+/* --- [완벽 명도 대비 스마트 가독성 스타일] --- */
+.poem-line {
+  position: relative !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 글자 텍스트 영역: 오직 글자가 있는 너비만큼만 배경/틴트 적용 */
+.poem-line .line-text {
+  display: inline !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Case 1: 그림 위 먹색 글자 -> 배경이 뽀얀 순백 한지빛으로 밝아져 먹색 글자가 칼같이 선명하게 대비됨! */
+.poem-line.line-contrast-dark .line-text {
+  color: #1A120B !important;
+  background-color: var(--line-hanji-bg, rgba(255, 254, 250, 0.88)) !important;
+  box-shadow: var(--line-hanji-shadow, 0 0 12px 6px rgba(255, 254, 250, 0.88)) !important;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Case 2: 그림 위 백색 글자 -> 배경이 차분한 반투명 먹빛으로 어두워져 백색 글자가 눈부시게 대비됨! */
+.poem-line.line-contrast-light .line-text {
+  color: #FFFFFF !important;
+  background-color: var(--line-dark-tint-bg, rgba(24, 18, 14, 0.62)) !important;
+  box-shadow: var(--line-dark-tint-shadow, 0 0 12px 6px rgba(24, 18, 14, 0.62)) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Case 3: 흰 종이 위 기본 먹색 글자 -> 배경 틴트 없이 맑고 단아한 정통 종이 질감 */
+.poem-line.line-over-paper .line-text {
+  color: #2D241E !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* 수동 조작 행 호버 가이드 */
+.poem-line:hover .line-text {
+  outline: 1px dashed rgba(139, 58, 26, 0.35);
+}
+
+/* 툴박스 글자색 모드 활성 칩 */
+.btn-tb-colormode.is-active,
+.btn-line-colormode.is-active {
+  background: #8C3A14 !important;
+  color: #FFFFFF !important;
+  border-color: #632508 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(140, 58, 20, 0.35) !important;
+}
+
+/* 포커스/선택된 본문 행 가이드 */
+.poem-line.is-focused-line {
+  background-color: rgba(140, 58, 20, 0.08) !important;
+  border-left: 2.5px solid #8C3A14 !important;
+  padding-left: 5px !important;
+  border-radius: 3px !important;
+}
+
+
+/* ========================================================
+   [Phase 1] 선택 영역(Selection) 인라인 서식 툴바 & 칩 스타일
+   ======================================================== */
+.dtp-floating-toolbar {
+  position: absolute;
+  z-index: 1000;
+  display: none;
+  background: #2D241E;
+  color: #FFFFFF;
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  align-items: center;
+  gap: 3px;
+  user-select: none;
+  pointer-events: auto;
+  transition: opacity 0.15s ease;
+  transform: translate(-50%, -100%) translateY(-8px);
+}
+
+.dtp-floating-toolbar::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: #2D241E transparent transparent transparent;
+}
+
+.dtp-floating-btn {
+  background: transparent;
+  border: none;
+  color: #E2D7CE;
+  padding: 4px 7px;
+  font-size: 0.78rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dtp-floating-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.dtp-floating-btn.is-active {
+  background: #C05621 !important;
+  color: #FFFFFF !important;
+}
+
+.dtp-floating-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 2px;
+}
+
+.dtp-format-btn-group {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.dtp-btn-format {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #D6C7B7;
+  background: #FFFDF9;
+  color: #4A3B32;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dtp-btn-format:hover {
+  background: #F3EBE1;
+  border-color: #B8A896;
+}
+
+.dtp-btn-format.is-active {
+  background: #8C3A14 !important;
+  color: #FFFFFF !important;
+  border-color: #702D0E !important;
+}
+
+.dtp-color-swatch-group {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.dtp-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #D6C7B7;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dtp-color-swatch:hover {
+  transform: scale(1.18);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+}
+
+/* ==============================================================================
+   [StoryBook DTP] 부속물 완성형 표준 템플릿 & 인라인 편집 스타일
+   ============================================================================== */
+.matter-page-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.matter-editable {
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: text;
+  word-break: keep-all;
+}
+
+.matter-editable:hover {
+  outline: 1.5px dashed rgba(196, 155, 110, 0.6);
+  border-radius: 4px;
+}
+
+.matter-editable:focus {
+  outline: 2px solid #C89B6D !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(200, 155, 109, 0.2);
+}
+
+/* 테마별 스타일 */
+.matter-theme-lyrical {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', 'KoPub Batang', 'Batang', serif;
+}
+
+.matter-theme-classic {
+  font-family: 'KoPub Batang', 'Batang', serif;
+  background-color: #FBF9F5 !important;
+}
+
+.matter-theme-modern {
+  font-family: 'Pretendard', sans-serif;
+}
+
+
+/* ========================================================
+   [StoryBook DTP Core] 글상자 vs 그림틀 충돌 방지 및 탭 모드 레이어 분리
+   ======================================================== */
+
+/* 전면 그림 페이지는 텍스트가 없으므로 항상 그림 레이어 최상단 */
+.dtp-page[data-usage="image"] .dtp-layer-image {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+.dtp-page[data-usage="image"] .dtp-image-frame {
+  pointer-events: auto !important;
+}
+.dtp-page[data-usage="image"] .dtp-frame-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 70 !important;
+}
+.dtp-page[data-usage="image"] .btn-frame-change {
+  display: inline-flex !important;
+  pointer-events: auto !important;
+  z-index: 70 !important;
+}
+
+/* 1. 그림 편집 탭(tab-mode-image)이 활성화되었을 때 */
+.book-spread.tab-mode-image .dtp-layer-image {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+.book-spread.tab-mode-image .dtp-image-frame {
+  pointer-events: auto !important;
+}
+.book-spread.tab-mode-image .dtp-frame-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 75 !important;
+}
+.book-spread.tab-mode-image .btn-frame-change {
+  display: inline-flex !important;
+  pointer-events: auto !important;
+  z-index: 75 !important;
+}
+/* 그림 편집 중에는 글상자가 마우스 이벤트를 가로채지 못하도록 비활성화 */
+.book-spread.tab-mode-image .dtp-layer-text {
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+.book-spread.tab-mode-image .dtp-layer-text .dtp-safe-boundary,
+.book-spread.tab-mode-image .dtp-layer-text .dtp-guide-box {
+  pointer-events: none !important;
+}
+.book-spread.tab-mode-image .dtp-layer-text .dtp-resize-handle {
+  display: none !important;
+}
+
+/* 2. 텍스트 조판 탭(tab-mode-text)이 활성화되었을 때 */
+.book-spread.tab-mode-text .dtp-layer-text {
+  z-index: 25 !important;
+  pointer-events: none !important;
+}
+.book-spread.tab-mode-text .dtp-layer-text .dtp-safe-boundary {
+  pointer-events: none !important;
+}
+.book-spread.tab-mode-text .dtp-layer-text .dtp-guide-box {
+  pointer-events: auto !important;
+}
+.book-spread.tab-mode-text .dtp-layer-text .dtp-resize-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 70 !important;
+}
+.book-spread.tab-mode-text .dtp-layer-image {
+  z-index: 5 !important;
+  pointer-events: auto !important;
+}
+/* 텍스트 모드에서 그림+글 페이지의 기본 그림 조절 핸들은 숨김 */
+.book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-frame-handle {
+  display: none !important;
+}
+/* 단, 선택되었거나 마우스가 올라간 그림틀은 즉시 핸들을 표시하여 조절화살표 및 리사이즈 허용 */
+.book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame.is-selected .dtp-frame-handle,
+.book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame:hover .dtp-frame-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 75 !important;
+}
+.book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame:hover,
+.book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame.is-selected {
+  pointer-events: auto !important;
+  z-index: 30 !important;
+}
+/* 단, 텍스트 모드라도 전면 그림 면은 그림 레이어 및 핸들이 최상단 */
+.book-spread.tab-mode-text .dtp-page[data-usage="image"] .dtp-layer-image {
+  z-index: 28 !important;
+  pointer-events: auto !important;
+}
+.book-spread.tab-mode-text .dtp-page[data-usage="image"] .dtp-frame-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 75 !important;
+}
+
+/* 그림틀 통째 위치 이동 핸들 바 (컴팩트 미니 ✥ 버튼) */
+.dtp-frame-move-bar {
+  position: absolute !important;
+  top: 6px !important;
+  left: 6px !important;
+  z-index: 95 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  background: rgba(29, 78, 216, 0.92) !important;
+  color: #FFFFFF !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  border-radius: 4px !important;
+  cursor: move !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+}
+
+.dtp-frame-move-bar:hover {
+  background: #1E40AF !important;
+  transform: scale(1.06) !important;
+}
+
+.dtp-frame-move-bar .move-icon {
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+}
+
+/* 선택된 그림틀은 텍스트 모드에서도 항상 위로 노출되고 이동 바와 핸들이 선명하게 표시됨 */
+.book-spread .dtp-image-frame.is-selected {
+  z-index: 40 !important;
+  pointer-events: auto !important;
+}
+.book-spread .dtp-image-frame.is-selected .dtp-frame-move-bar {
+  display: inline-flex !important;
+  pointer-events: auto !important;
+  z-index: 99 !important;
+}
+.book-spread .dtp-image-frame.is-selected .dtp-frame-handle {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 85 !important;
+}
+
+/* 글상자 통째 위치 이동 핸들 바 (상단선 바깥에 밀착한 미니 ✥ 버튼) */
+.dtp-box-move-bar {
+  position: absolute !important;
+  top: -11px !important;
+  left: 8px !important;
+  z-index: 80 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  padding: 0 !important;
+  background: #C53030 !important;
+  color: #FFFFFF !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  border-radius: 4px !important;
+  cursor: move !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+}
+
+/* 본문 글상자 텍스트 라벨 위치를 이동 버튼 옆(left: 36px)으로 이동하여 겹침 방지 */
+.dtp-page .dtp-guide-label.label-body,
+.dtp-guide-box .dtp-guide-label.label-body {
+  left: 36px !important;
+  top: -11px !important;
+}
+
+.dtp-box-move-bar:hover {
+  background: #9B2C2C !important;
+  transform: scale(1.05) !important;
+}
+
+.dtp-box-move-bar .move-icon {
+  font-size: 0.8rem !important;
+  line-height: 1 !important;
+}
+
+.dtp-guide-box.is-moving-box {
+  box-shadow: 0 0 0 2.5px #E53E3E, 0 8px 24px rgba(229, 62, 62, 0.3) !important;
+  transition: none !important;
+}

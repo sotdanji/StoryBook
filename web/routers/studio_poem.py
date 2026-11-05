@@ -22,24 +22,11 @@ try:
 except ImportError:
     genai = None
 
-from core.config import (
-    BASE_DIR, IMAGES_DIR, TARGET_POEMS_COUNT, GEMINI_API_KEY, GEMINI_MODEL, DEFAULT_ART_STYLE, CANVA_CSV_FILE, PAPER_TYPE,
-    save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
-)
-from core.auth_manager import auth_manager
-from core.manuscript import ManuscriptManager, PoemWork
-from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
-from core.publishing_copier import publishing_copier
-from core.book_spec import calculate_spine_and_cover, inspect_images
-from core.pdf_builder import build_pdf_book
-from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
-from core.image_optimizer import ensure_300dpi_image
+from core.config import GEMINI_API_KEY
+from core.manuscript import PoemWork
+from core.project_manager import project_manager
+from core.csv_builder import build_canva_csv
 from core.poetic_engine import poetic_engine
-from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
-from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
-from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
-from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
 
 WEB_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = WEB_DIR / "templates"
@@ -341,7 +328,19 @@ async def save_work(req: SaveWorkRequest):
         chapter=old_work.chapter if old_work else "",
         part2_mode=old_work.part2_mode if old_work else "motif_symbol",
         image_file_2=old_work.image_file_2 if old_work else "",
-        layout_config=old_work.layout_config if old_work else None
+        layout_config=(
+            {
+                **old_work.layout_config,
+                "pages": [
+                    {k: v for k, v in p.items() if k != "custom_html"}
+                    if isinstance(p, dict) and (old_work.poem_body or "").strip() != (req.poem_body or "").strip()
+                    else p
+                    for p in old_work.layout_config.get("pages", [])
+                ]
+            }
+            if (old_work and isinstance(old_work.layout_config, dict))
+            else (old_work.layout_config if old_work else None)
+        )
     )
     mgr.save_work(work)
 
@@ -358,9 +357,14 @@ async def save_work(req: SaveWorkRequest):
     except Exception:
         pass
 
-    # CSV도 자동 동기화 갱신
+    # CSV 및 갤러리 HTML도 자동 동기화 갱신
     try:
         build_canva_csv()
+    except Exception:
+        pass
+    try:
+        from core.gallery_builder import sync_project_gallery_html
+        sync_project_gallery_html()
     except Exception:
         pass
 
@@ -373,6 +377,15 @@ async def save_work_layout_endpoint(req: SaveLayoutRequest):
     success = mgr.update_work_layout(req.episode_no, req.layout_mode, req.part2_mode, req.image_file_2)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
+    try:
+        build_canva_csv()
+    except Exception:
+        pass
+    try:
+        from core.gallery_builder import sync_project_gallery_html
+        sync_project_gallery_html()
+    except Exception:
+        pass
     return {
         "success": True,
         "episode_no": req.episode_no,
@@ -388,6 +401,15 @@ async def save_work_layout_config_endpoint(req: SaveLayoutConfigRequest):
     success = mgr.update_work_layout_config(req.episode_no, req.layout_config, title=req.title, poem_body=req.poem_body, status=req.status)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
+    try:
+        build_canva_csv()
+    except Exception:
+        pass
+    try:
+        from core.gallery_builder import sync_project_gallery_html
+        sync_project_gallery_html()
+    except Exception:
+        pass
     return {
         "success": True,
         "message": f"'{req.episode_no}'의 조판 설정이 성공적으로 저장되었습니다.",
@@ -427,9 +449,14 @@ async def delete_work(req: DeleteWorkRequest):
     if not success:
         raise HTTPException(status_code=404, detail=f"[{req.episode_no}] 작품을 찾을 수 없습니다.")
 
-    # CSV도 자동 동기화 갱신
+    # CSV 및 갤러리 HTML도 자동 동기화 갱신
     try:
         build_canva_csv()
+    except Exception:
+        pass
+    try:
+        from core.gallery_builder import sync_project_gallery_html
+        sync_project_gallery_html()
     except Exception:
         pass
 
@@ -441,9 +468,14 @@ async def reorder_works_endpoint(req: ReorderWorksRequest):
     items_dict = [it.dict() for it in req.items]
     works = mgr.reorder_works(items_dict, auto_renumber=req.auto_renumber)
 
-    # CSV도 자동 동기화 갱신
+    # CSV 및 갤러리 HTML도 자동 동기화 갱신
     try:
         build_canva_csv()
+    except Exception:
+        pass
+    try:
+        from core.gallery_builder import sync_project_gallery_html
+        sync_project_gallery_html()
     except Exception:
         pass
 
@@ -679,34 +711,3 @@ async def import_bulk_manuscript(req: BulkImportRequest):
         "imported_count": len(parsed_items),
         "message": f"총 {len(parsed_items)}편의 완성 원고가 성공적으로 등록되었습니다!"
     }
-
-
-
-class OverlayTextRequest(BaseModel):
-    episode_no: Union[int, str]
-    page_key: str
-    text: str
-
-@router.post("/api/poem/overlay_text")
-async def save_overlay_text_endpoint(req: OverlayTextRequest):
-    """전면그림+글 모드 등에서 사용자가 직접 입력한 오버레이 텍스트 저장"""
-    try:
-        mgr = project_manager.get_active_manuscript_manager()
-        works = mgr.load_works()
-        ep_no_str = str(req.episode_no).replace("제", "").replace("화", "").strip()
-        ep_no = int(ep_no_str) if ep_no_str.isdigit() else 1
-
-        target = None
-        for w in works:
-            if w.episode_no == ep_no:
-                target = w
-                break
-        if target:
-            if not hasattr(target, "overlay_texts") or not isinstance(target.overlay_texts, dict):
-                target.overlay_texts = {}
-            target.overlay_texts[req.page_key] = req.text
-            mgr.save_works(works)
-            return {"success": True, "saved_key": req.page_key}
-        return {"success": False, "error": "Work not found"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}

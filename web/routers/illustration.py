@@ -22,24 +22,13 @@ try:
 except ImportError:
     genai = None
 
-from core.config import (
-    BASE_DIR, IMAGES_DIR, TARGET_POEMS_COUNT, GEMINI_API_KEY, GEMINI_MODEL, DEFAULT_ART_STYLE, CANVA_CSV_FILE, PAPER_TYPE,
-    save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
-)
-from core.auth_manager import auth_manager
-from core.manuscript import ManuscriptManager, PoemWork
-from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
-from core.publishing_copier import publishing_copier
-from core.book_spec import calculate_spine_and_cover, inspect_images
-from core.pdf_builder import build_pdf_book
-from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
+from core.config import GEMINI_API_KEY
+from core.project_manager import project_manager
+from core.csv_builder import build_canva_csv
+from core.book_spec import inspect_images
 from core.image_optimizer import ensure_300dpi_image
 from core.poetic_engine import poetic_engine
-from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
-from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
-from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
-from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
+from core.colab_image_builder import build_sdxl_image_notebook_dict
 
 WEB_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = WEB_DIR / "templates"
@@ -89,9 +78,13 @@ class SelectImageCandidateRequest(BaseModel):
     candidate_filename: str
     candidate_name: Optional[str] = "1안"
     target_slot: Optional[str] = "part1"  # "part1" (1부 본 삽화) or "part2" (2부 연작 삽화)
+    page_num: Optional[int] = None
+    frame_idx: Optional[int] = None
 
 class GeneratePart2ImageRequest(BaseModel):
     episode_no: str
+    title: Optional[str] = ""
+    memory_anchor: Optional[str] = ""
     prompt: Optional[str] = ""
     custom_guide: Optional[str] = ""
     reference_image: Optional[str] = None
@@ -232,23 +225,36 @@ def _clean_image_prompt(raw_prompt: str) -> str:
     p = re.sub(r"\s+", " ", p).strip(" ,.")
     return p
 
-def _generate_art_image_bytes(prompt_str: str, seed_val: int, art_style: str = "watercolor", ref_image_bytes: Optional[bytes] = None) -> bytes:
+def _generate_art_image_bytes(
+    prompt_str: str,
+    seed_val: int,
+    art_style: str = "watercolor",
+    ref_image_bytes: Optional[bytes] = None,
+    custom_guide: str = "",
+    title: str = "",
+    memory_anchor: str = "",
+    modular_dict: Optional[Dict[str, Any]] = None
+) -> bytes:
     """
-    [모듈러 블록 아키텍처 기반 지능형 하이브리드 이미지 생성 파이프라인]
-    공통 스킬(순백 10% 여백, 300 DPI, 글자 배제)은 단단히 유지하고,
-    화풍 전환 시 이전 화풍 수식어를 100% 도려내어 지정된 화풍 전용 스킬 블록으로 완벽 교체 결합합니다.
-    ref_image_bytes가 전달된 경우 기존 베이스 이미지를 유지한 채 지시 사항만 부분 수정(Image-to-Image)합니다.
-    ★ 1순위 (최우선 직행) : Google Gemini Image (API 키 연결 시 한국어/정서 1위 엔진 즉시 가동)
-    ★ 2순위 (무료 폴백) : Pollinations AI turbo/default (API 키 미등록자 또는 할당량 초과 시 오픈 서버)
-    ★ 3순위 (보조 폴백) : Pollinations AI flux
+    300 DPI 출판용 마스터 삽화를 비동기/고속으로 생성합니다.
+    ★ 1순위 (최우선 직행) : Google Gemini / Imagen 3 (API 키 연결 시 한국어/정서 1위 엔진 즉시 가동)
+    ★ 2순위 (무료 폴백) : Pollinations AI flux/default (API 키 미등록자 또는 할당량 초과 시 오픈 서버)
+    ★ 3순위 (보조 폴백) : Pollinations AI turbo
     """
     from core.skill_pack import build_modular_art_prompt
     import io
     from PIL import Image
-    
-    # [모듈러 블록 아키텍처 조립]
-    # 블록 A (선택된 화풍 전용) + 블록 B (오염 제거된 순수 정경) + 블록 C (공통 출판 규격)
-    modular = build_modular_art_prompt(prompt_str, art_style=art_style)
+
+    if modular_dict:
+        modular = modular_dict
+    else:
+        modular = build_modular_art_prompt(
+            prompt_str,
+            art_style=art_style,
+            custom_guide=custom_guide,
+            title=title,
+            memory_anchor=memory_anchor
+        )
     style_name_ko = modular["name_ko"]
     clean_scene = modular["clean_scene"]
     gemini_contents = modular["gemini_ko_content"]
@@ -256,17 +262,35 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int, art_style: str = "
     negative_en = modular["negative_en"]
 
     # ========================================================
-    # ★ 1순위 (최우선) : Google Gemini Image (API 키 연결 시)
-    # 지정 화풍 전용 블록과 순수 정경이 조립된 모듈러 지침으로 즉시 생성!
+    # ★ 1순위 (최우선) : Google Gemini / Imagen 3 (API 키 연결 시)
     # ========================================================
     api_key = os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY
     if api_key and genai:
-        print(f"[1순위 Google Gemini Image: 화풍={style_name_ko}] 모듈러 스킬 블록으로 [{style_name_ko}] 삽화를 생성합니다.")
+        print(f"[1순위 Google Gemini/Imagen: 화풍={style_name_ko}] 모듈러 스킬 블록으로 [{style_name_ko}] 삽화를 생성합니다.")
         try:
             client = genai.Client(api_key=api_key)
-            image_models = ["gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3-pro-image"]
 
-            # [Image-to-Image] 기존 베이스 이미지가 제공된 경우 멀티모달 입력으로 함께 전달
+            # A. Imagen 3 공식 생성 시도 (순수 텍스트 프롬프트인 경우)
+            if not ref_image_bytes:
+                try:
+                    res = client.models.generate_images(
+                        model="imagen-3.0-generate-002",
+                        prompt=guarded_prompt,
+                        config=dict(
+                            number_of_images=1,
+                            output_mime_type="image/jpeg",
+                            aspect_ratio="3:4"
+                        )
+                    )
+                    if res and res.generated_images:
+                        img_bytes = res.generated_images[0].image.image_bytes
+                        print(f"[Google Imagen 3 성공] [{style_name_ko}] 삽화 생성 완료 ({len(img_bytes)} bytes)")
+                        return img_bytes
+                except Exception as img_err:
+                    print(f"[Google Imagen 3 미지원/호출 실패, 다음 시도]: {img_err}")
+
+            # B. Multimodal Image-to-Image 또는 Gemini Flash Image 시도
+            image_models = ["imagen-3.0-generate-002", "gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-2.0-flash-exp"]
             call_contents = [gemini_contents]
             if ref_image_bytes:
                 try:
@@ -288,13 +312,12 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int, art_style: str = "
                                 print(f"[Google Gemini 성공] {m_name} 모델로 [{style_name_ko}] 삽화 생성 완료 ({len(part.inline_data.data)} bytes)")
                                 return part.inline_data.data
                 except Exception as m_err:
-                    print(f"[Gemini 모델 {m_name} 실패, 다음 시도]: {m_err}")
                     continue
         except Exception as gemini_err:
             print(f"[Gemini 1순위 일시 불가, 2순위 무료 오픈 AI로 자동 전환]: {gemini_err}")
 
     # ========================================================
-    # ★ 2순위 (무료 폴백) : Pollinations AI
+    # ★ 2순위 (무료 폴백) : Pollinations AI (Flux 우선 고화질)
     # 화풍 고유의 Negative 프롬프트(타 화풍 배제)를 주입하여 화풍 혼입을 원천 차단
     # ========================================================
     print(f"[2순위 무료 오픈 AI 전환: 화풍={style_name_ko}] Pollinations 엔진으로 모듈러 블록 삽화를 생성합니다.")
@@ -302,9 +325,9 @@ def _generate_art_image_bytes(prompt_str: str, seed_val: int, art_style: str = "
     neg_param = urllib.parse.quote(negative_en)
 
     candidate_urls = [
-        f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&model=turbo&negative={neg_param}",
+        f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&model=flux&negative={neg_param}",
         f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&negative={neg_param}",
-        f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&model=flux&negative={neg_param}"
+        f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&seed={seed_val}&model=turbo&negative={neg_param}"
     ]
 
     for api_url in candidate_urls:
@@ -354,8 +377,27 @@ def _parse_base64_image(b64_str: Optional[str]) -> Optional[bytes]:
         print(f"[참조 이미지 Base64 디코딩 실패]: {e}")
         return None
 
-def _download_and_save_candidate(prompt_str: str, seed_val: int, file_path: Path, art_style: str = "watercolor", ref_image_bytes: Optional[bytes] = None):
-    img_bytes = _generate_art_image_bytes(prompt_str, seed_val, art_style=art_style, ref_image_bytes=ref_image_bytes)
+def _download_and_save_candidate(
+    prompt_str: str,
+    seed_val: int,
+    file_path: Path,
+    art_style: str = "watercolor",
+    ref_image_bytes: Optional[bytes] = None,
+    custom_guide: str = "",
+    title: str = "",
+    memory_anchor: str = "",
+    modular_dict: Optional[Dict[str, Any]] = None
+):
+    img_bytes = _generate_art_image_bytes(
+        prompt_str,
+        seed_val,
+        art_style=art_style,
+        ref_image_bytes=ref_image_bytes,
+        custom_guide=custom_guide,
+        title=title,
+        memory_anchor=memory_anchor,
+        modular_dict=modular_dict
+    )
     ensure_300dpi_image(img_bytes, file_path)
 
 @router.post("/api/generate_image_candidates")
@@ -414,7 +456,7 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
         base_prompt = req.prompt.strip() if req.prompt and req.prompt.strip() else ""
 
         # 모듈러 블록 아키텍처를 통한 화풍 전환 및 오염 제거
-        from core.skill_pack import build_modular_art_prompt, strip_style_contamination
+        from core.skill_pack import build_modular_art_prompt
         
         mgr = project_manager.get_active_manuscript_manager()
         works = mgr.load_works()
@@ -485,7 +527,18 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
         target_path = images_dir / filename
 
         # 단 1회 초고속 생성 (300 DPI 규격 보정, 모듈러 화풍 스킬 블록 적용, Image-to-Image 바이트 전달)
-        await asyncio.to_thread(_download_and_save_candidate, modular["clean_scene"], seed, target_path, art_style=art_style, ref_image_bytes=ref_bytes)
+        await asyncio.to_thread(
+            _download_and_save_candidate,
+            modular["clean_scene"],
+            seed,
+            target_path,
+            art_style=art_style,
+            ref_image_bytes=ref_bytes,
+            custom_guide=custom_guide,
+            title=p_title,
+            memory_anchor=p_memory,
+            modular_dict=modular
+        )
 
         msg_style = "기존 그림의 인물과 구도를 유지하며 부분 수정한" if is_refining_existing else f"[{modular['name_ko']}] 전용 스킬 블록으로"
         return {
@@ -515,7 +568,8 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
 @router.post("/api/select_image_candidate")
 async def select_image_candidate(req: SelectImageCandidateRequest):
     """
-    모달 팝업에서 사용자가 선택한 시안을 최종 공식 삽화(1부 본 삽화 또는 2부 연작 삽화)로 확정 반영합니다.
+    모달 팝업에서 사용자가 선택한 시안을 최종 공식 삽화로 확정 반영합니다.
+    (1면, 2면, 3면, 4면 및 1번/2번 분할 프레임 독립 저장 지원)
     """
     clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
     images_dir = project_manager.get_active_images_dir()
@@ -524,49 +578,69 @@ async def select_image_candidate(req: SelectImageCandidateRequest):
     if not cand_path.exists():
         raise HTTPException(status_code=404, detail="선택한 시안 이미지 파일을 찾을 수 없습니다.")
 
-    is_part2 = (req.target_slot == "part2")
-    final_filename = f"{clean_ep}_삽화_후반.jpg" if is_part2 else f"{clean_ep}_삽화.jpg"
+    p_num = req.page_num
+    f_idx = req.frame_idx or 1
+    is_part2 = (req.target_slot == "part2") or (p_num is not None and p_num >= 3)
+
+    if p_num == 1 and f_idx == 1:
+        final_filename = f"{clean_ep}_삽화.jpg"
+    elif p_num == 3 and f_idx == 1:
+        final_filename = f"{clean_ep}_삽화_후반.jpg"
+    elif p_num is not None:
+        suffix = f"_{p_num}면" + (f"_{f_idx}" if f_idx > 1 else "")
+        final_filename = f"{clean_ep}_삽화{suffix}.jpg"
+    else:
+        final_filename = f"{clean_ep}_삽화_후반.jpg" if is_part2 else f"{clean_ep}_삽화.jpg"
+
     final_path = images_dir / final_filename
 
     # 선택된 시안을 최종 삽화 파일로 복사
     shutil.copyfile(cand_path, final_path)
 
-    # 원고(작품집_원고.md)의 해당 회차 이미지 파일명 및 연출 모드 갱신
+    # 원고(작품집_원고.md)의 해당 회차 이미지 파일명 및 layout_config.pages 갱신
     mgr = project_manager.get_active_manuscript_manager()
     works = mgr.load_works()
     for w in works:
         if clean_ep in w.episode_no or w.episode_no.strip() == req.episode_no.strip():
-            if is_part2:
+            cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {}
+            pages = list(cfg.get("pages", []))
+            target_idx = (p_num - 1) if (p_num is not None and p_num > 0) else (2 if is_part2 else 0)
+
+            while len(pages) <= target_idx:
+                curr_p = len(pages) + 1
+                pages.append({
+                    "page_num": curr_p,
+                    "usage": "image" if curr_p == 1 else ("image_text" if curr_p == 3 else "text"),
+                    "role": "none" if curr_p == 1 else ("start" if curr_p == 2 else "continue"),
+                    "image_file": "",
+                    "custom_text": ""
+                })
+
+            if f_idx == 2:
+                pages[target_idx]["image_file_b"] = f"./images/{final_filename}"
+            else:
+                pages[target_idx]["image_file"] = f"./images/{final_filename}"
+
+            if pages[target_idx].get("usage") == "text":
+                pages[target_idx]["usage"] = "image_text"
+
+            cfg["pages"] = pages
+            if "slots" in cfg and len(cfg["slots"]) > target_idx:
+                cfg["slots"][target_idx] = pages[target_idx]["usage"]
+
+            w.layout_config = cfg
+
+            if target_idx == 0 and f_idx == 1:
+                w.image_file = f"./images/{final_filename}"
+            elif target_idx == 2 and f_idx == 1:
                 w.image_file_2 = f"./images/{final_filename}"
                 w.part2_mode = "image"
                 w.layout_mode = "multi_page"
-                # 4P 레이아웃 설정이 있으면 슬롯과 3면 이미지 설정도 완벽히 동기화
-                cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {
-                    "page_count": 4,
-                    "slots": ["image", "text", "image", "text"],
-                    "image_settings": {
-                        "page_1": {"mode": "image", "file": w.image_file or ""},
-                        "page_3": {"mode": "image", "file": f"./images/{final_filename}"}
-                    }
-                }
-                cfg["page_count"] = 4
-                slots = list(cfg.get("slots", ["image", "text", "image", "text"]))
-                while len(slots) < 4:
-                    slots.append("image" if len(slots) % 2 == 0 else "text")
-                slots[2] = "image"
-                cfg["slots"] = slots
-                img_settings = dict(cfg.get("image_settings", {}))
-                img_settings["page_3"] = {"mode": "image", "file": f"./images/{final_filename}"}
-                cfg["image_settings"] = img_settings
-                w.layout_config = cfg
-            else:
-                w.image_file = f"./images/{final_filename}"
-                if getattr(w, 'layout_config', None):
-                    cfg = dict(w.layout_config)
-                    img_settings = dict(cfg.get("image_settings", {}))
-                    img_settings["page_1"] = {"mode": "image", "file": f"./images/{final_filename}"}
-                    cfg["image_settings"] = img_settings
-                    w.layout_config = cfg
+            elif is_part2 and not getattr(w, "image_file_2", None):
+                w.image_file_2 = f"./images/{final_filename}"
+                w.part2_mode = "image"
+                w.layout_mode = "multi_page"
+
             mgr.save_work(w)
             break
 
@@ -576,26 +650,42 @@ async def select_image_candidate(req: SelectImageCandidateRequest):
         pass
 
     now_t = int(time.time())
-    slot_label = "2부 연작 삽화(4면)" if is_part2 else "1부 본 삽화(2면)"
+    page_desc = f"{p_num}면 {f_idx}번 " if p_num else ("2부 연작 삽화(4면)" if is_part2 else "1부 본 삽화(2면)")
     return {
         "success": True,
         "filename": final_filename,
         "target_slot": req.target_slot or "part1",
+        "page_num": p_num,
+        "frame_idx": f_idx,
         "image_url": f"/images/{final_filename}?t={now_t}",
-        "message": f"[{req.episode_no}] 선택하신 그림이 {slot_label}로 성공적으로 반영되었습니다!"
+        "message": f"[{req.episode_no}] 선택하신 그림이 {page_desc}삽화로 성공적으로 반영되었습니다!"
     }
 
 @router.post("/api/upload_image")
 async def upload_image(
     file: UploadFile = File(...),
     episode_no: str = Form(...),
-    target_slot: str = Form("main")
+    target_slot: str = Form("main"),
+    page_num: Optional[int] = Form(None),
+    frame_idx: Optional[int] = Form(None)
 ):
     """
-    외부 생성 이미지를 드래그 앤 드롭 또는 파일 선택으로 업로드 (main 또는 4P 모드 part2 슬롯)
+    외부 생성 이미지를 드래그 앤 드롭 또는 파일 선택으로 업로드
+    (1면, 2면, 3면, 4면 및 분할 프레임 독립 파일 저장 지원)
     """
     clean_ep = re.sub(r'[^0-9]', '', episode_no).zfill(2)
-    filename = f"{clean_ep}_삽화_후반.jpg" if target_slot == "part2" else f"{clean_ep}_삽화.jpg"
+    f_idx = frame_idx or 1
+    is_part2 = (target_slot == "part2") or (page_num is not None and page_num >= 3)
+
+    if page_num == 1 and f_idx == 1:
+        filename = f"{clean_ep}_삽화.jpg"
+    elif page_num == 3 and f_idx == 1:
+        filename = f"{clean_ep}_삽화_후반.jpg"
+    elif page_num is not None:
+        suffix = f"_{page_num}면" + (f"_{f_idx}" if f_idx > 1 else "")
+        filename = f"{clean_ep}_삽화{suffix}.jpg"
+    else:
+        filename = f"{clean_ep}_삽화_후반.jpg" if is_part2 else f"{clean_ep}_삽화.jpg"
 
     images_dir = project_manager.get_active_images_dir()
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -614,36 +704,45 @@ async def upload_image(
         works = mgr.load_works()
         for w in works:
             if clean_ep in w.episode_no or w.episode_no.strip() == episode_no.strip():
-                if target_slot == "part2":
+                cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {}
+                pages = list(cfg.get("pages", []))
+                target_idx = (page_num - 1) if (page_num is not None and page_num > 0) else (2 if is_part2 else 0)
+
+                while len(pages) <= target_idx:
+                    curr_p = len(pages) + 1
+                    pages.append({
+                        "page_num": curr_p,
+                        "usage": "image" if curr_p == 1 else ("image_text" if curr_p == 3 else "text"),
+                        "role": "none" if curr_p == 1 else ("start" if curr_p == 2 else "continue"),
+                        "image_file": "",
+                        "custom_text": ""
+                    })
+
+                if f_idx == 2:
+                    pages[target_idx]["image_file_b"] = f"./images/{filename}"
+                else:
+                    pages[target_idx]["image_file"] = f"./images/{filename}"
+
+                if pages[target_idx].get("usage") == "text":
+                    pages[target_idx]["usage"] = "image_text"
+
+                cfg["pages"] = pages
+                if "slots" in cfg and len(cfg["slots"]) > target_idx:
+                    cfg["slots"][target_idx] = pages[target_idx]["usage"]
+
+                w.layout_config = cfg
+
+                if target_idx == 0 and f_idx == 1:
+                    w.image_file = f"./images/{filename}"
+                elif target_idx == 2 and f_idx == 1:
                     w.image_file_2 = f"./images/{filename}"
                     w.part2_mode = "image"
                     w.layout_mode = "multi_page"
-                    cfg = dict(w.layout_config) if getattr(w, 'layout_config', None) else {
-                        "page_count": 4,
-                        "slots": ["image", "text", "image", "text"],
-                        "image_settings": {
-                            "page_1": {"mode": "image", "file": w.image_file or ""},
-                            "page_3": {"mode": "image", "file": f"./images/{filename}"}
-                        }
-                    }
-                    cfg["page_count"] = 4
-                    slots = list(cfg.get("slots", ["image", "text", "image", "text"]))
-                    while len(slots) < 4:
-                        slots.append("image" if len(slots) % 2 == 0 else "text")
-                    slots[2] = "image"
-                    cfg["slots"] = slots
-                    img_settings = dict(cfg.get("image_settings", {}))
-                    img_settings["page_3"] = {"mode": "image", "file": f"./images/{filename}"}
-                    cfg["image_settings"] = img_settings
-                    w.layout_config = cfg
-                else:
-                    w.image_file = f"./images/{filename}"
-                    if getattr(w, 'layout_config', None):
-                        cfg = dict(w.layout_config)
-                        img_settings = dict(cfg.get("image_settings", {}))
-                        img_settings["page_1"] = {"mode": "image", "file": f"./images/{filename}"}
-                        cfg["image_settings"] = img_settings
-                        w.layout_config = cfg
+                elif is_part2 and not getattr(w, "image_file_2", None):
+                    w.image_file_2 = f"./images/{filename}"
+                    w.part2_mode = "image"
+                    w.layout_mode = "multi_page"
+
                 mgr.save_work(w)
                 break
         try:
@@ -652,13 +751,15 @@ async def upload_image(
             pass
 
         t_rand = random.randint(1000, 9999)
-        slot_label = "2부 연작 삽화" if target_slot == "part2" else "삽화"
+        page_desc = f"{page_num}면 {f_idx}번 " if page_num else ("2부 연작 삽화" if target_slot == "part2" else "삽화")
         return {
             "success": True,
             "filename": filename,
             "target_slot": target_slot,
+            "page_num": page_num,
+            "frame_idx": f_idx,
             "image_url": f"/images/{filename}?t={t_rand}",
-            "message": f"[{episode_no}] {slot_label}가 성공적으로 등록되었습니다!"
+            "message": f"[{episode_no}] {page_desc}삽화가 성공적으로 등록되었습니다!"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
@@ -738,10 +839,35 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
                     "soft vignetting, delicate brush textures, masterpiece, no text, no frame"
                 )
 
+        p_title = getattr(req, "title", None) or (target_work.title if target_work else "고향의 추억")
+        p_memory = getattr(req, "memory_anchor", None) or (target_work.memory_anchor if target_work else "")
+
+        # [2부 모듈러 블록 조립] 추가 연출 및 시의 정경을 온전히 보존
+        from core.skill_pack import build_modular_art_prompt
+        modular_p2 = build_modular_art_prompt(
+            raw_prompt=prompt_text,
+            art_style=art_style,
+            custom_guide=custom_guide,
+            title=p_title,
+            memory_anchor=p_memory
+        )
+        final_used_prompt = modular_p2["display_ko_prompt"]
+
         seed = random.randint(100000, 999999)
 
         # 다단계 무료 폴백 엔진 & 300 DPI 사방 10% 수채화 블러 비네팅 마스크 자동 적용 (ref_image_bytes 연동)
-        await asyncio.to_thread(_download_and_save_candidate, prompt_text, seed, target_path, art_style=art_style, ref_image_bytes=ref_bytes)
+        await asyncio.to_thread(
+            _download_and_save_candidate,
+            modular_p2["clean_scene"],
+            seed,
+            target_path,
+            art_style=art_style,
+            ref_image_bytes=ref_bytes,
+            custom_guide=custom_guide,
+            title=p_title,
+            memory_anchor=p_memory,
+            modular_dict=modular_p2
+        )
 
         # 원고 즉시 덮어쓰기는 수행하지 않음 (미리보기 창에서 사용자가 [삽화로 삽입]을 누를 때 반영)
         return {
@@ -749,6 +875,7 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
             "episode_no": req.episode_no,
             "filename": filename,
             "target_slot": "part2",
+            "used_prompt": final_used_prompt,
             "image_url": f"/images/{filename}?t={seed}",
             "message": f"[{req.episode_no}] 2부 연작 삽화가 생성되었습니다. 미리보기 창에서 확인하세요."
         }

@@ -22,24 +22,7 @@ try:
 except ImportError:
     genai = None
 
-from core.config import (
-    BASE_DIR, IMAGES_DIR, TARGET_POEMS_COUNT, GEMINI_API_KEY, GEMINI_MODEL, DEFAULT_ART_STYLE, CANVA_CSV_FILE, PAPER_TYPE,
-    save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
-)
-from core.auth_manager import auth_manager
-from core.manuscript import ManuscriptManager, PoemWork
-from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
-from core.publishing_copier import publishing_copier
-from core.book_spec import calculate_spine_and_cover, inspect_images
-from core.pdf_builder import build_pdf_book
-from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
-from core.image_optimizer import ensure_300dpi_image
-from core.poetic_engine import poetic_engine
-from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
-from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
-from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
-from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
+from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai
 
 WEB_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = WEB_DIR / "templates"

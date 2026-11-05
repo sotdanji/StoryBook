@@ -1423,3 +1423,16 @@ class BookkPDFBuilder:
             return [p1, p2, p3, p4]
 
         return [lines]
+
+
+def build_pdf_book(
+    output_path: Optional[Path] = None,
+    manuscript_manager=None,
+    project_info=None,
+    images_dir: Optional[Path] = None,
+) -> Path:
+    """열람용/기본 A5 PDF 생성 통합 래퍼 (BookkPDFBuilder 기반 100% DTP 조판 동기화)"""
+    if output_path is None:
+        output_path = project_manager.get_active_pdf_path()
+    builder = BookkPDFBuilder(format_key="a5", paper_type="white_100g")
+    return builder.build_interior_pdf(output_path=output_path)

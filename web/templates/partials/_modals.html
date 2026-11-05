@@ -1,0 +1,1374 @@
+  <!-- ========================================================
+       🌿 2가지 시안 비교 및 선택 모달 (좌/우 A/B안)
+       ======================================================== -->
+  <div class="modal-overlay" id="poemDraftsModal" style="display: none;" onclick="closePoemDraftsModal()">
+    <div class="modal-card modal-large" style="max-width: 880px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>✨</span> <span>2가지 시안 선택 (마음에 드는 시안 선택)</span>
+          </h3>
+          <p class="modal-desc" style="margin-top: 4px; line-height: 1.55;">
+            기억의 결을 바탕으로 서로 다른 호흡과 감성의 2가지 시안을 빚었습니다.<br>
+            <span style="color: #B45309; font-weight: 600;">⚠️ 이 시안들은 AI 참고용 초안이므로, 선택 후 본문 편집창에서 반드시 당신의 언어로 다듬거나 재창작해 주세요.</span>
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <button type="button" class="btn-sub-action" id="btnModalRedraftTop" onclick="reDraftDifferentStyle()" style="width: auto; min-width: auto; padding: 6px 14px; font-size: 0.84rem; background: #FFFDF9; color: #643E19; border: 1.5px solid #8C532B; font-weight: 700; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;" title="[다시 짓기] 두 시안이 마음에 들지 않을 때, 다른 시적 어휘와 정서로 새로운 2가지 시안을 즉시 다시 창작합니다.">
+            <span>🔄 다시 짓기</span>
+          </button>
+          <button type="button" class="modal-close-btn" onclick="closePoemDraftsModal()" title="[닫기]">&times;</button>
+        </div>
+      </div>
+
+      <!-- 좌/우 A/B안 비교 카드 그리드 -->
+      <div class="candidates-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0;">
+        <!-- A안 카드 -->
+        <div class="draft-modal-card" id="cardModalDraftA" style="background: #FFFDF9; border: 2px solid #EBDCCB; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="badge-optional-tag" style="background: #EEF2EB; color: #3A6337; font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 12px;">
+                🌿 A안 (담담한 정경 묘사)
+              </span>
+            </div>
+            <h3 id="modalDraftTitleA" style="font-size: 1.15rem; font-weight: 700; color: #2C2520; margin-bottom: 10px; border-bottom: 1px solid #F0E8DD; padding-bottom: 6px;">새벽 대청</h3>
+            <div id="modalDraftBodyA" style="font-family: 'KoPub Batang', serif; font-size: 0.95rem; line-height: 1.85; color: #3A322C; white-space: pre-wrap; background: #FAF7F2; padding: 14px; border-radius: 6px; border: 1px solid #EFEAE1; min-height: 200px; max-height: 320px; overflow-y: auto;">
+              새벽녘 오줌 마려워 방문을 열고 나섰다.
+윗채 대청마루에서 베틀이 노래를 부르고 있었다.
+호롱불 하나 흔들흔들 춤을 추고...
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <button type="button" class="btn-primary" style="width: 100%; padding: 0.65rem 0.5rem; font-size: 0.88rem; font-weight: 700; background: #643E19; box-shadow: 0 2px 8px rgba(100, 62, 25, 0.2);" onclick="chooseDraftFromModal('A')" title="[A안 선택] 담담한 정경 묘사의 A안을 본문 편집창으로 삽입합니다.">
+              <span>✓ [A안] 이 시로 선택하고 편집하기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- B안 카드 -->
+        <div class="draft-modal-card" id="cardModalDraftB" style="background: #FFFDF9; border: 2px solid #EBDCCB; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="badge-optional-tag" style="background: #FFF5EA; color: #8B4513; font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 12px;">
+                🌅 B안 (여운과 은유)
+              </span>
+            </div>
+            <h3 id="modalDraftTitleB" style="font-size: 1.15rem; font-weight: 700; color: #2C2520; margin-bottom: 10px; border-bottom: 1px solid #F0E8DD; padding-bottom: 6px;">어머니의 물레</h3>
+            <div id="modalDraftBodyB" style="font-family: 'KoPub Batang', serif; font-size: 0.95rem; line-height: 1.85; color: #3A322C; white-space: pre-wrap; background: #FAF7F2; padding: 14px; border-radius: 6px; border: 1px solid #EFEAE1; min-height: 200px; max-height: 320px; overflow-y: auto;">
+              차디찬 툇마루 끝으로 번져나던 불빛 하나.
+밤새 돌아가던 실타래는
+어머니의 고단한 숨결을 안고 돌았다...
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <button type="button" class="btn-primary" style="width: 100%; padding: 0.65rem 0.5rem; font-size: 0.88rem; font-weight: 700; background: #8B4513; box-shadow: 0 2px 8px rgba(139, 69, 19, 0.2);" onclick="chooseDraftFromModal('B')" title="[B안 선택] 깊은 여운과 은유의 B안을 본문 편집창으로 삽입합니다.">
+              <span>✓ [B안] 이 시로 선택하고 편집하기</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1rem; display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+        <button type="button" class="btn-sub-action" id="btnModalRedraftBottom" onclick="reDraftDifferentStyle()" style="width: auto; min-width: auto; padding: 7px 16px; font-size: 0.84rem; background: #FFFFFF; color: #643E19; border: 1.5px solid #8C532B; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;" title="[다시 짓기] 현재 기억을 바탕으로 새로운 시적 어휘와 리듬으로 A안/B안을 다시 창작합니다.">
+          <span>🔄 다시 짓기</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" onclick="closePoemDraftsModal()" style="white-space: nowrap; flex-shrink: 0; min-width: 68px; padding: 7px 16px; font-size: 0.85rem;" title="[닫기] 팝업 창을 닫습니다.">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎨 삽화 2안 비교 및 선택 모달 -->
+  <div class="modal-overlay" id="imageCandidatesModal" style="display: none;" onclick="closeImageCandidatesModal()">
+    <div class="modal-card modal-large" style="max-width: 820px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>🎨</span> <span id="labelCandModalTitle">삽화 시안 선택 (2가지 시안 중 마음에 드는 그림 선택)</span>
+          </h3>
+          <p class="modal-desc" style="margin-top: 4px;">
+            AI가 현재 시의 정경을 바탕으로 서로 다른 구도와 감성으로 2가지 삽화를 그렸습니다.<br>
+            두 그림 중 마음에 드는 시안을 클릭하시면 현재 회차의 공식 삽화로 최종 반영됩니다.
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeImageCandidatesModal()">&times;</button>
+      </div>
+
+      <!-- 2개 시안 나란히 비교 카드 그리드 -->
+      <div class="candidates-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0;">
+        <!-- 1안 카드 -->
+        <div class="candidate-card" id="cardCandidateA" style="background: #FFFDF9; border: 2px solid #EBDCCB; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; transition: all 0.2s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span class="badge-optional-tag" style="background: #EEF2EB; color: #3A6337; font-weight: 700; font-size: 0.8rem; padding: 3px 8px; border-radius: 12px;">
+              🌿 1안 시안 (여백과 서정)
+            </span>
+            <span style="font-size: 0.72rem; color: #8C827A;">300 DPI</span>
+          </div>
+          <div style="position: relative; width: 100%; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; background: #FAF7F2; border: 1px solid #DFD8CB; display: flex; align-items: center; justify-content: center;">
+            <img id="candImgA" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400' fill='%23faf7f2'></svg>" alt="1안 삽화" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.src='/static/images/fallback_placeholder.png';">
+          </div>
+          <div style="margin-top: 10px;">
+            <button type="button" id="btnSelectCandA" class="btn-primary" style="width: 100%; padding: 0.65rem 0.5rem; font-size: 0.85rem; font-weight: 600; background: #643E19; box-shadow: 0 2px 8px rgba(100, 62, 25, 0.2);" onclick="onSelectCandidate('A')" title="[1안 선택] 이 그림을 현재 회차의 공식 삽화로 최종 채택합니다.">
+              <span>✨ [1안] 이 그림으로 최종 반영하기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2안 카드 -->
+        <div class="candidate-card" id="cardCandidateB" style="background: #FFFDF9; border: 2px solid #EBDCCB; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; transition: all 0.2s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span class="badge-optional-tag" style="background: #FFF5EA; color: #8B4513; font-weight: 700; font-size: 0.8rem; padding: 3px 8px; border-radius: 12px;">
+              🌅 2안 시안 (따스한 정경 디테일)
+            </span>
+            <span style="font-size: 0.72rem; color: #8C827A;">300 DPI</span>
+          </div>
+          <div style="position: relative; width: 100%; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; background: #FAF7F2; border: 1px solid #DFD8CB; display: flex; align-items: center; justify-content: center;">
+            <img id="candImgB" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400' fill='%23faf7f2'></svg>" alt="2안 삽화" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.src='/static/images/fallback_placeholder.png';">
+          </div>
+          <div style="margin-top: 10px;">
+            <button type="button" id="btnSelectCandB" class="btn-primary" style="width: 100%; padding: 0.65rem 0.5rem; font-size: 0.85rem; font-weight: 600; background: #8B4513; box-shadow: 0 2px 8px rgba(139, 69, 19, 0.2);" onclick="onSelectCandidate('B')" title="[2안 선택] 이 그림을 현재 회차의 공식 삽화로 최종 채택합니다.">
+              <span>✨ [2안] 이 그림으로 최종 반영하기</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 모달 하단 액션 버튼 -->
+      <div class="modal-actions" style="margin-top: 0.85rem; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-sub-action" onclick="onRegenerateCandidates()" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; background: #FAF7F2; border: 1px solid #D8C7B0; color: #643E19;" title="[새로운 2안 다시 그리기] 두 그림 모두 마음에 들지 않으면 새로운 시드로 2가지 시안을 다시 그립니다.">
+          <span>🔄 두 시안 모두 아쉬우신가요? [새로운 2안 다시 그리기]</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" onclick="closeImageCandidatesModal()" title="[창 닫기] 시안 선택 창을 닫습니다. (기존 삽화 유지)">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎨 무료 API 삽화 생성 미리보기 & 삽입/재생성/취소 모달 -->
+  <div class="modal-overlay" id="imagePreviewConfirmModal" style="display: none;" onclick="closeImagePreviewConfirmModal()">
+    <div class="modal-card" style="max-width: 500px; width: 92%; max-height: 92vh; overflow-y: auto; background: #FFFDF9; border: 1.5px solid #D5C8B8; border-radius: 12px; padding: 1.4rem;" onclick="event.stopPropagation()">
+      <div class="modal-header" style="border-bottom: 1px solid #EFEAE3; padding-bottom: 0.75rem; margin-bottom: 0.9rem;">
+        <div>
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #643E19; margin: 0;">
+            <span>🎨</span> <span id="labelPreviewModalTitle">생성된 삽화 미리보기</span>
+          </h3>
+          <p class="modal-desc" style="font-size: 0.8rem; color: #7A6F64; margin-top: 4px; margin-bottom: 0;">
+            그림을 확인하세요. 마음에 드시면 <strong>[삽화로 삽입]</strong>을 누르고, 마음에 들지 않으면 <strong>[다시 생성]</strong> 또는 <strong>[취소]</strong>를 누르세요.
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeImagePreviewConfirmModal()" style="font-size: 1.5rem; color: #9A7B66;">&times;</button>
+      </div>
+
+      <!-- 그림 미리보기 프레임 (3:4 서정 규격 - 순백 책장 지면 환경) -->
+      <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden; background: #FFFFFF; border: 1px solid #E8E2D8; box-shadow: 0 4px 16px rgba(100, 62, 25, 0.08); display: flex; align-items: center; justify-content: center; padding: 6px;">
+        <img id="imgPreviewConfirm" src="" alt="생성된 삽화 미리보기" style="width: 100%; height: 100%; object-fit: contain; background: #FFFFFF;" onerror="this.onerror=null; this.src='/static/images/fallback_placeholder.png';">
+        <div id="imgPreviewLoadingOverlay" style="position: absolute; inset: 0; background: rgba(255, 253, 249, 0.92); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+          <div class="loading-spinner"></div>
+          <span style="font-size: 0.85rem; color: #643E19; font-weight: 600;">새로운 감성 삽화 그리는 중... (생성 대기 필요)</span>
+        </div>
+      </div>
+
+      <!-- 💡 [다시 생성 시 반영] 삽화 연출 추가 설명 (원하는 정경 · 피할 요소 보정) -->
+      <div class="art-custom-guide-container" style="background: #FAF7F2; border: 1px solid #EBDCCB; border-radius: 8px; padding: 10px 12px; margin-top: 1rem; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <label for="inputArtCustomGuide" style="font-size: 0.8rem; font-weight: 700; color: #643E19; display: flex; align-items: center; gap: 5px; margin: 0;">
+            <span>💡</span> <span>[다시 생성 시 반영] 추가 연출 및 정경 보정</span>
+          </label>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="btn-mic" id="btnMicArtGuide" onclick="toggleVoiceDictation('inputArtCustomGuide', 'btnMicArtGuide')" title="[음성으로 말하기] 마이크를 켜고 원하시는 그림 연출을 말씀하시면 자동으로 입력됩니다.">
+              <span>🎙️</span>
+            </button>
+            <span style="font-size: 0.72rem; color: #8C827A;">한국어로 편하게 입력</span>
+          </div>
+        </div>
+        <div style="position: relative;">
+          <input type="text" id="inputArtCustomGuide" class="form-input" style="font-size: 0.82rem; padding: 7px 10px; background: #FFFFFF; border: 1px solid #D5C8B8; border-radius: 6px; width: 100%; box-sizing: border-box;" placeholder="예: 초가집만 아늑하게, 사람 없이 늦가을 억새와 노을빛만, 호롱불 클로즈업" onkeydown="if(event.key==='Enter'){event.preventDefault(); onRegeneratePreviewImage();}">
+        </div>
+        <div style="margin-top: 6px; font-size: 0.73rem; color: #8C827A;">
+          원하는 연출이나 보정 사항을 입력한 뒤 아래 <strong>[🔄 다시 생성]</strong>을 클릭하세요.
+        </div>
+        <div style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.77rem; color: #7B341E; font-weight: 700; margin: 0; background: #FFF3E0; padding: 4px 8px; border-radius: 6px; border: 1px solid #FBD38D;" title="체크 시 현재 그림의 구도와 인물 생김새를 잠그고(Lock), 위에서 입력한 보정 사항만 콕 집어 정밀 수정(Image-to-Image)합니다.">
+            <input type="checkbox" id="chkUseCurrentImageAsBase" checked style="accent-color: #C05621; width: 15px; height: 15px; cursor: pointer;">
+            <span>🎨 <strong>현재 그림 유지하며 부분 수정 (Image-to-Image)</strong></span>
+          </label>
+          <span style="font-size: 0.72rem; color: #8C827A;">안실장 스타일 연속 편집</span>
+        </div>
+
+        <!-- 📷 [신규] 참조 사진 / 그림 첨부 및 비전 분석 영역 -->
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #E5DCD0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: #643E19; display: flex; align-items: center; gap: 5px;">
+              <span>📷</span> <span>참조 사진 / 그림 첨부 (선택)</span>
+            </span>
+          </div>
+
+          <!-- 사진 첨부 드롭존 & 클릭 영역 -->
+          <div id="artReferenceDropZone" onclick="document.getElementById('inputArtReferenceFile').click()" style="border: 1.5px dashed #C8B9A6; border-radius: 6px; background: #FFFFFF; padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#9A7B66'; this.style.background='#FDFBF9';" onmouseout="this.style.borderColor='#C8B9A6'; this.style.background='#FFFFFF';">
+            <input type="file" id="inputArtReferenceFile" accept="image/*" style="display: none;" onchange="handleArtReferenceFileSelected(this)">
+            <div style="font-size: 0.8rem; font-weight: 600; color: #643E19; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>📁</span> <span>여기를 클릭하여 사진 선택</span> <span style="font-size: 0.72rem; color: #9A7B66; font-weight: normal;">(또는 사진 끌어다 놓기)</span>
+            </div>
+            <div style="font-size: 0.72rem; color: #8C827A; margin-top: 3px;">
+              💡 <strong>사진 복사 후 어디서든 <kbd style="background: #EFEAE3; border: 1px solid #D5C8B8; border-radius: 3px; padding: 1px 4px; font-weight: bold;">Ctrl + V</kbd>를 누르면 즉시 첨부됩니다.</strong>
+            </div>
+          </div>
+
+          <!-- 썸네일 미리보기 영역 (선택 시 노출) -->
+          <div id="artReferencePreviewBox" style="display: none; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #D5C8B8; border-radius: 6px; padding: 6px 8px; margin-top: 6px; margin-bottom: 6px;">
+            <img id="imgArtReferenceThumb" src="" alt="참조 이미지" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #E5DFD5;">
+            <div style="flex: 1; min-width: 0;">
+              <div id="artReferenceFileName" style="font-size: 0.75rem; font-weight: 600; color: #2C241E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">사진.jpg</div>
+              <div style="font-size: 0.7rem; color: #8C827A;">참조 사진이 장착되었습니다.</div>
+            </div>
+            <button type="button" onclick="clearArtReferenceImage()" style="background: none; border: none; font-size: 1.1rem; color: #DC2626; cursor: pointer; padding: 0 4px;" title="첨부 취소">&times;</button>
+          </div>
+
+          <!-- 활용 모드 선택 (라디오) -->
+          <div id="artReferenceOptionsBox" style="display: none; flex-direction: column; gap: 5px; font-size: 0.74rem; color: #643E19; background: #F5EFEB; padding: 6px 8px; border-radius: 6px; margin-top: 6px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+              <input type="radio" name="artRefMode" id="radioRefAiVision" value="vision" checked>
+              <span><strong>사진 구도/피사체를 참조</strong>하여 서정 수채화로 다시 그리기</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+              <input type="radio" name="artRefMode" id="radioRefDirectPhoto" value="direct">
+              <span><strong>이 사진 자체를 300 DPI 순백 여백 보정</strong> 후 바로 시안으로 사용</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3대 액션 버튼: 삽입 / 재생성 / 취소 -->
+      <div style="display: flex; gap: 8px; margin-top: 1rem; justify-content: stretch;">
+        <button type="button" id="btnConfirmInsertImage" class="btn-primary" onclick="onConfirmInsertImage()" style="flex: 1.4; padding: 0.75rem 0.5rem; font-size: 0.9rem; font-weight: 700; background: #643E19; white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center; gap: 5px;" title="[삽화로 삽입] 이 그림을 현재 작품의 공식 삽화로 최종 등록합니다.">
+          <span>✨ 삽화로 삽입</span>
+        </button>
+        <button type="button" id="btnRegeneratePreviewImage" class="btn-sub-action" onclick="onRegeneratePreviewImage()" style="flex: 1.1; padding: 0.75rem 0.5rem; font-size: 0.85rem; font-weight: 600; background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center; gap: 5px;" title="[다시 생성] 다른 구도와 감성으로 그림을 다시 그립니다.">
+          <span>🔄 다시 생성</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" onclick="closeImagePreviewConfirmModal()" style="flex: 0.8; padding: 0.75rem 0.5rem; font-size: 0.85rem; white-space: nowrap !important;" title="[취소] 삽입하지 않고 창을 닫습니다. (기존 그림 유지)">
+          <span>취소</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 새 시집 프로젝트 생성 모달 -->
+  <div class="modal-overlay" id="newProjectModal" style="display: none;" onclick="onModalOverlayClick(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">🌸 새로운 시집 프로젝트 시작</h3>
+        <button type="button" class="modal-close-btn" onclick="closeNewProjectModal()">&times;</button>
+      </div>
+      <p class="modal-desc">여러 권의 시집이나 여러 시인의 작품을 각각 독립된 원고와 데이터로 관리할 수 있습니다.</p>
+      
+      <form id="formNewProject" onsubmit="onCreateNewProject(event)">
+        <div class="form-group">
+          <label>도서 형태 (출판 조판 규격)</label>
+          <div class="book-type-selector">
+            <label class="book-type-option selected" id="optNewTypeIllustrated">
+              <input type="radio" name="newProjBookType" value="illustrated" checked onchange="onBookTypeOptionChange(this, 'new')">
+              <span class="book-type-title">🎨 서정 시화집</span>
+              <span class="book-type-desc">2페이지 1작품 (좌측 감성 수채화 삽화 + 우측 시 본문 스프레드)</span>
+            </label>
+            <label class="book-type-option" id="optNewTypeStandard">
+              <input type="radio" name="newProjBookType" value="standard" onchange="onBookTypeOptionChange(this, 'new')">
+              <span class="book-type-title">📖 일반 시집</span>
+              <span class="book-type-desc">1페이지 1작품 (텍스트 중심 단독 조판, 삽화 없이 시에 집중)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>시집 성격 (저자 구성 방식)</label>
+          <div class="book-type-selector">
+            <label class="book-type-option selected" id="optNewAuthorSingle" title="[개인 시집] 단일 시인의 자서전적 회고 및 개인 창작 시집입니다.">
+              <input type="radio" name="newProjAuthorType" value="single" checked onchange="onAuthorTypeOptionChange(this, 'new')">
+              <span class="book-type-title">👤 개인 시집 (단독 집필)</span>
+              <span class="book-type-desc">1인의 자서전/개인 시집. 본문에는 시 제목만 단정하게 조판됩니다.</span>
+            </label>
+            <label class="book-type-option" id="optNewAuthorCollab" title="[공동·가족 시집] 가족, 친구, 동아리, 애송시 모음집입니다. 각 작품마다 시인을 다르게 지정할 수 있습니다.">
+              <input type="radio" name="newProjAuthorType" value="collab" onchange="onAuthorTypeOptionChange(this, 'new')">
+              <span class="book-type-title">👨‍👩‍👧‍👦 공동 · 가족 시집 (모음집)</span>
+              <span class="book-type-desc">가족/친구/앤솔로지. 각 작품별로 시인(어머니, 윤동주 등)을 표기합니다.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="inputNewProjName">시집 제목 (필수) *</label>
+          <input type="text" id="inputNewProjName" class="form-input" placeholder="예: 저녁 노을의 노래, 흙과 바람의 서정" required>
+        </div>
+
+        <div class="form-group">
+          <label for="inputNewProjSubtitle">시집 부제</label>
+          <input type="text" id="inputNewProjSubtitle" class="form-input" placeholder="예: 삶의 궤적을 빚어낸 서정 시화집">
+        </div>
+
+        <div class="form-group">
+          <label for="inputNewProjAuthor" id="lblNewProjAuthor">작가 / 지은이</label>
+          <input type="text" id="inputNewProjAuthor" class="form-input" placeholder="예: 홍길동 시인">
+        </div>
+
+        <div class="form-group">
+          <label for="inputNewProjTarget">목표 시 편수 (기본 35편)</label>
+          <input type="number" id="inputNewProjTarget" class="form-input" value="35" min="5" max="100">
+        </div>
+
+        <div class="form-group">
+          <label for="inputNewProjDesc">시집 기획 의도 및 배경 (선택)</label>
+          <textarea id="inputNewProjDesc" class="form-textarea" rows="3" placeholder="예: 고향 마을에 대한 유년의 추억과 가족들의 이야기를 모은 시집"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-modal-cancel" onclick="closeNewProjectModal()" title="[취소] 새 시집 추가 작업을 취소하고 닫습니다.">취소</button>
+          <button type="submit" class="btn-modal-submit" id="btnSubmitNewProject" title="[새 시집 개설] 입력하신 설정으로 새로운 시집 프로젝트를 생성하고 집필을 시작합니다.">🌸 새 시집 집필 시작</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 시집 정보 수정 모달 -->
+  <div class="modal-overlay" id="editProjectModal" style="display: none;" onclick="onModalOverlayClick(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ 시집 정보 및 설정 수정</h3>
+        <button type="button" class="modal-close-btn" onclick="closeEditProjectModal()">&times;</button>
+      </div>
+      <p class="modal-desc">시집의 제목, 부제, 시인명, 기획 의도를 수정하면 원고 및 출판물 표지에 즉시 반영됩니다.</p>
+      
+      <form id="formEditProject" onsubmit="onUpdateProject(event)">
+        <input type="hidden" id="inputEditProjId">
+
+        <div class="form-group">
+          <label>도서 형태 (출판 조판 규격)</label>
+          <div class="book-type-selector">
+            <label class="book-type-option selected" id="optEditTypeIllustrated" title="[서정 시화집] 좌측 감성 수채화 삽화 + 우측 시 본문의 2페이지 1작품 스프레드 조판 규격입니다.">
+              <input type="radio" name="editProjBookType" value="illustrated" checked onchange="onBookTypeOptionChange(this, 'edit')">
+              <span class="book-type-title">🎨 서정 시화집</span>
+              <span class="book-type-desc">2페이지 1작품 (좌측 삽화 + 우측 시)</span>
+            </label>
+            <label class="book-type-option" id="optEditTypeStandard" title="[일반 시집] 삽화 없이 1페이지 1작품으로 시 텍스트 중심 단독 조판 규격입니다.">
+              <input type="radio" name="editProjBookType" value="standard" onchange="onBookTypeOptionChange(this, 'edit')">
+              <span class="book-type-title">📖 일반 시집</span>
+              <span class="book-type-desc">1페이지 1작품 (텍스트 단독 조판)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>시집 성격 (저자 구성 방식)</label>
+          <div class="book-type-selector">
+            <label class="book-type-option selected" id="optEditAuthorSingle" title="[개인 시집] 단일 시인의 자서전적 회고 및 개인 창작 시집입니다.">
+              <input type="radio" name="editProjAuthorType" value="single" checked onchange="onAuthorTypeOptionChange(this, 'edit')">
+              <span class="book-type-title">👤 개인 시집 (단독 집필)</span>
+              <span class="book-type-desc">1인의 자서전/개인 시집. 본문에는 시 제목만 단정하게 조판됩니다.</span>
+            </label>
+            <label class="book-type-option" id="optEditAuthorCollab" title="[공동·가족 시집] 가족, 친구, 동아리, 애송시 모음집입니다. 각 작품마다 시인을 다르게 지정할 수 있습니다.">
+              <input type="radio" name="editProjAuthorType" value="collab" onchange="onAuthorTypeOptionChange(this, 'edit')">
+              <span class="book-type-title">👨‍👩‍👧‍👦 공동 · 가족 시집 (모음집)</span>
+              <span class="book-type-desc">가족/친구/앤솔로지. 각 작품별로 시인(어머니, 윤동주 등)을 표기합니다.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="inputEditProjName">시집 제목 (필수) *</label>
+          <input type="text" id="inputEditProjName" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="inputEditProjSubtitle">시집 부제</label>
+          <input type="text" id="inputEditProjSubtitle" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="inputEditProjAuthor" id="lblEditProjAuthor">작가 / 지은이</label>
+          <input type="text" id="inputEditProjAuthor" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="inputEditProjTarget">목표 시 편수</label>
+          <input type="number" id="inputEditProjTarget" class="form-input" min="5" max="100">
+        </div>
+
+        <div class="form-group">
+          <label for="inputEditProjDesc">시집 기획 의도 및 배경 (선택)</label>
+          <textarea id="inputEditProjDesc" class="form-textarea" rows="3"></textarea>
+        </div>
+
+        <div class="modal-actions" style="justify-content: space-between;">
+          <div>
+            <button type="button" class="btn-modal-delete" id="btnDeleteCurrentProject" onclick="onDeleteCurrentProject()" title="[시집 삭제] 현재 시집 프로젝트와 원고를 완전히 삭제합니다. (주의: 삭제된 데이터는 복구할 수 없습니다)">🗑️ 시집 삭제</button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeEditProjectModal()" title="[취소] 수정을 취소하고 창을 닫습니다.">취소</button>
+            <button type="submit" class="btn-modal-submit" id="btnSubmitEditProject" title="[변경사항 저장] 수정한 시집 제목, 부제, 시인명, 도서 형태를 원고와 설정에 영구 반영합니다.">💾 변경사항 저장</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       완성 원고 통째 일괄 불러오기 (Bulk Import) 모달
+       ======================================================== -->
+  <div class="modal-overlay" id="bulkImportModal" style="display: none;" onclick="onModalOverlayClick(event)">
+    <div class="modal-card modal-large" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">📑 완성 원고 통째로 불러오기 (Bulk Import)</h3>
+        <button type="button" class="modal-close-btn" onclick="closeBulkImportModal()">&times;</button>
+      </div>
+      <p class="modal-desc">
+        이미 한글(HWP), 워드, 메모장 등에 탈고해 두신 시 원고 전체를 복사해서 붙여넣으세요.<br>
+        빈 줄이나 번호(1., 2. 또는 [제01화])로 구분된 원고를 지능적으로 분석하여 각 편별로 자동 분리합니다.
+      </p>
+
+      <form id="formBulkImport" onsubmit="onSubmitBulkImport(event)">
+        <!-- 텍스트 입력 및 파일 드롭존 -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="bulkTextInput" style="font-weight: 600;">원고 텍스트 붙여넣기 (또는 텍스트 파일 드롭)</label>
+            <button type="button" class="btn-text-action" onclick="triggerBulkFileInput()" title="[텍스트 파일 선택] 컴퓨터에 있는 텍스트 문서(.txt, .md)를 선택하여 내용을 입력창으로 불러옵니다.">📁 텍스트 파일(.txt, .md) 선택</button>
+            <input type="file" id="bulkFileInput" accept=".txt,.md" style="display: none;" onchange="onBulkFileSelected(event)">
+          </div>
+          <textarea id="bulkTextInput" class="form-textarea" rows="11" placeholder="예시)
+새벽 대청
+
+동지섣달 긴긴밤 대청마루에
+호롱불 하나 밝혀두고
+어머니는 시린 손끝을 입김으로 녹이셨네...
+
+
+물레 소리
+
+밤새 잉잉거리는 저 소리는
+어머니 가슴에서 흘러나오는 노래일까...
+" oninput="onBulkTextInputChange()"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer;">
+            <input type="radio" name="bulkImportMode" value="overwrite" checked>
+            <span>기존 원고를 새 원고로 완전히 교체</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer;">
+            <input type="radio" name="bulkImportMode" value="append">
+            <span>기존 원고 뒤에 이어서 추가</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; margin-left: auto;">
+            <input type="checkbox" id="chkAutoPrompts" checked>
+            <span style="color: var(--accent-primary); font-weight: 500;">🎨 시 본문 기반 300 DPI 수채화 프롬프트 자동 생성</span>
+          </label>
+        </div>
+
+        <!-- 실시간 파싱 미리보기 구역 -->
+        <div id="bulkPreviewSection" class="bulk-preview-box" style="display: none;">
+          <div class="bulk-preview-header">
+            <span id="bulkPreviewCountBadge" class="preview-count-badge">총 0편 감지됨</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">아래 목록이 올바르게 분리되었는지 확인하세요.</span>
+          </div>
+          <div id="bulkPreviewList" class="bulk-preview-list">
+            <!-- 감지된 시 목록이 여기에 렌더링됨 -->
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 1.25rem;">
+          <button type="button" class="btn-modal-cancel" onclick="closeBulkImportModal()" title="[취소] 원고 일괄 불러오기를 취소하고 창을 닫습니다.">취소</button>
+          <button type="button" class="btn-sub-action" id="btnAnalyzeBulk" onclick="analyzeBulkText()" style="width: auto; padding: 10px 20px;" title="[원고 분석] 붙여넣은 텍스트를 분석하여 몇 편의 시로 분리되는지 미리 확인합니다.">
+            <span>🔍 원고 분석 및 미리보기</span>
+          </button>
+          <button type="submit" class="btn-modal-submit" id="btnSubmitBulkImport" disabled style="opacity: 0.5;" title="[전체 원고 등록] 분석된 시 목록을 현재 시집의 공식 원고로 일괄 등록합니다.">
+            <span>🚀 이 원고로 전체 등록하기</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       전편 무료 삽화 일괄 자동 생성 (Batch Image Generation) 진행 모달
+       ======================================================== -->
+  <div class="modal-overlay" id="batchGenModal" style="display: none;" onclick="onBatchGenOverlayClick(event)">
+    <div class="modal-card modal-large" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">⚡ 전편 서정 수채화 삽화 일괄 자동 생성</h3>
+        <button type="button" class="modal-close-btn" onclick="closeBatchGenModal()">&times;</button>
+      </div>
+      <p class="modal-desc">
+        API 키 없이 100% 무료 FLUX 엔진으로 현재 시집의 모든 시에 어울리는 한국형 서정 수채화 삽화를 순차적으로 그려냅니다.<br>
+        완성된 후 가상 시화집 뷰어에서 책장을 넘기며 마음에 드는 그림으로 언제든 개별 교체할 수 있습니다.
+      </p>
+
+      <div class="batch-progress-container" style="margin: 1.5rem 0;">
+        <div class="progress-bar-wrap">
+          <div id="batchProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-info-row">
+          <span id="batchProgressPercentText" style="font-weight: 700; color: var(--accent-primary);">0%</span>
+          <span id="batchProgressCountText" style="font-weight: 600; color: var(--text-main);">0 / 0편 완료</span>
+          <span id="batchProgressCurrentTitle" style="color: var(--text-muted); font-size: 0.85rem;">준비 중...</span>
+        </div>
+      </div>
+
+      <!-- 완료된 삽화 실시간 썸네일 그리드 -->
+      <div id="batchThumbnailGrid" class="batch-thumbnail-grid">
+        <!-- 완료된 썸네일들이 실시간으로 여기에 꽂힘 -->
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button type="button" class="btn-modal-cancel" id="btnCancelBatchGen" onclick="cancelBatchGen()" title="[일괄 생성 중단] 진행 중인 전편 삽화 일괄 생성을 안전하게 멈춥니다.">중단</button>
+        <button type="button" class="btn-modal-submit" id="btnStartBatchGen" onclick="startBatchGen()" title="[일괄 생성 시작] 현재 시집의 모든 작품에 대해 무료 수채화 삽화를 처음부터 끝까지 순차적으로 자동 생성합니다.">
+          <span>🎨 전편 삽화 일괄 생성 시작</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       3번 탭: YuE2 고성능 공식 웹 스튜디오 가이드 모달
+       ======================================================== -->
+  <div class="modal-overlay" id="colabYuE2Modal" style="display: none;" onclick="closeColabYuE2Modal()">
+    <div class="modal-card modal-large" style="max-height: 88vh; overflow-y: auto; max-width: 780px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">🚀 3번 탭: YuE2 고성능 서정 작곡 가이드 (무설치 웹 스튜디오)</h3>
+        <button type="button" class="modal-close-btn" onclick="closeColabYuE2Modal()">&times;</button>
+      </div>
+      <p class="modal-desc" style="margin-bottom: 0.85rem;">
+        Google Colab의 복잡한 설치나 GPU 메모리 오류 없이, <strong>YuE2 공식 전용 서버에서 무료로 고성능 완곡을 즉시 작곡</strong>하는 공식 웹 스튜디오입니다.
+      </p>
+
+      <!-- 🎁 YuE2 장점 배너 -->
+      <div style="background: #F3E8FF; border: 1.5px solid #C084FC; border-radius: 9px; padding: 12px 16px; margin-bottom: 1rem; display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 1.5rem; line-height: 1.1;">🎼</span>
+        <div style="font-size: 0.86rem; color: #581C87; line-height: 1.65;">
+          <strong style="color: #3B0764; font-size: 0.94rem;">[YuE2 공식 웹 스튜디오의 핵심 장점]</strong><br>
+          • <strong>Colab 경유 없음 (무설치):</strong> 컴퓨터 사양 걱정 없이 웹 브라우저에서 버튼만 누르면 바로 작곡됩니다.<br>
+          • <strong>깊은 서정 보컬 & 장르 악기:</strong> 24GB 전용 파운데이션 모델로 가곡, 포크, 민요조의 깊은 음악적 '맛'을 살려냅니다.<br>
+          • <strong>100% 무료 다운로드:</strong> 완성된 노래를 결제 없이 내 컴퓨터에 바로 오디오 파일로 저장할 수 있습니다.
+        </div>
+      </div>
+
+      <!-- 2. 작곡 재료 복사 도구함 (상시 노출) -->
+      <div style="background: #fffcf8; border: 2px solid #d4a373; border-radius: 10px; padding: 14px 16px; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #643e19; font-size: 0.92rem;">📦 YuE2 화면에 붙여넣을 2가지 재료 복사하기</strong>
+          <span style="font-size: 0.78rem; color: #8c827a;">붙여넣기 단축키: Ctrl + V</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button type="button" onclick="copyStyleOnly(this)" style="padding: 12px 14px; font-size: 0.88rem; font-weight: 700; border: 1.5px solid #9333EA; background: #FAF5FF; color: #6B21A8; border-radius: 8px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" title="[스타일 복사] Song description(설명 칸)에 넣을 음악 스타일 태그를 복사합니다.">
+            <span>🎵 <strong>1. 스타일 복사</strong> <small>(Song description 칸용)</small></span>
+          </button>
+          <button type="button" onclick="copyLyricsOnly(this)" style="padding: 12px 14px; font-size: 0.88rem; font-weight: 700; border: 1.5px solid #d4a373; background: #ffffff; color: #2C2520; border-radius: 8px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" title="[가사 복사] Lyrics(가사 칸)에 넣을 노랫말을 복사합니다.">
+            <span>📋 <strong>2. 가사 복사</strong> <small>(Lyrics 칸용)</small></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. [YuE2] 전용 상세 3단계 가이드 -->
+      <div class="guide-steps" style="display: flex; flex-direction: column; gap: 12px;">
+        
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">첫째. YuE2 공식 웹사이트 열기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; margin-bottom: 8px;">
+            아래 버튼을 누르면 가사가 자동 복사되며 YuE2 공식 스튜디오가 새 창으로 열립니다.
+          </p>
+          <button type="button" onclick="openYue2Platform()" class="btn-sub-action" style="padding: 9px 18px; font-size: 0.9rem; font-weight: bold; background: #7E22CE; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(126,34,206,0.25);">
+            <span>🚀 YuE2 공식 스튜디오 열기 (새 창) ↗</span>
+          </button>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">둘째. 스타일과 가사 붙여넣고 [Generate] 누르기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.65;">
+            ① 윗칸 <strong>`Song description`</strong>에 마우스를 대고 <strong>`Ctrl + V`</strong>로 [스타일]을 붙여넣습니다.<br>
+            ② 아랫칸 <strong>`Lyrics`</strong>에 마우스를 대고 <strong>`Ctrl + V`</strong>로 [가사]를 붙여넣습니다.<br>
+            ③ 오른쪽 아래의 보라색 <strong>`Generate` (생성)</strong> 버튼을 클릭합니다.
+          </p>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">셋째. 완성된 음악 다운로드하여 스튜디오에 등록</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.65;">
+            ① 생성이 완료되면 곡 옆의 <strong>다운로드 아이콘(↓)</strong>을 눌러 컴퓨터에 저장합니다.<br>
+            ② 스토리북 스튜디오 화면의 <strong>'클릭하여 음원 파일 가져오기'</strong> 상자를 클릭해 저장된 음악 파일을 등록하면 끝!
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 하단 닫기 버튼 및 기존 Colab 노트북 다운로드 보조 링크 -->
+      <div class="modal-actions" style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" onclick="downloadModularNotebook()" style="background: transparent; border: none; color: #8c827a; font-size: 0.78rem; cursor: pointer; text-decoration: underline;" title="[Colab용 파일 받기] Colab에서 직접 코드로 실행하실 분을 위한 노트북 파일입니다.">
+          <span>⚙️ (개발자용) Colab 노트북(.ipynb) 다운로드</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" onclick="closeColabYuE2Modal()" style="min-width: 100px; padding: 9px 20px; font-size: 0.92rem; font-weight: 600;" title="[닫기] 안내 창을 닫습니다.">창 닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Colab (SDXL) 원클릭 삽화 생성 가이드 모달
+       ======================================================== -->
+  <div class="modal-overlay" id="colabImageModal" style="display: none;" onclick="closeColabImageModal()">
+    <div class="modal-card modal-large" style="max-height: 88vh; overflow-y: auto;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #9a3412;">🚀 Colab (SDXL) 원클릭 서정 삽화 가이드</h3>
+        <button type="button" class="modal-close-btn" onclick="closeColabImageModal()">&times;</button>
+      </div>
+      <p class="modal-desc">
+        Google Colab의 무료 T4 GPU에서 실행되는 <strong>SDXL-Lightning 초고속 삽화 파이프라인</strong>입니다.<br>
+        1·2·4·5단계는 공통 엔진이며, <strong>[3단계]</strong>에 현재 시의 서정 프롬프트와 화풍이 동적으로 조립되어 <strong>2가지 시안(A안, B안)을 렌더링(생성 대기 필요)</strong>하고 자동 다운로드합니다.
+      </p>
+
+      <div class="guide-steps" style="display: flex; flex-direction: column; gap: 12px; margin: 1.25rem 0;">
+        <!-- 첫째: 동적 조립 노트북 받기 vs 3단계 코드 복사 (선택 1) -->
+        <div style="background: #fffaf5; border: 1.5px solid #fed7aa; border-radius: 8px; padding: 14px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="font-size: 0.92rem; color: #9a3412; font-weight: 700; margin: 0;">첫째. Colab 작업 준비 (방법 A 또는 방법 B 중 [하나만 선택])</h4>
+            <span style="font-size: 0.75rem; background: #FFEDD5; color: #9A3412; padding: 2px 8px; border-radius: 12px; font-weight: 600;">둘 다 누르지 마시고 1가지만 선택하세요</span>
+          </div>
+
+          <!-- 방법 A (추천) -->
+          <div style="background: #FFFFFF; border: 1.5px solid #EA580C; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <strong style="color: #9A3412; font-size: 0.85rem;">✨ 방법 A. [가장 추천] 맞춤형 노트북 파일 다운로드 (원클릭)</strong>
+              <span style="font-size: 0.72rem; color: #15803D; font-weight: 700; background: #DCFCE7; padding: 2px 6px; border-radius: 4px;">코드 붙여넣기 필요 없음</span>
+            </div>
+            <p style="font-size: 0.8rem; color: #4B5563; margin-bottom: 8px; line-height: 1.45;">
+              현재 시의 제목, 정경 프롬프트, 300 DPI 화풍이 이미 100% 조립된 전용 파일(<code>.ipynb</code>)을 받습니다. 아래 버튼만 누르고 Colab에 업로드하면 바로 실행됩니다.
+            </p>
+            <button type="button" class="btn-sub-action" onclick="downloadModularImageNotebook()" style="width: 100%; background: #9A3412; color: #FFFFFF; padding: 8px 16px; font-size: 0.85rem; font-weight: 700; box-shadow: 0 2px 4px rgba(154,52,18,0.25);" title="[방법 A 다운로드] 현재 시의 프롬프트가 이미 조립된 전용 노트북을 다운로드합니다.">
+              <span>📥 [방법 A] 현재 작품 맞춤형 노트북(.ipynb) 새로 받기</span>
+            </button>
+          </div>
+
+          <!-- 방법 B (기존 노트북 창 재활용 시) -->
+          <div style="background: #FAF7F2; border: 1px dashed #D5C8B8; border-radius: 6px; padding: 9px 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <strong style="color: #643E19; font-size: 0.83rem;">🔄 방법 B. [선택] 이미 Colab을 열어두고 여러 시를 연속 작업할 때</strong>
+              <span style="font-size: 0.72rem; color: #6B7280; background: #E5E7EB; padding: 2px 6px; border-radius: 4px;">3단계 셀 덮어쓰기용</span>
+            </div>
+            <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 6px; line-height: 1.4;">
+              새 파일을 매번 다운로드하지 않고, 이미 열려 있는 Colab 화면의 <strong>[3단계]</strong> 셀에 새 프롬프트만 <code>Ctrl+V</code>로 교체하고 싶을 때만 사용합니다.
+            </p>
+            <button type="button" class="btn-sub-action" onclick="copyStep3ImageCode()" style="background: #FFFFFF; color: #7C2D12; border: 1px solid #D5C8B8; padding: 6px 12px; font-size: 0.8rem; font-weight: 600;" title="[방법 B 코드 복사] 기존 Colab 창의 [3단계] 셀에 붙여넣을 파이썬 코드만 클립보드에 복사합니다.">
+              <span>📋 [방법 B] 3단계 교체용 파이썬 코드만 복사</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 둘째: Colab 열기 및 실행 -->
+        <div style="background: #fffaf5; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.9rem; color: #9a3412; margin-bottom: 4px;">둘째. Google Colab에서 열고 [런타임 ➜ 모두 실행]</h4>
+          <p style="font-size: 0.82rem; color: #7c2d12; margin-bottom: 8px;">
+            Google Colab 새 창을 열고, 방금 다운로드한 노트북(<code>*.ipynb</code>)을 업로드한 뒤 상단 메뉴 <strong>[런타임] → [모두 실행]</strong>만 누르면 T4 GPU에서 고화질 2가지 시안이 생성(생성 대기 필요)됩니다.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <a href="https://colab.research.google.com/" target="_blank" class="btn-sub-action" style="background: #FFFFFF; color: #9A3412; border: 1.5px solid #EA580C; display: inline-flex; align-items: center; text-decoration: none; padding: 7px 16px; font-size: 0.83rem; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" title="[Google Colab 열기] 웹 브라우저 새 창에서 Google Colab 웹사이트를 엽니다.">
+              <span>🌐 Google Colab 바로가기 ↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 셋째: 2가지 시안 자동 다운로드 및 등록 -->
+        <div style="background: #fffaf5; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.9rem; color: #9a3412; margin-bottom: 4px;">셋째. 다운로드된 시안 중 마음에 드는 그림 등록</h4>
+          <p style="font-size: 0.82rem; color: #7c2d12;">
+            Colab 실행이 끝나면 5단계에서 <strong>시안 A(서정적 여백)</strong>와 <strong>시안 B(따스한 정경)</strong> 2개 파일이 내 컴퓨터 [다운로드] 폴더로 자동 저장됩니다.<br>
+            마음에 드는 그림을 스튜디오의 <strong>[그림/사진 파일 가져오기]</strong>에서 선택하거나 마우스로 끌어다 놓으시면 시집과 갤러리에 즉시 반영됩니다!
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.25rem;">
+        <button type="button" class="btn-modal-cancel" onclick="closeColabImageModal()" title="[닫기] Colab 삽화 가이드 창을 닫습니다.">닫기</button>
+        <button type="button" class="btn-modal-submit" onclick="downloadModularImageNotebook();" style="background: #9a3412;" title="[노트북 다운로드하고 삽화 생성하기] 맞춤형 노트북(.ipynb)을 컴퓨터에 다운로드하고 창을 닫습니다.">
+          <span>📥 노트북 다운로드하고 삽화 생성하기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       무료 음악 AI (Suno / Udio) 가이드 모달
+       ======================================================== -->
+  <!-- ========================================================
+       무료 음악 AI (Suno / Udio) 작곡 상세 안내 모달 (시니어/초보자 맞춤형)
+       ======================================================== -->
+  <!-- ========================================================
+       1번 탭: Suno AI 서정 노래 작곡 상세 안내 모달 (감성 품질 1위)
+       ======================================================== -->
+  <div class="modal-overlay" id="sunoMusicModal" style="display: none;" onclick="closeSunoMusicModal()">
+    <div class="modal-card modal-large" style="max-height: 88vh; overflow-y: auto; max-width: 780px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">🎵 1번 탭: Suno AI 서정 작곡 가이드 (감성 품질 1위)</h3>
+        <button type="button" class="modal-close-btn" onclick="closeSunoMusicModal()">&times;</button>
+      </div>
+      <p class="modal-desc" style="margin-bottom: 0.85rem;">
+        전 세계 1위 서정 음악 인공지능 Suno에서 <strong>매일 50 크레딧(하루 5회 / 총 10곡)을 무료로 생성</strong>할 수 있습니다.<br>
+        한국어 서정 보컬과 악기 편성의 감동이 가장 뛰어나며, 완성 후 필요 시 결제 또는 소장용 녹음으로 등록할 수 있습니다.
+      </p>
+
+      <!-- 🎁 Suno 혜택 안내 배너 -->
+      <div style="background: #FFF7ED; border: 1.5px solid #FDBA74; border-radius: 9px; padding: 12px 16px; margin-bottom: 1rem; display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 1.5rem; line-height: 1.1;">👑</span>
+        <div style="font-size: 0.86rem; color: #9A3412; line-height: 1.65;">
+          <strong style="color: #7C2D12; font-size: 0.94rem;">[Suno AI의 핵심 특징]</strong><br>
+          • <strong>독보적인 서정 보컬 감성:</strong> 한국어 자음·모음과 가슴을 울리는 바이브레이션, 깊은 한(恨)과 운율을 가장 완벽하게 노래합니다.<br>
+          • <strong>매일 무료 생성 지원:</strong> 매일 50 크레딧이 무료 충전되어 하루 10곡씩 무료로 작곡해 들어보실 수 있습니다.<br>
+          • <strong>소장 및 출판:</strong> 마음에 쏙 드는 곡이 나오면 정식 결제 다운로드나 소장용 녹음으로 시집에 탑재하실 수 있습니다.
+        </div>
+      </div>
+
+      <!-- 작곡 재료 복사 도구함 -->
+      <div style="background: #fffcf8; border: 2px solid #d4a373; border-radius: 10px; padding: 14px 16px; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #643e19; font-size: 0.92rem;">📦 작곡에 필요한 3가지 재료 복사하기</strong>
+          <span style="font-size: 0.78rem; color: #8c827a;">붙여넣기 단축키: Ctrl + V</span>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <button type="button" onclick="copyFullMusicPrompt()" style="width: 100%; padding: 13px 16px; font-size: 0.95rem; font-weight: 700; border: 2px solid #e09f3e; background: linear-gradient(135deg, #FFF9F0 0%, #FFEED4 100%); color: #873e02; border-radius: 9px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(224, 159, 62, 0.2);" title="[전체 복사] 제목, 스타일, 가사를 한 번에 전체 복사합니다.">
+            <span style="font-size: 1.15rem;">✨</span>
+            <span><strong>전체 한 번에 복사하기</strong> <span style="font-size: 0.85rem; font-weight: normal; color: #a45a16; margin-left: 4px;">(★가장 추천! 이것만 누르고 가사 칸에 붙여넣으세요)</span></span>
+          </button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <button type="button" onclick="copyLyricsOnly(this)" style="padding: 10px 12px; font-size: 0.84rem; font-weight: 600; border: 1.5px solid #d4a373; background: #ffffff; color: #2C2520; border-radius: 8px; cursor: pointer; text-align: center;" title="[노래 가사 복사]">
+            <span>📋 <strong>1. 가사만 복사</strong></span>
+          </button>
+          <button type="button" onclick="copyStyleOnly(this)" style="padding: 10px 12px; font-size: 0.84rem; font-weight: 600; border: 1.5px solid #d4a373; background: #ffffff; color: #2C2520; border-radius: 8px; cursor: pointer; text-align: center;" title="[스타일 복사]">
+            <span>🎵 <strong>2. 스타일 복사</strong></span>
+          </button>
+          <button type="button" onclick="copyTitleOnly(this)" style="padding: 10px 12px; font-size: 0.84rem; font-weight: 600; border: 1.5px solid #d4a373; background: #ffffff; color: #2C2520; border-radius: 8px; cursor: pointer; text-align: center;" title="[곡 제목 복사]">
+            <span>📝 <strong>3. 제목 복사</strong></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Suno 전용 상세 가이드 -->
+      <div class="guide-steps" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">1단계. Suno 웹사이트 열기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; margin-bottom: 8px;">
+            아래 버튼을 누르면 Suno 사이트가 새 창으로 열립니다. (구글 계정으로 간편 로그인하세요)
+          </p>
+          <button type="button" onclick="openSunoPlatform()" class="btn-sub-action" style="padding: 9px 18px; font-size: 0.9rem; font-weight: bold; background: #EA580C; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(234,88,12,0.25);">
+            <span>🚀 Suno AI 사이트 열기 (새 창) ↗</span>
+          </button>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">2단계. 화면 왼쪽 [Create] ➜ 상단 [Custom] 스위치 켜기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.6;">
+            화면 왼쪽의 <strong>`Create` (만들기)</strong> 메뉴를 클릭하고, 상단의 <strong>`Custom`</strong> 버튼을 켜면 가사 입력 칸이 열립니다.
+          </p>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">3단계. 가사 붙여넣고 [Create] 누르기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.6;">
+            가사 칸(<code>Lyrics</code>)에 마우스를 대고 <strong>`Ctrl + V`</strong>로 붙여넣은 뒤 주황색 <strong>`Create`</strong> 버튼을 누르면 Suno 대기열에 따라 음원이 생성(생성 대기 필요)됩니다.
+          </p>
+        </div>
+
+        <div style="background: #FFF7ED; border: 1.5px solid #FDBA74; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #9A3412; margin-bottom: 6px;">4단계. MP3 다운로드 및 시집 등록 (최초 약 7곡 무료)</h4>
+          <p style="font-size: 0.82rem; color: #7C2D12; line-height: 1.5; margin-bottom: 8px;">
+            Suno는 신규 계정 기준 약 7곡까지 무료로 정식 다운로드를 제공합니다:
+          </p>
+          
+          <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.81rem; color: #431407; line-height: 1.55;">
+            ① 노래 목록에서 곡 옆의 <strong>더보기(⋯)</strong> 클릭 (또는 우측 상세 화면의 ⋯ 아이콘)<br>
+            ② <strong>[Download] ➔ [Audio]</strong> 클릭 ➔ 내 컴퓨터 [다운로드] 폴더에 MP3가 저장됩니다.
+          </div>
+
+          <div style="background: #fffbf5; border: 1.5px solid #fed7aa; border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; font-size: 0.81rem; color: #431407; line-height: 1.6;">
+            <strong style="color: #c2410c; font-size: 0.84rem;">💡 무료 다운로드 횟수(7회)가 소진되었을 때 100% 무료 해결책:</strong><br>
+            • <strong>【가장 추천】 크롬 무료 확장도구 [Web Audio Recorder]로 탭 녹음</strong><br>
+            &nbsp;&nbsp;① 크롬 웹스토어에서 <strong>Web Audio Recorder</strong> 설치<br>
+            &nbsp;&nbsp;② Suno 곡 재생 직전 <strong>Shift + R</strong> (녹음 시작) ➔ 곡 재생 ➔ 곡 끝나면 <strong>Shift + S</strong> (녹음 중지 및 MP3 다운로드)<br>
+            &nbsp;&nbsp;③ 다운로드 폴더의 MP3를 스튜디오 <strong>[음원 파일 가져오기]</strong>에 넣으면, <strong>안실장이 앞뒤 무음 및 다음 곡 침범 구간을 자동으로 깔끔하게 다듬어 등록</strong>합니다!<br>
+            • <strong>2번 탭 [Udio AI] 병행 활용</strong>: 별도 결제나 한도 없이 웹에서 MP3를 100% 무료 무제한 다운로드 가능<br>
+            <span style="font-size: 0.76rem; color: #8c827a;">※ 참고: 보조 구글 계정으로 로그인해도 기기/IP 인식 및 다운로드 0회 정책으로 인해 다운로드가 차단되므로, 위 Web Audio Recorder 녹음 방식이 가장 안전하고 확실합니다.</span>
+          </div>
+
+          <p style="font-size: 0.81rem; color: #c2410c; font-weight: 600; margin-top: 6px; margin-bottom: 4px; line-height: 1.5;">
+            👉 저장된 MP3 파일을 시화집에 등록하려면, 바로 아래 <strong>[클릭하여 음원 파일 가져오기]</strong> 상자를 클릭하고, 열리는 <strong>[다운로드]</strong> 폴더에서 해당 파일을 선택한 후 <strong>[열기]</strong>를 누르면 시화집에 즉시 등록 완료! <span style="font-size: 0.76rem; color: #9a3412; font-weight: 400;">(끌어다 놓으셔도 됩니다)</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-modal-cancel" onclick="closeSunoMusicModal()" style="min-width: 100px; padding: 10px 20px; font-size: 0.92rem; font-weight: 600;">창 닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       2번 탭: Udio AI 서정 예술 작곡 상세 안내 모달 (무료 MP3 다운로드)
+       ======================================================== -->
+  <div class="modal-overlay" id="udioMusicModal" style="display: none;" onclick="closeUdioMusicModal()">
+    <div class="modal-card modal-large" style="max-height: 88vh; overflow-y: auto; max-width: 780px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">🎼 2번 탭: Udio AI 서정 예술 작곡 가이드 (무료 MP3 다운로드)</h3>
+        <button type="button" class="modal-close-btn" onclick="closeUdioMusicModal()">&times;</button>
+      </div>
+      <p class="modal-desc" style="margin-bottom: 0.85rem;">
+        가곡·클래식·7080 서정 포크의 예술적 깊이가 세계 최고 수준이며, <strong>웹 화면에서 결제 없이 MP3 파일로 바로 무료 다운로드</strong>가 가능합니다.
+      </p>
+
+      <!-- 🎁 Udio 핵심 혜택 안내 배너 -->
+      <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 9px; padding: 12px 16px; margin-bottom: 1rem; display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 1.5rem; line-height: 1.1;">🌿</span>
+        <div style="font-size: 0.86rem; color: #166534; line-height: 1.65;">
+          <strong style="color: #14532D; font-size: 0.94rem;">[Udio AI의 핵심 장점]</strong><br>
+          • <strong>결제 없는 무료 다운로드:</strong> 노래가 완성되면 <strong>[Download] ➜ [.mp3]</strong> 버튼으로 내 컴퓨터에 100% 무료 저장됩니다.<br>
+          • <strong>한국 가곡 & 서정 포크의 깊은 울림:</strong> 피아노, 첼로, 어쿠스틱 기타와 성악/포크 보컬의 예술성이 Suno와 대등하거나 그 이상입니다.<br>
+          • <strong>매월 무료 크레딧 제공:</strong> 구글 계정으로 로그인하면 누구나 무료로 나만의 예술 가곡을 작곡할 수 있습니다.
+        </div>
+      </div>
+
+      <!-- 💡 시니어/초보자 친절 안내 -->
+      <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 9px; padding: 11px 15px; margin-bottom: 1.15rem; display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 1.45rem; line-height: 1.1;">💡</span>
+        <div style="font-size: 0.85rem; color: #92400E; line-height: 1.65;">
+          <strong style="color: #78350F; font-size: 0.92rem;">[어르신/초보자 꿀팁] Udio는 화면 상단의 [Custom] 버튼을 켜는 것이 핵심입니다!</strong><br>
+          • Udio 화면 위쪽의 <strong>[Custom]</strong> 버튼을 누르면 스타일 칸과 가사 칸이 분리되어 열립니다.<br>
+          • 아래 <strong>1번(스타일 복사)</strong>과 <strong>2번(가사 복사)</strong>을 각각 복사해서 붙여넣으시면 아주 쉽습니다.
+        </div>
+      </div>
+
+      <!-- 작곡 재료 복사 도구함 -->
+      <div style="background: #fffcf8; border: 2px solid #d4a373; border-radius: 10px; padding: 14px 16px; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #643e19; font-size: 0.92rem;">📦 Udio 화면에 붙여넣을 2가지 재료 복사하기</strong>
+          <span style="font-size: 0.78rem; color: #8c827a;">붙여넣기 단축키: Ctrl + V</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button type="button" onclick="copyStyleOnly(this)" style="padding: 12px 14px; font-size: 0.88rem; font-weight: 700; border: 1.5px solid #059669; background: #ECFDF5; color: #047857; border-radius: 8px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;" title="[스타일 복사] Udio의 상단 Prompt(프롬프트) 칸에 넣을 악기/장르 태그를 복사합니다.">
+            <span>🎵 <strong>1. 스타일 복사</strong> <small>(Prompt 칸용)</small></span>
+          </button>
+          <button type="button" onclick="copyLyricsOnly(this)" style="padding: 12px 14px; font-size: 0.88rem; font-weight: 700; border: 1.5px solid #d4a373; background: #ffffff; color: #2C2520; border-radius: 8px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;" title="[가사 복사] Udio의 Lyrics(가사) 칸에 넣을 노랫말을 복사합니다.">
+            <span>📋 <strong>2. 가사 복사</strong> <small>(Lyrics 칸용)</small></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Udio 전용 상세 5단계 가이드 -->
+      <div class="guide-steps" style="display: flex; flex-direction: column; gap: 12px;">
+        
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">1단계. Udio 웹사이트 열기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; margin-bottom: 8px;">
+            아래 버튼을 누르면 Udio 사이트가 새 창으로 열립니다. (구글 계정으로 간편 로그인하세요)
+          </p>
+          <button type="button" onclick="openUdioPlatform()" class="btn-sub-action" style="padding: 9px 18px; font-size: 0.9rem; font-weight: bold; background: #059669; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+            <span>🚀 Udio AI 사이트 열기 (새 창) ↗</span>
+          </button>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">2단계. 화면 상단 [Custom] 스위치 켜기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.65;">
+            Udio 화면 맨 위 입력창 바로 아래의 <strong>`[Custom]`</strong> 버튼을 클릭합니다.<br>
+            <span style="color: #047857; font-size: 0.8rem;">※ Custom을 켜면 스타일 입력 칸과 가사 입력 칸이 분리되어 나타납니다.</span>
+          </p>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">3단계. 스타일과 가사 붙여넣고 [Create] 누르기</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.65;">
+            ① 윗칸 <strong>`Prompt`</strong>에 마우스를 대고 <strong>`Ctrl + V`</strong>로 [1. 스타일]을 붙여넣습니다.<br>
+            ② 아래의 <strong>`Custom Lyrics`</strong> 라디오 동그라미를 선택하고, 네모 칸에 <strong>`Ctrl + V`</strong>로 [2. 가사]를 붙여넣습니다.<br>
+            ③ 오른쪽의 보라색 <strong>`Create` (생성)</strong> 버튼을 클릭합니다.
+          </p>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1.5px solid #86EFAC; border-radius: 8px; padding: 12px 14px; background: #F0FDF4;">
+          <h4 style="font-size: 0.92rem; color: #166534; margin-bottom: 6px;">4단계. [Download] 눌러 내 컴퓨터에 MP3 저장 (100% 무료!)</h4>
+          <p style="font-size: 0.84rem; color: #15803D; line-height: 1.65;">
+            완성된 곡 목록에서 <strong>다운로드(↓) 아이콘(또는 점 3개 ⋯) ➜ `Download Audio`</strong>를 누르면 결제 팝업 없이 <strong>내 컴퓨터 [다운로드] 폴더에 `.mp3` 파일로 바로 저장</strong>됩니다!
+          </p>
+        </div>
+
+        <div style="background: #fbf9f4; border: 1px solid #ebdccb; border-radius: 8px; padding: 12px 14px;">
+          <h4 style="font-size: 0.92rem; color: #643e19; margin-bottom: 6px;">5단계. 스튜디오에서 [음원 파일 가져오기] 클릭하여 등록</h4>
+          <p style="font-size: 0.84rem; color: #665f57; line-height: 1.65;">
+            스토리북 스튜디오 화면의 <strong>'클릭하여 음원 파일 가져오기'</strong> 상자를 클릭해 방금 다운받은 MP3 파일을 선택하면 시집 등록이 완료됩니다!
+          </p>
+        </div>
+
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-modal-cancel" onclick="closeUdioMusicModal()" style="min-width: 100px; padding: 10px 20px; font-size: 0.92rem; font-weight: 600;">창 닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       작품 삭제 확인 전용 커스텀 모달 (삭제 창 꺼짐 방지)
+       ======================================================== -->
+  <div class="modal-overlay" id="deleteConfirmModal" style="display: none;" onclick="closeDeleteConfirmModal()">
+    <div class="modal-card" style="max-width: 440px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #C84B31; display: flex; align-items: center; gap: 6px;">
+          <span>🗑️</span> 작품 삭제 확인
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeDeleteConfirmModal()">&times;</button>
+      </div>
+      <div style="padding: 12px 0 16px;">
+        <p style="font-size: 1.05rem; font-weight: 700; color: #2C2520; margin-bottom: 8px;" id="deleteConfirmMsgTitle">
+          [제01화] 「새벽 대청」
+        </p>
+        <p style="font-size: 0.88rem; color: #665F57; line-height: 1.6; margin-bottom: 0;">
+          이 작품을 시집 원고에서 영구히 삭제하시겠습니까?<br>
+          <span style="color: #C84B31; font-weight: 600;">⚠️ 삭제된 작품은 시집 원고, 목차 및 북 뷰어에서 완전히 제외됩니다.</span>
+        </p>
+      </div>
+      <div class="modal-actions" style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-modal-cancel" onclick="closeDeleteConfirmModal()">취소 (원고 유지)</button>
+        <button type="button" class="btn-modal-submit" id="btnExecuteDeleteWork" onclick="executeDeleteCurrentWork()" style="background: #C84B31; border-color: #C84B31;">
+          <span>🗑️ 정말로 삭제하기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       시집 목차 및 순서 편집기 모달 (TOC & Order Editor)
+       ======================================================== -->
+  <div class="modal-overlay" id="tocEditorModal" style="display: none;" onclick="closeTocEditorModal()">
+    <div class="modal-card modal-large" style="max-width: 860px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #643E19; display: flex; align-items: center; gap: 6px;">
+          <span>📚</span> 책 전체 구성 &amp; 목차 편집기
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeTocEditorModal()">&times;</button>
+      </div>
+      <p class="modal-desc" style="margin-bottom: 0.85rem;">
+        작품의 수록 순서를 변경하고, <strong>큰 주제별 묶음(부/챕터)</strong>으로 아름답게 분류하여 시집의 목차를 완성하세요.<br>
+        저장 시 원고 마크다운과 인쇄용 CSV, 가상 북 뷰어 목차에 즉시 반영됩니다.
+      </p>
+
+      <!-- 툴바: 챕터 프리셋 & 옵션 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; background: #FDF9F4; padding: 10px 14px; border: 1px solid #EBD5C2; border-radius: 8px;">
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          <button type="button" class="btn-sub-action" onclick="applyDefaultChaptersPreset()" style="padding: 5px 12px; font-size: 0.8rem; background: #643E19; color: #fff; border-color: #643E19;" title="[5부작 프리셋 적용] '목화와 어머니' 연작 5부작(제1부 흙과 솜꽃, 제2부 밤을 잣는 손 등) 챕터 체계를 불러옵니다.">
+            <span>🌸 5부작 연작 프리셋 불러오기</span>
+          </button>
+          <button type="button" class="btn-copy" onclick="addNewTocChapter()" style="padding: 5px 10px; font-size: 0.8rem;" title="[새 부 추가] 새로운 부/챕터(예: 제6부)를 목록에 추가합니다.">
+            <span>➕ 새 부(챕터) 추가</span>
+          </button>
+        </div>
+        <div>
+          <label style="display: flex; align-items: center; gap: 5px; font-size: 0.82rem; font-weight: 600; color: #643E19; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="chkAutoRenumberToc" checked>
+            <span>순서에 맞추어 회차 번호 자동 재정렬 (제01화, 제02화...)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 시 순서 및 부/챕터 편집 리스트 컨테이너 -->
+      <div id="tocItemsListContainer" style="max-height: 440px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 6px;">
+        <!-- JS로 실시간 렌더링됨 -->
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.82rem; color: var(--text-muted);" id="tocItemCountSummary">총 0편 수록 중</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-modal-cancel" onclick="closeTocEditorModal()">취소</button>
+          <button type="button" class="btn-modal-submit" id="btnSaveTocOrder" onclick="saveTocAndOrder()" style="background: #643E19; border-color: #643E19;">
+            <span>💾 목차 및 순서 저장하기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ========================================== -->
+  <!-- 1. 퇴고 판본(Revision) 이력 & 나란히 비교(Diff) 모달 -->
+  <!-- ========================================== -->
+  <div id="revisionsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 960px; width: 92%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.25rem;">📜</span>
+          <div>
+            <h3 class="modal-title" style="margin-bottom: 2px;">시인의 집필실: 퇴고 판본(Revision) 이력 &amp; 비교</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">초고(初稿)부터 현재까지의 수정본을 나란히 비교하고 안심하고 되돌릴 수 있습니다.</p>
+          </div>
+        </div>
+        <button type="button" class="btn-modal-close" onclick="closeRevisionsModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1rem 0; flex: 1; overflow: hidden; display: flex; gap: 14px;">
+        <!-- 좌측: 판본 목록 아카이브 -->
+        <div style="width: 260px; border-right: 1px solid var(--border-color); padding-right: 12px; display: flex; flex-direction: column;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #643E19; margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <span>보관된 판본 목록</span>
+            <span id="revsCountBadge" style="color: var(--accent-green);">0개</span>
+          </div>
+          <div id="revsListContainer" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 우측: Side-by-Side Diff 비교 영역 -->
+        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--border-color);">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #2C2520;">
+              <span>비교 대상: </span>
+              <span id="revSelectedTitle" style="color: #643E19;">선택 판본</span>
+              <span style="color: #8C827A; margin: 0 4px;">vs</span>
+              <span style="color: #436940;">현재 편집창 본문</span>
+            </div>
+            <div style="font-size: 0.74rem; color: var(--text-muted); display: flex; gap: 8px;">
+              <span style="display: flex; align-items: center; gap: 3px;"><span style="width: 10px; height: 10px; background: #FFEEEE; border: 1px solid #FFCCCC; display: inline-block;"></span> 이전 판본 단독</span>
+              <span style="display: flex; align-items: center; gap: 3px;"><span style="width: 10px; height: 10px; background: #EEFFEE; border: 1px solid #CCFFCC; display: inline-block;"></span> 현재 추가됨</span>
+            </div>
+          </div>
+
+          <div id="revsDiffContentContainer" style="flex: 1; overflow-y: auto; background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; font-family: var(--font-serif); font-size: 0.92rem; line-height: 1.8;">
+            <!-- JS Diff 렌더링 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" id="btnRestoreRevision" class="btn-sub-action" onclick="restoreSelectedRevision()" style="background: #F4F7F2; border-color: #C2D4BA; color: #2D502A; font-weight: 600;" disabled title="[선택 판본 되돌리기] 좌측에서 선택한 이전 판본의 본문으로 현재 편집창을 안전하게 복원합니다.">
+          <span>🔄 이 판본으로 본문 되돌리기</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" onclick="closeRevisionsModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. 시인의 영혼: 내 목소리 육성 낭송 녹음실 모달 -->
+  <!-- ========================================== -->
+  <div id="voiceRecModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 540px; width: 92%;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.35rem;">🎙️</span>
+          <div>
+            <h3 class="modal-title" style="margin-bottom: 2px;">시인의 육성 낭송 녹음실</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">기계음(TTS) 대신 시인의 온기 어린 목소리와 숨결을 시집에 담습니다.</p>
+          </div>
+        </div>
+        <button type="button" class="btn-modal-close" onclick="closeVoiceRecModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem 0; text-align: center;">
+        <!-- 시 제목 안내 배지 -->
+        <div style="margin-bottom: 1rem;">
+          <span id="voiceRecTargetBadge" style="display: inline-block; background: #FFF4E8; border: 1px solid #EBD0B5; color: #643E19; font-weight: 700; font-size: 0.88rem; padding: 4px 14px; border-radius: 20px;">
+            [제01화] 새벽 대청
+          </span>
+        </div>
+
+        <!-- 녹음 상태 및 타이머 -->
+        <div style="background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+          <div id="voiceRecPulsingIndicator" style="width: 60px; height: 60px; border-radius: 50%; background: #FFF; border: 2px solid #EBD5C2; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem auto; font-size: 1.8rem; transition: all 0.3s;">
+            🎙️
+          </div>
+          <div id="voiceRecTimerDisplay" style="font-size: 2rem; font-weight: 700; font-family: monospace; color: #2C2520; margin-bottom: 4px;">
+            00:00
+          </div>
+          <div id="voiceRecStatusText" style="font-size: 0.84rem; color: var(--text-muted);">
+            '낭송 녹음 시작' 버튼을 누른 뒤 시를 낭독해 주세요.
+          </div>
+        </div>
+
+        <!-- 녹음 제어 버튼 -->
+        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 1.25rem;">
+          <button type="button" id="btnVoiceRecStart" class="btn-primary" style="background: #C84B31; border-color: #C84B31; padding: 0.6rem 1.5rem;" onclick="startVoiceRecording()">
+            <span>🔴 낭송 녹음 시작</span>
+          </button>
+          <button type="button" id="btnVoiceRecStop" class="btn-secondary" style="padding: 0.6rem 1.5rem;" onclick="stopVoiceRecording()" disabled>
+            <span>⏹️ 녹음 중지</span>
+          </button>
+        </div>
+
+        <!-- 미리 듣기 오디오 플레이어 (녹음 완료 후 표시) -->
+        <div id="voiceRecPreviewArea" style="display: none; background: #EEF4EB; border: 1px solid #D2E2CE; border-radius: 8px; padding: 12px; margin-top: 0.75rem;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #32572E; margin-bottom: 6px;">
+            ✓ 녹음 완료! 아래 플레이어로 낭송을 직접 들어보세요.
+          </div>
+          <audio id="voiceRecAudioPlayer" controls style="width: 100%; height: 36px;"></audio>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-modal-cancel" onclick="closeVoiceRecModal()">취소</button>
+        <button type="button" id="btnVoiceRecSave" class="btn-modal-submit" style="background: #643E19; border-color: #643E19;" onclick="saveVoiceRecordingToWork()" disabled>
+          <span>💾 이 낭송으로 시집에 저장하기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. 시인의 집필실: 시어(詩語) 감각 사전 & 방언/토속어 모달 -->
+  <!-- ========================================== -->
+  <div id="thesaurusModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 680px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">📖</span>
+          <div>
+            <h3 class="modal-title" style="margin-bottom: 2px;">시인의 시어(詩語) 감각 사전 &amp; 방언</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">단어 하나의 울림과 정서적 온도(먹먹함/애잔/토속/방언)를 탐색하고 본문과 교체합니다.</p>
+          </div>
+        </div>
+        <button type="button" class="btn-modal-close" onclick="closeThesaurusModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1rem 0; flex: 1; overflow-y: auto;">
+        <!-- 검색창 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
+          <input type="text" id="thesaurusSearchInput" class="form-input" placeholder="시어를 검색하세요 (예: 어머니, 비, 바람, 저녁, 그리움, 세월...)" style="flex: 1;" onkeydown="if(event.key==='Enter') searchThesaurusWord()">
+          <button type="button" class="btn-primary" style="background: #4A3B80; border-color: #4A3B80; padding: 0.5rem 1.25rem;" onclick="searchThesaurusWord()">
+            <span>🔍 찾기</span>
+          </button>
+        </div>
+
+        <!-- 검색 결과 구역 -->
+        <div id="thesaurusResultArea" style="min-height: 120px;">
+          <!-- JS 렌더링 -->
+        </div>
+
+        <!-- 전체 대표 시어 테마 둘러보기 -->
+        <div style="margin-top: 1.25rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #4A3B80; margin-bottom: 8px;">
+            🌸 대표 정통 서정 시어 테마 바로가기 (클릭하여 감각 펼치기)
+          </div>
+          <div id="thesaurusTagsContainer" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.78rem; color: var(--text-muted);">* 추천 시어를 클릭하면 현재 편집창의 단어와 즉시 교체하거나 복사됩니다.</span>
+        <button type="button" class="btn-modal-cancel" onclick="closeThesaurusModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔑 Gemini API 키 설정 모달 (100% 무료) -->
+  <div class="modal-overlay" id="modalGeminiKey" style="display: none;" onclick="closeGeminiKeyModal()">
+    <div class="modal-card" style="max-width: 540px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>🔑</span> <span>Google Gemini API 키 설정 (100% 무료)</span>
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeGeminiKeyModal()">&times;</button>
+      </div>
+      <div style="padding: 10px 0;">
+        <p style="font-size: 0.85rem; color: #4A3E36; line-height: 1.6; margin-bottom: 12px;">
+          구글에서 제공하는 <strong>Gemini 2.5 Flash</strong>는 상투성을 깨부수고 한국 현대시의 깊은 은유와 여백을 살려내는 언어의 마법사입니다.<br>
+          신용카드 등록 없이 <strong>1분 만에 100% 무료</strong>로 평생 발급받을 수 있습니다.
+        </p>
+        
+        <div style="background: #FFF9F2; border: 1.5px solid #EBD0B5; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 0.82rem;">
+          <div style="font-weight: 700; color: #8B4513; margin-bottom: 6px;">💡 30초 무료 발급 3단계:</div>
+          <ol style="margin-left: 1.2rem; color: #643E19; line-height: 1.65;">
+            <li><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2563EB; font-weight: 700; text-decoration: underline;">Google AI Studio 무료 발급 페이지 (클릭)</a> 로 이동</li>
+            <li>구글 계정 로그인 후 <strong>[Create API key]</strong> 버튼 클릭</li>
+            <li>발급된 키(AIza...)를 복사하여 아래에 붙여넣고 <strong>[저장 및 활성화]</strong> 클릭</li>
+          </ol>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="selectGeminiModel" style="font-weight: 700; font-size: 0.84rem; color: #333; display: flex; align-items: center; justify-content: space-between;">
+            <span>🤖 작시 및 프롬프트 AI 모델 선택</span>
+            <span style="font-size: 0.75rem; color: #16A34A; font-weight: 600;">100% 무료 티어 지원</span>
+          </label>
+          <select id="selectGeminiModel" class="form-select" style="font-size: 0.86rem; padding: 7px 10px; width: 100%; border: 1.5px solid #D5C9BD; border-radius: 6px; background: #FFFDF9;">
+            <option value="gemini-3.8-flash" selected>✨ Gemini 3.8 Flash (최신 플래그십 · 초고속/고지능 강력 추천)</option>
+            <option value="gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Live (심층 사고 추론 · 깊은 은유와 여백)</option>
+            <option value="gemini-3.7-flash">⚡ Gemini 3.7 Flash (3.7세대 안정화 플래시)</option>
+            <option value="gemini-3.1-pro-preview">🏛️ Gemini 3.1 Pro (전문가급 대규모 심층 분석)</option>
+            <option value="gemini-2.5-flash">🌱 Gemini 2.5 Flash (2.5세대 기본형)</option>
+            <option value="gemini-2.5-pro">📚 Gemini 2.5 Pro (2.5세대 프로)</option>
+          </select>
+          <div style="font-size: 0.75rem; color: #786C62; margin-top: 4px;">
+            💡 최신 <strong>Gemini 3.8 Flash</strong>는 문학적 은유와 파격적 서정 묘사 능력이 대폭 향상되었으며 완전 무료로 동작합니다.
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inputGeminiApiKey" style="font-weight: 700; font-size: 0.84rem; color: #333;">Gemini API 키 (AIza...)</label>
+          <input type="password" id="inputGeminiApiKey" class="form-input" placeholder="AIzaSy..." style="font-family: monospace; font-size: 0.88rem; width: 100%;">
+          <div id="geminiKeyValidationMsg" style="font-size: 0.78rem; margin-top: 4px; display: none;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+          <span id="geminiKeyCurrentStatusText" style="font-size: 0.8rem; color: #888; font-weight: 600;">상태 확인 중...</span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-primary" id="btnSaveGeminiKey" onclick="saveGeminiApiKey()" style="padding: 7px 18px; font-size: 0.85rem; background: #643E19;">
+              <span>💾 저장 및 즉시 활성화</span>
+            </button>
+            <button type="button" class="btn-modal-cancel" onclick="closeGeminiKeyModal()">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. 시인의 집필실: 인라인 미니 플로팅 시어 팔레트 (Floating Poetic Palette) -->
+  <!-- ========================================== -->
+  <div id="poeticFloatingPalette" class="poetic-floating-palette" style="display: none;">
+    <div class="palette-header">
+      <div class="palette-title-box">
+        <span class="palette-icon">✨</span>
+        <span class="palette-title" id="floatingWordTitle">시어의 결</span>
+      </div>
+      <button type="button" class="palette-close-btn" onclick="closePoeticPalette()" title="닫기 (ESC)">✕</button>
+    </div>
+    <div class="palette-body" id="floatingChipsContainer">
+      <div class="palette-loading" style="font-size: 0.8rem; color: #8C827A; padding: 6px;">시어의 결을 벼리는 중...</div>
+    </div>
+    <div class="palette-footer">
+      <button type="button" class="btn-palette-ai" onclick="requestAiPoeticPalette()" title="현재 시 문맥에 어울리는 새로운 시어를 AI로 실시간 추천받습니다.">
+        <span>💫 AI 맞춤 추천</span>
+      </button>
+      <button type="button" class="btn-palette-more" onclick="expandToThesaurusModal()" title="전체 시어 감각 사전 모달을 엽니다.">
+        <span>📖 감각 사전 더보기</span>
+      </button>
+    </div>
+  </div>
+
+  
+  <!-- ========================================== -->
+  <!-- 5. 1:1 비밀 상담 및 출판 코칭 상담실 모달 (Inquiry Modal) -->
+  <!-- ========================================== -->
+  <div id="inquiryModal" class="modal" style="display: none;">
+    <div class="modal-dialog" style="max-width: 620px; border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px rgba(78, 59, 42, 0.22); border: 1.5px solid #D4A373;">
+      <div class="modal-content" style="background: #FCFAF6;">
+        <div class="modal-header" style="background: #F4ECE1; border-bottom: 1.5px solid #E5D7C5; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5rem;">🔒</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; font-family: 'Nanum Myeongjo', serif; font-weight: 700; color: #4A2E18;">
+                1:1 비밀 상담 및 출판 편집 코칭
+              </h3>
+              <p style="margin: 2px 0 0; font-size: 0.8rem; color: #7A695A;">
+                시화집 조판이 막히거나 오류가 발생하셨나요? 작가에게 직접 도움을 요청하세요.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-modal-close" onclick="closeInquiryModal()" style="font-size: 1.4rem; background: none; border: none; cursor: pointer; color: #7A695A;">✕</button>
+        </div>
+
+        <!-- 탭 메뉴 (새 상담 / 내 상담 내역) -->
+        <div style="display: flex; border-bottom: 1px solid #E5D7C5; background: #FAF5ED;">
+          <button type="button" id="tabBtnNewInquiry" onclick="switchInquiryTab('new')" style="flex: 1; padding: 11px; font-size: 0.88rem; font-weight: 700; background: #FCFAF6; border: none; border-bottom: 2px solid #8B4513; color: #8B4513; cursor: pointer;">
+            ✏️ 새로운 상담 요청
+          </button>
+          <button type="button" id="tabBtnMyInquiries" onclick="switchInquiryTab('my')" style="flex: 1; padding: 11px; font-size: 0.88rem; font-weight: 600; background: none; border: none; border-bottom: 2px solid transparent; color: #7A695A; cursor: pointer;">
+            📬 내 문의 내역 및 작가 답변
+          </button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px 24px; max-height: 70vh; overflow-y: auto;">
+          <!-- [탭 1: 새로운 상담 접수 폼] -->
+          <div id="inquiryFormPane">
+            <form id="formSubmitInquiry" onsubmit="handleInquirySubmit(event)">
+              <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #4A2E18; margin-bottom: 5px;">
+                  문의 분류 <span style="color: #C0392B;">*</span>
+                </label>
+                <select id="inquiryCategory" style="width: 100%; height: 40px; padding: 0 12px; border: 1.5px solid #D9C8B5; border-radius: 8px; background: #FFFFFF; font-size: 0.88rem; color: #333;" required>
+                  <option value="coaching" selected>🎨 시화집 편집 및 조판 코칭 도움 요청 (추천)</option>
+                  <option value="bug">🐞 버그 제보 및 기술 오류 해결</option>
+                  <option value="feature">💡 새로운 기능 제안 및 아이디어</option>
+                  <option value="publishing">📖 독립출판 및 종이책 제작 상담</option>
+                  <option value="general">☕ 기타 따뜻한 응원 및 문의</option>
+                </select>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div>
+                  <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #4A2E18; margin-bottom: 5px;">
+                    성함 또는 필명 <span style="color: #C0392B;">*</span>
+                  </label>
+                  <input type="text" id="inquiryAuthorName" placeholder="예: 김서정 시인" style="width: 100%; height: 38px; padding: 0 10px; border: 1.5px solid #D9C8B5; border-radius: 8px; font-size: 0.88rem;" required>
+                </div>
+                <div>
+                  <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #4A2E18; margin-bottom: 5px;">
+                    회신받으실 이메일 <span style="color: #C0392B;">*</span>
+                  </label>
+                  <input type="email" id="inquiryAuthorEmail" placeholder="your@email.com" style="width: 100%; height: 38px; padding: 0 10px; border: 1.5px solid #D9C8B5; border-radius: 8px; font-size: 0.88rem;" required>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #4A2E18; margin-bottom: 5px;">
+                  상담 제목 <span style="color: #C0392B;">*</span>
+                </label>
+                <input type="text" id="inquiryTitle" placeholder="예: 3화 삽화와 글상자 여백 조판이 어색해서 조언 구합니다" style="width: 100%; height: 38px; padding: 0 10px; border: 1.5px solid #D9C8B5; border-radius: 8px; font-size: 0.88rem;" required>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #4A2E18; margin-bottom: 5px;">
+                  상세 고민 및 문의 내용 <span style="color: #C0392B;">*</span>
+                </label>
+                <textarea id="inquiryContent" rows="5" placeholder="어떤 부분이 고민이신지, 혹은 어떤 오류가 발생했는지 자세히 적어주시면 작가님이 확인 후 정성껏 피드백을 드립니다." style="width: 100%; padding: 10px 12px; border: 1.5px solid #D9C8B5; border-radius: 8px; font-size: 0.88rem; line-height: 1.6; resize: vertical;" required></textarea>
+              </div>
+
+              <!-- 시집 데이터 자동 첨부 옵션 박스 -->
+              <div style="background: #F4EBE0; border: 1.5px dashed #C8A882; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <strong style="color: #4A2E18; font-size: 0.88rem;">📦 현재 작업 중인 시집 데이터 자동 첨부</strong>
+                  <span style="font-size: 0.76rem; color: #7B6858;">별도 파일 찾기 불필요</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.84rem; color: #3E3024;">
+                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                    <input type="radio" name="attachOption" value="full_zip" checked style="margin-top: 3px;">
+                    <div>
+                      <strong>시집 전체 백업 ZIP 첨부 (적극 권장 ⭐⭐⭐)</strong><br>
+                      <span style="font-size: 0.78rem; color: #6D5B4D;">글 원고 + 삽화 그림 + 낭송 음원 + 조판 위치값이 모두 포함되어 작가님이 본인 스튜디오에서 100% 똑같이 열어보고 다듬어 드릴 수 있습니다.</span>
+                    </div>
+                  </label>
+                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                    <input type="radio" name="attachOption" value="csv" style="margin-top: 3px;">
+                    <div>
+                      <strong>시 원고 텍스트만 첨부 (CSV/MD)</strong><br>
+                      <span style="font-size: 0.78rem; color: #6D5B4D;">그림이나 음원 없이 시 문장과 사연만 가볍게 첨부합니다.</span>
+                    </div>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="radio" name="attachOption" value="none">
+                    <span>첨부 안 함 (단순 문의나 아이디어 제안)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-modal-cancel" onclick="closeInquiryModal()" style="padding: 10px 18px; font-size: 0.9rem; border-radius: 8px;">취소</button>
+                <button type="submit" id="btnSubmitInquiry" class="btn-primary" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; background: #8B4513; border: none; border-radius: 8px; color: #FFFFFF; cursor: pointer; box-shadow: 0 4px 10px rgba(139,69,19,0.3);">
+                  <span>✉️ 비밀 상담 요청 보내기</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- [탭 2: 내 문의 내역 및 답변 확인] -->
+          <div id="inquiryMyListPane" style="display: none;">
+            <div id="myInquiriesContainer" style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="text-align: center; padding: 30px; color: #8C827A; font-size: 0.88rem;">
+                상담 내역을 불러오는 중입니다...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- 글로벌 고품질 커스텀 툴팁 컨테이너 -->
+  <div id="appCustomTooltip" class="app-custom-tooltip"></div>

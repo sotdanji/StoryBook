@@ -33,8 +33,11 @@ def test_api_projects_endpoint(client):
     assert "projects" in data
     assert len(data["projects"]) >= 1
 
-def test_api_save_work_layout_config_normal(client):
-    """POST /api/save_work_layout_config 정상 호출 시 200과 success: True를 반환해야 한다."""
+def test_api_save_work_layout_config_normal(client, monkeypatch):
+    """POST /api/save_work_layout_config 정상 호출 시 200과 success: True를 반환해야 한다 (실제 데이터 변조 방지)."""
+    from core.project_manager import project_manager
+    mgr = project_manager.get_active_manuscript_manager()
+    monkeypatch.setattr(mgr, "update_work_layout_config", lambda *args, **kwargs: True)
     payload = {
         "episode_no": "01",
         "layout_config": {

@@ -21,16 +21,9 @@ from web.routers import (
     audio_video,
     publishing,
     thesaurus,
+    inquiries,
 )
 
-# 하위 호환을 위한 주요 함수 및 모델 Re-export
-from web.routers.auth_admin import *
-from web.routers.projects import *
-from web.routers.studio_poem import *
-from web.routers.illustration import *
-from web.routers.audio_video import *
-from web.routers.publishing import *
-from web.routers.thesaurus import *
 
 app = FastAPI(
     title="StoryBook Studio",
@@ -61,6 +54,7 @@ app.include_router(illustration.router, tags=["4. 300 DPI 서정 삽화 생성"]
 app.include_router(audio_video.router, tags=["5. 시낭송(TTS) · 노래 · 비디오"])
 app.include_router(publishing.router, tags=["6. 부크크 PDF · 출판 데이터"])
 app.include_router(thesaurus.router, tags=["7. 시어 감각 사전 · 방언"])
+app.include_router(inquiries.router, tags=["8. 1:1 비밀 상담 · 출판 코칭"])
 
 # 브라우저 자동 요청 파비콘(404 방지)
 @app.get("/favicon.ico", include_in_schema=False)

@@ -25,24 +25,8 @@ try:
 except ImportError:
     genai = None
 
-from core.config import (
-    BASE_DIR, IMAGES_DIR, TARGET_POEMS_COUNT, GEMINI_API_KEY, GEMINI_MODEL, DEFAULT_ART_STYLE, CANVA_CSV_FILE, PAPER_TYPE,
-    save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
-)
 from core.auth_manager import auth_manager
-from core.manuscript import ManuscriptManager, PoemWork
-from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
-from core.publishing_copier import publishing_copier
-from core.book_spec import calculate_spine_and_cover, inspect_images
-from core.pdf_builder import build_pdf_book
-from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
-from core.image_optimizer import ensure_300dpi_image
-from core.poetic_engine import poetic_engine
-from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
-from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
-from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
-from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
+from core.project_manager import project_manager
 
 WEB_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = WEB_DIR / "templates"
@@ -77,20 +61,33 @@ class ProjectDeleteRequest(BaseModel):
     project_id: str
 
 
+def _safe_child(base: Path, rel: str):
+    """base 폴더 내부의 실제 파일일 때만 경로를 반환 (경로 탈출/절대경로 차단)"""
+    try:
+        rel = (rel or "").replace("\\", "/").lstrip("/")
+        if not rel or ":" in rel or "\x00" in rel:
+            return None
+        base_r = base.resolve()
+        cand = (base_r / rel).resolve()
+        cand.relative_to(base_r)
+        return cand if cand.is_file() else None
+    except Exception:
+        return None
+
+
 # 동적 이미지 서빙 (활성 프로젝트 폴더 내 images 서빙)
 @router.get("/images/{image_path:path}")
 async def serve_image(image_path: str):
-    clean_path = image_path.replace("..", "").lstrip("/\\")
-    img_name = Path(clean_path).name
+    img_name = Path(image_path.replace("\\", "/")).name
 
     # 1. 활성 프로젝트의 images 디렉토리
-    p_img = project_manager.get_active_images_dir() / img_name
-    if p_img.exists() and p_img.is_file():
+    p_img = _safe_child(project_manager.get_active_images_dir(), img_name)
+    if p_img:
         return FileResponse(str(p_img))
 
     # 2. 프로젝트 폴더 내 상대경로
-    p_direct = project_manager.get_project_dir() / clean_path
-    if p_direct.exists() and p_direct.is_file():
+    p_direct = _safe_child(project_manager.get_project_dir(), image_path)
+    if p_direct:
         return FileResponse(str(p_direct))
 
     raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다.")
@@ -98,17 +95,16 @@ async def serve_image(image_path: str):
 # 동적 오디오 음원 서빙 (활성 프로젝트 및 프로젝트별 music 서빙)
 @router.get("/music/{audio_path:path}")
 async def serve_audio(audio_path: str):
-    clean_path = audio_path.replace("..", "").lstrip("/\\")
-    audio_name = Path(clean_path).name
+    audio_name = Path(audio_path.replace("\\", "/")).name
 
     # 1. 활성 프로젝트의 music 디렉토리
-    p_music = project_manager.get_project_dir() / "music" / audio_name
-    if p_music.exists() and p_music.is_file():
+    p_music = _safe_child(project_manager.get_project_dir() / "music", audio_name)
+    if p_music:
         return FileResponse(str(p_music))
 
     # 2. 프로젝트 폴더 내 상대경로
-    p_direct = project_manager.get_project_dir() / clean_path
-    if p_direct.exists() and p_direct.is_file():
+    p_direct = _safe_child(project_manager.get_project_dir(), audio_path)
+    if p_direct:
         return FileResponse(str(p_direct))
 
     raise HTTPException(status_code=404, detail="음원 파일을 찾을 수 없습니다.")
@@ -403,18 +399,23 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 "poemVideo": poem_video_path,
                 "hasSongVideo": bool(song_video_path),
                 "songVideo": song_video_path,
+                "image2": f"/projects/{safe_name}/{getattr(w, 'image_file_2', '').replace('./', '').lstrip('/')}" if getattr(w, "image_file_2", "") else "",
+                "layout_mode": getattr(w, "layout_mode", "compact") or "compact",
+                "part2_mode": getattr(w, "part2_mode", "motif_symbol") or "motif_symbol",
                 "layout_config": getattr(w, "layout_config", None),
                 "chapter": getattr(w, "chapter", "") or "",
                 "author": getattr(w, "author", "") or info.author
             })
 
         projects_list = project_manager.list_projects()
+        book_structure = project_manager.get_book_structure(pid)
 
         return {
             "success": True,
             "project": asdict(info),
             "projects": projects_list,
-            "episodes": episodes
+            "episodes": episodes,
+            "book_structure": book_structure
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -447,7 +448,69 @@ async def update_book_section_api(payload: Dict[str, Any] = Body(...), project_i
             return {"success": False, "error": "section_id is required"}
         data = payload.get("data", {})
         struct = project_manager.update_section_content(section_id, data, project_id)
+        try:
+            from core.gallery_builder import sync_project_gallery_html
+            sync_project_gallery_html(project_id)
+        except Exception:
+            pass
         return {"success": True, "data": struct}
     except Exception as e:
         logger.error(f"Failed to update book section: {e}")
         return {"success": False, "error": str(e)}
+
+
+# -------------------------------------------------------------
+# 시화 갤러리 웹 서빙 & 독립 웹 배포용 패키징 API
+# -------------------------------------------------------------
+@router.get("/gallery", response_class=HTMLResponse)
+@router.get("/gallery/{project_id}", response_class=HTMLResponse)
+async def view_gallery_page(project_id: Optional[str] = None):
+    """
+    온라인 시화 갤러리 웹 서빙:
+    - 활성 또는 지정된 시집의 최신 시화집_갤러리.html 동기화 후 반환
+    """
+    from core.gallery_builder import sync_project_gallery_html
+    pid = project_id or project_manager.get_active_project_id()
+    try:
+        pdir = project_manager.get_project_dir(pid)
+    except Exception:
+        raise HTTPException(status_code=404, detail="존재하지 않는 시집 프로젝트입니다.")
+
+    # 최신 원고 및 에셋 동기화
+    try:
+        sync_project_gallery_html(pid)
+    except Exception as e:
+        logger.warning(f"Gallery sync warning: {e}")
+
+    gallery_file = pdir / "시화집_갤러리.html"
+    if not gallery_file.exists():
+        raise HTTPException(status_code=404, detail="시화 갤러리 파일을 찾을 수 없습니다.")
+
+    html_content = gallery_file.read_text(encoding="utf-8")
+    return HTMLResponse(content=html_content)
+
+
+@router.get("/api/projects/export_gallery_zip")
+async def export_gallery_zip_api(project_id: Optional[str] = None):
+    """
+    웹 배포용 단일 정적 갤러리 ZIP 패키지 다운로드:
+    - Netlify, GitHub Pages, Vercel 등에 폴더만 올리면 열리는 index.html 패키지
+    """
+    import asyncio
+    import urllib.parse
+    pid = project_id or project_manager.get_active_project_id()
+    try:
+        info = project_manager.get_project_info(pid)
+        zip_path = await asyncio.to_thread(project_manager.export_gallery_web_zip, pid)
+        if not zip_path.exists():
+            raise HTTPException(status_code=500, detail="갤러리 웹 배포용 패키지 생성에 실패했습니다.")
+
+        safe_name = urllib.parse.quote(f"{info.name}_온라인갤러리_웹배포용.zip")
+        return FileResponse(
+            path=str(zip_path),
+            filename=f"{info.name}_온라인갤러리_웹배포용.zip",
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"갤러리 배포 패키지 생성 실패: {str(e)}")

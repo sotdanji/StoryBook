@@ -612,6 +612,10 @@
       <button class="tab-btn" onclick="switchTab('tabSystem', this)">
         <span>⚙️ AI 엔진 & 시스템 상태</span>
       </button>
+      <button class="tab-btn" id="btnTabInquiries" onclick="switchTab('tabInquiries', this); loadAdminInquiries();">
+        <span>💬 1:1 상담실 & 코칭 접수</span>
+        <span id="badgePendingInquiries" style="display: none; background: var(--accent-red); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-left: 6px;">0</span>
+      </button>
     </nav>
 
     <!-- 탭 1: 전체 시집 프로젝트 목록 -->
@@ -737,7 +741,75 @@
       </div>
     </div>
 
-  </main>
+  
+    <!-- 탭 4: 1:1 비밀 상담 & 편집 요청 관리 -->
+    <div id="tabInquiries" class="tab-pane">
+      <div class="table-container">
+        <div class="table-toolbar">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="inquirySearchInput" class="search-input" placeholder="제목, 작가명 또는 이메일 검색..." oninput="filterInquiries()">
+            </div>
+            <select id="inquiryStatusFilter" onchange="filterInquiries()" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0 12px; height: 38px; font-size: 0.85rem;">
+              <option value="all">전체 상태</option>
+              <option value="pending" selected>⏳ 접수 대기 중</option>
+              <option value="answered">✅ 답변 완료</option>
+            </select>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            대기 중 상담: <strong id="inquiryPendingCount" style="color: var(--accent-red);">0</strong>건 / 전체 <strong id="inquiryTotalCount" style="color: var(--gold-primary);">0</strong>건
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>상태</th>
+              <th>분류</th>
+              <th>상담 제목</th>
+              <th>신청자 (이메일)</th>
+              <th>시집 첨부</th>
+              <th>접수 일시</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="inquiriesTableBody">
+            <tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: #888;">상담 내역을 불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 관리자 코칭 답변 모달 -->
+    <div id="adminReplyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+      <div style="background: var(--bg-surface); border: 1.5px solid var(--border-gold); border-radius: 14px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+          <h3 style="color: var(--gold-primary); font-size: 1.15rem; margin: 0;">💬 1:1 상담 검토 및 코칭 피드백 작성</h3>
+          <button type="button" onclick="closeAdminReplyModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer;">✕</button>
+        </div>
+
+        <div id="replyModalInquiryDetail" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 0.88rem; line-height: 1.6;">
+          <!-- 동적 채움 -->
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--gold-primary); font-size: 0.88rem; font-weight: 700; margin-bottom: 6px;">
+            ✍️ 작가님의 코칭 답변 및 피드백 <span style="color: var(--accent-red);">*</span>
+          </label>
+          <textarea id="adminReplyContent" rows="6" placeholder="작가님께서 검토하신 시화집 조판 조언, 시어 퇴고 의견 또는 버그 조치 내용을 정성껏 작성해주세요." style="width: 100%; padding: 12px; background: var(--bg-card); border: 1.5px solid var(--border-gold); border-radius: 8px; color: var(--text-main); font-size: 0.9rem; line-height: 1.6; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" onclick="closeAdminReplyModal()" style="padding: 9px 18px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: 8px; cursor: pointer;">취소</button>
+          <button type="button" id="btnSubmitAdminReply" onclick="submitAdminReply()" style="padding: 9px 24px; background: var(--gold-gradient); color: #0F1115; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">
+            <span>✉️ 코칭 답변 전송 및 완료 처리</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    </main>
 
   <script>
     let globalOverviewData = null;
@@ -929,8 +1001,199 @@
       }
     }
 
+    
+    // ==============================================================
+    // 1:1 상담실 & 코칭 접수 관리자 로직
+    // ==============================================================
+    let globalInquiries = [];
+    let currentReplyingInquiry = null;
+
+    async function loadAdminInquiries() {
+      const tbody = document.getElementById("inquiriesTableBody");
+      try {
+        const res = await fetch("/api/admin/inquiries");
+        const data = await res.json();
+        if (res.ok) {
+          globalInquiries = data.inquiries || [];
+          renderInquiriesTable(globalInquiries);
+          updateInquiryBadges();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--accent-red); padding: 2rem;">목록 조회 오류: ${data.detail || '실패'}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--accent-red); padding: 2rem;">통신 오류: ${err.message}</td></tr>`;
+      }
+    }
+
+    function updateInquiryBadges() {
+      const pendingCount = globalInquiries.filter(i => i.status === "pending").length;
+      const badge = document.getElementById("badgePendingInquiries");
+      const pendingCountLabel = document.getElementById("inquiryPendingCount");
+      const totalCountLabel = document.getElementById("inquiryTotalCount");
+
+      if (pendingCountLabel) pendingCountLabel.textContent = pendingCount;
+      if (totalCountLabel) totalCountLabel.textContent = globalInquiries.length;
+
+      if (badge) {
+        if (pendingCount > 0) {
+          badge.textContent = pendingCount;
+          badge.style.display = "inline-block";
+        } else {
+          badge.style.display = "none";
+        }
+      }
+    }
+
+    function renderInquiriesTable(items) {
+      const tbody = document.getElementById("inquiriesTableBody");
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: #888;">조건에 해당하는 상담 내역이 없습니다.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(item => {
+        const isAnswered = item.status === "answered";
+        const statusBadge = isAnswered
+          ? '<span class="badge badge-green">답변 완료</span>'
+          : '<span class="badge badge-red">⏳ 접수 대기</span>';
+
+        const attachBtn = item.attachment_filename
+          ? `<a href="/api/admin/inquiries/download/${item.id}" target="_blank" class="action-link" style="color: var(--gold-primary); font-weight: 600;" title="사용자가 보낸 시집 백업 ZIP 다운로드">📦 ${item.attachment_filename}</a>`
+          : '<span style="color: var(--text-dim);">-</span>';
+
+        return `
+          <tr>
+            <td>${statusBadge}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${item.category_label || item.category}</td>
+            <td>
+              <strong style="color: var(--text-main); font-size: 0.92rem;">${escapeHtmlAdmin(item.title)}</strong>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${escapeHtmlAdmin(item.content)}
+              </div>
+            </td>
+            <td>
+              <span style="color: var(--text-main);">${escapeHtmlAdmin(item.author_name)}</span><br>
+              <small style="color: var(--text-dim); font-size: 0.78rem;">${escapeHtmlAdmin(item.author_email)}</small>
+            </td>
+            <td>${attachBtn}</td>
+            <td style="font-size: 0.8rem; color: var(--text-dim);">${item.created_at || ""}</td>
+            <td>
+              <button type="button" class="btn-action" onclick="openAdminReplyModal('${item.id}')" style="background: var(--bg-card-hover); border: 1px solid var(--border-gold); color: var(--gold-primary); padding: 5px 12px; font-size: 0.82rem; border-radius: 6px; cursor: pointer;">
+                ${isAnswered ? '🔍 답변 수정' : '✍️ 답변하기'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function filterInquiries() {
+      const q = (document.getElementById("inquirySearchInput")?.value || "").toLowerCase().trim();
+      const status = document.getElementById("inquiryStatusFilter")?.value || "all";
+
+      let filtered = globalInquiries.filter(i => {
+        const matchQ = !q || 
+          (i.title && i.title.toLowerCase().includes(q)) || 
+          (i.author_name && i.author_name.toLowerCase().includes(q)) ||
+          (i.author_email && i.author_email.toLowerCase().includes(q));
+
+        const matchStatus = (status === "all") || (i.status === status);
+        return matchQ && matchStatus;
+      });
+
+      renderInquiriesTable(filtered);
+    }
+
+    function openAdminReplyModal(inquiryId) {
+      const item = globalInquiries.find(i => i.id === inquiryId);
+      if (!item) return;
+
+      currentReplyingInquiry = item;
+      const modal = document.getElementById("adminReplyModal");
+      const detailBox = document.getElementById("replyModalInquiryDetail");
+      const textarea = document.getElementById("adminReplyContent");
+
+      const attachInfo = item.attachment_filename
+        ? `<div style="margin-top: 8px;"><strong style="color: var(--gold-primary);">첨부 시집:</strong> <a href="/api/admin/inquiries/download/${item.id}" target="_blank" style="color: var(--accent-blue); text-decoration: underline;">📦 ${item.attachment_filename} (클릭하여 다운로드)</a></div>`
+        : "";
+
+      detailBox.innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--text-muted); font-size: 0.82rem;">
+          <span>[${item.category_label || item.category}]</span>
+          <span>접수: ${item.created_at || ""}</span>
+        </div>
+        <div style="font-weight: 700; font-size: 1rem; color: var(--text-main); margin-bottom: 6px;">
+          ${escapeHtmlAdmin(item.title)}
+        </div>
+        <div style="font-size: 0.82rem; color: var(--gold-primary); margin-bottom: 8px;">
+          신청자: <strong>${escapeHtmlAdmin(item.author_name)}</strong> (${escapeHtmlAdmin(item.author_email)})
+        </div>
+        <div style="background: rgba(0,0,0,0.25); border-radius: 6px; padding: 10px; color: #CFD8DC; line-height: 1.6; white-space: pre-wrap;">${escapeHtmlAdmin(item.content)}</div>
+        ${attachInfo}
+      `;
+
+      textarea.value = item.reply_content || "";
+      modal.style.display = "flex";
+    }
+
+    function closeAdminReplyModal() {
+      const modal = document.getElementById("adminReplyModal");
+      if (modal) modal.style.display = "none";
+      currentReplyingInquiry = null;
+    }
+
+    async function submitAdminReply() {
+      if (!currentReplyingInquiry) return;
+      const content = document.getElementById("adminReplyContent")?.value || "";
+      if (!content.trim()) {
+        alert("답변 내용을 작성해주세요.");
+        return;
+      }
+
+      const btn = document.getElementById("btnSubmitAdminReply");
+      btn.disabled = true;
+      btn.textContent = "전송 및 저장 중...";
+
+      try {
+        const res = await fetch("/api/admin/inquiries/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inquiry_id: currentReplyingInquiry.id,
+            reply_content: content,
+            status: "answered"
+          })
+        });
+
+        const result = await res.json();
+        if (res.ok && result.success) {
+          alert("코칭 답변이 안전하게 등록되었습니다!");
+          closeAdminReplyModal();
+          await loadAdminInquiries();
+        } else {
+          alert("등록 실패: " + (result.detail || "오류 발생"));
+        }
+      } catch (err) {
+        alert("통신 오류: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "✉️ 코칭 답변 전송 및 완료 처리";
+      }
+    }
+
+    function escapeHtmlAdmin(text) {
+      if (!text) return "";
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       loadOverviewData();
+      loadAdminInquiries();
     });
   </script>
 </body>

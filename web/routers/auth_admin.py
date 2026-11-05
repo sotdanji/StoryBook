@@ -22,24 +22,9 @@ try:
 except ImportError:
     genai = None
 
-from core.config import (
-    BASE_DIR, IMAGES_DIR, TARGET_POEMS_COUNT, GEMINI_API_KEY, GEMINI_MODEL, DEFAULT_ART_STYLE, CANVA_CSV_FILE, PAPER_TYPE,
-    save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
-)
+from core.config import TARGET_POEMS_COUNT, DEFAULT_ART_STYLE, PAPER_TYPE, save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
 from core.auth_manager import auth_manager
-from core.manuscript import ManuscriptManager, PoemWork
-from core.project_manager import project_manager, ProjectInfo
-from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
-from core.publishing_copier import publishing_copier
-from core.book_spec import calculate_spine_and_cover, inspect_images
-from core.pdf_builder import build_pdf_book
-from core.bookk_pdf_builder import BookkPDFBuilder, BOOKK_FORMATS
-from core.image_optimizer import ensure_300dpi_image
-from core.poetic_engine import poetic_engine
-from core.colab_builder import build_yue2_notebook_dict, DEFAULT_GENRE_PROMPT
-from core.colab_image_builder import build_sdxl_image_notebook_dict, DEFAULT_STYLE_PRESETS
-from core.poetic_thesaurus import lookup_poetic_words, get_all_categories_summary, suggest_poetic_synonyms_ai, POETIC_THESAURUS_DB
-from core.audio_processor import clean_and_optimize_audio, trim_audio_manually, parse_time_to_seconds, get_audio_duration, format_seconds
+from core.project_manager import project_manager
 
 WEB_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = WEB_DIR / "templates"
@@ -78,8 +63,39 @@ async def login_page(request: Request):
     )
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """스튜디오 메인 집필실 (로그인 검증 및 게스트 분기)"""
+async def intro_page(request: Request):
+    """스토리북 스튜디오 감성 인트로(랜딩) 포털"""
+    # 사용자가 직접 집필실 바로 진입을 원하거나 쿠키가 설정되어 있는 경우
+    skip_intro = (
+        request.query_params.get("skip_intro") == "true" or
+        request.query_params.get("mode") == "studio" or
+        request.cookies.get("storybook_skip_intro") == "true"
+    )
+    if skip_intro:
+        target_url = "/studio"
+        if request.query_params:
+            import urllib.parse
+            q = urllib.parse.urlencode({k: v for k, v in request.query_params.items() if k not in ("skip_intro", "mode")})
+            if q:
+                target_url += f"?{q}"
+        return RedirectResponse(url=target_url)
+
+    current_user = auth_manager.get_current_user()
+    donation_url = os.getenv("DONATION_URL", "https://buymeacoffee.com")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="intro.html",
+        context={
+            "current_user": current_user,
+            "is_admin": auth_manager.is_current_user_admin(),
+            "donation_url": donation_url
+        }
+    )
+
+@router.get("/studio", response_class=HTMLResponse)
+async def studio_page(request: Request):
+    """스튜디오 메인 집필실 및 2-Layer 조판실"""
     is_guest = request.query_params.get("guest") == "true"
     current_user = auth_manager.get_current_user()
     cfg = get_supabase_config()
@@ -131,11 +147,16 @@ async def save_auth_session(req: AuthSessionRequest):
     try:
         verified_uid = req.user_id
         verified_email = req.email
-        if req.access_token and get_supabase_config()['configured']:
+        supabase_cfg = get_supabase_config()
+
+        if supabase_cfg['configured']:
+            if not req.access_token:
+                raise HTTPException(status_code=401, detail='인증 토큰(access_token)이 누락되었습니다.')
             remote_user = await asyncio.to_thread(auth_manager.verify_token_remote, req.access_token)
-            if remote_user and isinstance(remote_user, dict):
-                verified_uid = remote_user.get('id') or verified_uid
-                verified_email = remote_user.get('email') or verified_email
+            if not remote_user or not isinstance(remote_user, dict) or not remote_user.get('id'):
+                raise HTTPException(status_code=401, detail='유효하지 않거나 만료된 인증 토큰입니다.')
+            verified_uid = remote_user.get('id')
+            verified_email = remote_user.get('email') or req.email
 
         session = auth_manager.save_session(
             user_id=verified_uid,

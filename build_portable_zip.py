@@ -28,6 +28,8 @@ EXCLUDE_DIRS = {
     "outputs",
     "scratch",
     "tests",
+    "docs",
+    "scripts",
 }
 
 EXCLUDE_FILES = {
