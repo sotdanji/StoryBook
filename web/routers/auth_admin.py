@@ -63,44 +63,13 @@ async def login_page(request: Request):
     )
 
 @router.get("/", response_class=HTMLResponse)
-async def intro_page(request: Request):
-    """스토리북 스튜디오 감성 인트로(랜딩) 포털"""
-    # 사용자가 직접 집필실 바로 진입을 원하거나 쿠키가 설정되어 있는 경우
-    skip_intro = (
-        request.query_params.get("skip_intro") == "true" or
-        request.query_params.get("mode") == "studio" or
-        request.cookies.get("storybook_skip_intro") == "true"
-    )
-    if skip_intro:
-        target_url = "/studio"
-        if request.query_params:
-            import urllib.parse
-            q = urllib.parse.urlencode({k: v for k, v in request.query_params.items() if k not in ("skip_intro", "mode")})
-            if q:
-                target_url += f"?{q}"
-        return RedirectResponse(url=target_url)
-
-    current_user = auth_manager.get_current_user()
-    donation_url = os.getenv("DONATION_URL", "https://buymeacoffee.com")
-
-    return templates.TemplateResponse(
-        request=request,
-        name="intro.html",
-        context={
-            "current_user": current_user,
-            "is_admin": auth_manager.is_current_user_admin(),
-            "donation_url": donation_url
-        }
-    )
-
 @router.get("/studio", response_class=HTMLResponse)
 async def studio_page(request: Request):
-    """스튜디오 메인 집필실 및 2-Layer 조판실"""
+    """스튜디오 메인 집필실 및 2-Layer 조판실 (루트 진입 시 바로 집필실 표시)"""
     is_guest = request.query_params.get("guest") == "true"
     current_user = auth_manager.get_current_user()
     cfg = get_supabase_config()
 
-    # Supabase가 설정되어 있고, 미로그인 상태이며 게스트 요청이 아닌 경우 로그인 페이지로 안내
     if cfg["configured"] and not current_user and not is_guest:
         return RedirectResponse(url="/login")
 
