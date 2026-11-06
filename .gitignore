@@ -18,3 +18,5 @@ package-lock.json
 # 사용자 개인 창작물 및 로컬 세션
 projects/
 .active_project
+.exports/
+

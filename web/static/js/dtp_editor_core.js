@@ -14,7 +14,7 @@
  * 9. 시어 줄바꿈 보호 (word-break: keep-all) & A5 실물 줌
  */
 
-(function(window) {
+(function (window) {
   'use strict';
 
   function hideElem(el) {
@@ -44,7 +44,7 @@
 
       this.defaultConfig = {
         page_count: 2,
-        font_size_pt: 13,
+        font_size_pt: 12,
         line_height_ratio: 1.6,
         font_family: "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif",
         text_align: "left",
@@ -625,7 +625,7 @@
 
       const normalized = {
         page_count: count,
-        font_size_pt: parseFloat(cfg.font_size_pt) || 13,
+        font_size_pt: parseFloat(cfg.font_size_pt) || 12,
         line_height_ratio: parseFloat(cfg.line_height_ratio) || 1.6,
         text_align: cfg.text_align || "left",
         backdrop_opacity: cfg.backdrop_opacity !== undefined ? parseFloat(cfg.backdrop_opacity) : 0.85,
@@ -650,7 +650,7 @@
       const fullText = (work.poem_body || work.body || work.content || "").replace(/\r\n/g, "\n").trim();
       const rawLines = fullText ? fullText.split("\n") : [];
 
-      const pt = parseFloat(cfg.font_size_pt) || 13;
+      const pt = parseFloat(cfg.font_size_pt) || 12;
       const lh = parseFloat(cfg.line_height_ratio) || 1.6;
 
       // 12pt 기준 15.2px, 줄높이 1.85 -> 1줄당 약 28.12px
@@ -702,7 +702,7 @@
       for (let idx = 0; idx < 6; idx++) {
         const p = pool[idx];
         const acceptsPoemFlow = (p.usage === "text" || p.usage === "image_text") &&
-                                (p.role === "start" || p.role === "continue");
+          (p.role === "start" || p.role === "continue");
 
         if (!acceptsPoemFlow) {
           textFlowMap[idx] = [];
@@ -731,9 +731,9 @@
         }
 
         const topOffset = p.top_offset ? parseInt(p.top_offset, 10) : 0;
-        // 안전선(593px) - 상단영역(76px) = 517px, 상/하단 14px+14px=28px 정통 대칭 여백 완벽 준수
+        // 18행(468px) 수용 황금 기준: 쪽수 위 16px 안전 여백 확보 (19행 이상은 다음 면 흘림)
         const minSingleH = Math.round(linePx + 28);
-        const maxSafeHeight = Math.max(minSingleH, 517 - topOffset);
+        const maxSafeHeight = Math.max(minSingleH, 468 - topOffset);
         const availableHeight = Math.max(linePx, maxSafeHeight - 28);
         const maxSafeLines = Math.max(1, Math.floor((availableHeight + 2) / linePx));
         const customLines = p.max_lines ? parseInt(p.max_lines, 10) : 0;
@@ -796,13 +796,13 @@
       // 필요한 총 페이지 수(2, 4, 6) 자동 산출
       let requiredPages = 2;
       const hasContentOn56 = (textFlowMap[4] && textFlowMap[4].length > 0) ||
-                             (textFlowMap[5] && textFlowMap[5].length > 0) ||
-                             (pool[4]?.role === 'independent' && pool[4]?.custom_text) ||
-                             (pool[5]?.role === 'independent' && pool[5]?.custom_text);
+        (textFlowMap[5] && textFlowMap[5].length > 0) ||
+        (pool[4]?.role === 'independent' && pool[4]?.custom_text) ||
+        (pool[5]?.role === 'independent' && pool[5]?.custom_text);
       const hasContentOn34 = (textFlowMap[2] && textFlowMap[2].length > 0) ||
-                             (textFlowMap[3] && textFlowMap[3].length > 0) ||
-                             (pool[2]?.role === 'independent' && pool[2]?.custom_text) ||
-                             (pool[3]?.role === 'independent' && pool[3]?.custom_text);
+        (textFlowMap[3] && textFlowMap[3].length > 0) ||
+        (pool[2]?.role === 'independent' && pool[2]?.custom_text) ||
+        (pool[3]?.role === 'independent' && pool[3]?.custom_text);
 
       if (hasContentOn56) {
         requiredPages = 6;
@@ -1021,7 +1021,7 @@
       // 5) 폰트 크기 pt 셀렉터 동기화
       const selectPt = document.getElementById("selectTypographyFontSizePt");
       if (selectPt) {
-        const ptStr = String(cfg.font_size_pt || 13);
+        const ptStr = String(cfg.font_size_pt || 12);
         const exists = Array.from(selectPt.options).some(o => o.value === ptStr);
         if (!exists) {
           const opt = document.createElement("option");
@@ -1109,13 +1109,13 @@
       const pageData = cfg.pages[pageIdx] || (cfg._all_pages_pool && cfg._all_pages_pool[pageIdx]);
       if (!pageData) return;
 
-      const pt = parseFloat(cfg.font_size_pt) || 13;
+      const pt = parseFloat(cfg.font_size_pt) || 12;
       const lh = parseFloat(cfg.line_height_ratio) || 1.6;
       const fontPx = (pt / 12.0) * 15.2;
       const linePx = fontPx * lh;
 
       // 1) 상단 핸들 드래그: 본문 시작선 위치(top_offset) 조절
-      topHandle.onmousedown = function(e) {
+      topHandle.onmousedown = function (e) {
         e.preventDefault();
         e.stopPropagation();
         self._isDraggingHandle = true;
@@ -1191,7 +1191,7 @@
       };
 
       // 2) 하단 핸들 드래그: 본문 종료선 위치 및 수용 행수(max_lines) 조절 (상하단 14px 여백 + 행 단위 스냅 & 실시간 다음 면 흘림)
-      bottomHandle.onmousedown = function(e) {
+      bottomHandle.onmousedown = function (e) {
         e.preventDefault();
         e.stopPropagation();
         self._isDraggingHandle = true;
@@ -1200,9 +1200,9 @@
         const startHeight = boxBody.offsetHeight;
         const topOffset = parseInt(pageData.top_offset, 10) || 0;
 
-        // 인쇄안전선(517px - topOffset) 기준 상/하단 14px+14px=28px 여백을 정확히 유지
+        // 18행(468px) 수용 황금 기준 (인쇄안전선 468px - topOffset)
         const minBoxH = Math.round(linePx + 28);
-        const maxAllowedHeight = Math.max(minBoxH, 517 - topOffset);
+        const maxAllowedHeight = Math.max(minBoxH, 468 - topOffset);
         const maxSafeLines = Math.max(1, Math.floor((maxAllowedHeight - 28 + 2) / linePx));
 
         const initialMaxLines = pageData.max_lines ? Math.min(maxSafeLines, parseInt(pageData.max_lines, 10)) : maxSafeLines;
@@ -1296,7 +1296,7 @@
       };
 
       // 3) 좌측 핸들 드래그: 본문 좌측 여백(left_offset) 조절 (우측 경계 고정 & 좌측 폭 리사이즈)
-      leftHandle.onmousedown = function(e) {
+      leftHandle.onmousedown = function (e) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -1360,7 +1360,7 @@
       };
 
       // 4) 우측 핸들 드래그: 본문 우측 여백(right_offset) 조절 (좌측 경계 고정 & 우측 폭 리사이즈)
-      rightHandle.onmousedown = function(e) {
+      rightHandle.onmousedown = function (e) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -1425,7 +1425,7 @@
       };
 
       // 5) 글상자 통째 위치 이동 드래그 이벤트 (크기 불변)
-      moveBoxHandle.onmousedown = function(e) {
+      moveBoxHandle.onmousedown = function (e) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -1446,7 +1446,7 @@
 
         const safeBoundary = boxBody.closest(".dtp-safe-boundary") || boxBody.parentElement;
         const boundaryW = safeBoundary ? safeBoundary.clientWidth : 380;
-        const maxTop = Math.max(0, 517 - boxH);
+        const maxTop = Math.max(0, 468 - boxH);
 
         function onMouseMove(ev) {
           const deltaX = ev.clientX - startX;
@@ -1515,10 +1515,83 @@
       };
     }
 
+    /**
+     * 표제면(title_only) 제목·지은이 상자 드래그 위치 이동
+     */
+    attachTitleBoxMoveHandle(boxTitle, side, pageIdx, cfg, work) {
+      let moveBar = boxTitle.querySelector('.dtp-title-move-bar');
+      if (!moveBar) {
+        moveBar = document.createElement('div');
+        moveBar.className = 'dtp-box-move-bar dtp-title-move-bar';
+        moveBar.innerHTML = '<span class="move-icon">✥</span>';
+        moveBar.title = '표제면 제목 상자 위치 이동 (마우스로 드래그)';
+        boxTitle.appendChild(moveBar);
+      }
+
+      const self = this;
+      const pageData = cfg.pages[pageIdx] || (cfg._all_pages_pool && cfg._all_pages_pool[pageIdx]);
+      if (!pageData) return;
+
+      moveBar.onmousedown = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialTop = parseInt(pageData.top_offset, 10) || 0;
+        const initialLeft = parseInt(pageData.left_offset, 10) || 0;
+
+        boxTitle.classList.add("is-moving-box");
+
+        function onMouseMove(ev) {
+          const deltaX = ev.clientX - startX;
+          const deltaY = ev.clientY - startY;
+          const newTop = Math.max(0, Math.min(380, initialTop + deltaY));
+          const newLeft = Math.max(0, Math.min(200, initialLeft + deltaX));
+          boxTitle.style.setProperty("margin-top", `${newTop}px`, "important");
+          boxTitle.style.setProperty("margin-left", `${newLeft}px`, "important");
+        }
+
+        function onMouseUp() {
+          boxTitle.classList.remove("is-moving-box");
+          window.removeEventListener("mousemove", onMouseMove, true);
+          window.removeEventListener("mouseup", onMouseUp, true);
+
+          const curTop = parseInt(boxTitle.style.marginTop, 10) || initialTop;
+          const curLeft = parseInt(boxTitle.style.marginLeft, 10) || initialLeft;
+
+          if (curTop !== initialTop || curLeft !== initialLeft) {
+            self.pushUndoState();
+            pageData.top_offset = curTop;
+            pageData.left_offset = curLeft;
+            if (work.layout_config && Array.isArray(work.layout_config.pages) && work.layout_config.pages[pageIdx]) {
+              work.layout_config.pages[pageIdx].top_offset = curTop;
+              work.layout_config.pages[pageIdx].left_offset = curLeft;
+            }
+            self.renderSpread(self.currentWorkIndex, self.currentSpreadPart, true);
+            self.saveLayoutConfigToServer(work.episode_no, cfg);
+            if (window.showToast) {
+              window.showToast(`🪟 ${pageIdx + 1}면 표제면 제목 위치가 조정되었습니다.`, "info");
+            }
+          }
+        }
+
+        window.addEventListener("mousemove", onMouseMove, true);
+        window.addEventListener("mouseup", onMouseUp, true);
+      };
+    }
+
     renderSinglePage(side, pageIdx, cfg, work, textFlowMap, overflowFlags) {
       const pageData = cfg.pages[pageIdx] || { usage: "text", role: "continue", image_file: "" };
       const pageNum = pageIdx + 1;
       const capSide = (side === 'left') ? 'Left' : 'Right';
+
+      // 0) 페이지 컨테이너에 data-usage, data-role 속성 부여 (CSS 정밀 인터랙션 및 리사이즈 핸들 상시 보장)
+      const pageEl = document.getElementById(`dtpPage${capSide}`);
+      if (pageEl) {
+        pageEl.setAttribute('data-usage', pageData.usage || 'text');
+        pageEl.setAttribute('data-role', pageData.role || 'continue');
+      }
 
       // 1) 면 번호 표시
       const lblNum = document.getElementById(`lblPage${capSide}Num`);
@@ -1569,9 +1642,9 @@
     /**
      * Layer 1 (그림 레이어) 렌더링
      */
-        /**
-     * 그림 분할 레이아웃 변경 (single, split_vertical, split_horizontal, main_detail)
-     */
+    /**
+ * 그림 분할 레이아웃 변경 (single, split_vertical, split_horizontal, main_detail)
+ */
     resetSelectedFrameRect() {
       const slot = this.targetPageSlot || 'left';
       const frameNum = this.selectedSubFrame || 1;
@@ -1583,18 +1656,36 @@
       if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
 
       const insetsKey = (frameNum === 2) ? 'frame_insets_2' : 'frame_insets_1';
+      const offsetKey = (frameNum === 2) ? 'frame_offset_2' : 'frame_offset_1';
+      const scaleKey = (frameNum === 2) ? 'frame_scale_2' : 'frame_scale_1';
+      const insetKey = (frameNum === 2) ? 'frame_inset_2' : 'frame_inset_1';
       cfg.pages[pageIdx][insetsKey] = { top: 0, bottom: 0, left: 0, right: 0 };
-      delete cfg.pages[pageIdx].frame_rect_1;
-      delete cfg.pages[pageIdx].frame_rect_2;
-      delete cfg.pages[pageIdx].frame_height_1;
-      delete cfg.pages[pageIdx].frame_height_2;
+      cfg.pages[pageIdx][offsetKey] = { x: 0, y: 0 };
+      cfg.pages[pageIdx][scaleKey] = 100;
+      cfg.pages[pageIdx][insetKey] = 0;
+      if (frameNum === 1) {
+        cfg.pages[pageIdx].frame_scale = 100;
+        cfg.pages[pageIdx].frame_inset = 0;
+        cfg.pages[pageIdx].frame_offset = { x: 0, y: 0 };
+      }
+      delete cfg.pages[pageIdx][`frame_rect_${frameNum}`];
+      delete cfg.pages[pageIdx][`frame_height_${frameNum}`];
+
+      const inScale = document.getElementById('inputTbFrameScale');
+      const lbScale = document.getElementById('lblTbFrameScaleVal');
+      if (inScale) inScale.value = 100;
+      if (lbScale) lbScale.textContent = '100%';
+      const inInset = document.getElementById('inputTbFrameInset');
+      const lbInset = document.getElementById('lblTbFrameInsetVal');
+      if (inInset) inInset.value = 0;
+      if (lbInset) lbInset.textContent = '0px';
 
       this.pushUndoState();
       this.renderSpread(this.currentWorkIndex, this.currentSpreadPart, true);
       this.saveLayoutConfigToServer(work.episode_no, cfg);
 
       if (window.showToast) {
-        window.showToast(`🖼️ ${frameNum}번 그림틀이 100% 기본 크기로 복원되었습니다.`, 'info');
+        window.showToast(`🖼️ ${frameNum}번 그림틀이 100% 기본 크기 및 원위치로 복원되었습니다.`, 'info');
       }
     }
 
@@ -1602,12 +1693,28 @@
      * 그림틀 마진 여백 스타일 적용 (절대 인셋 px 기반 - 상/하/좌/우 띠형 및 중앙 창문형 완벽 구현)
      * 2단 분할 시 1번 그림과 2번 그림이 완전히 독립된 앵커 존을 가짐 (상호 간섭 0%)
      */
-    applyFrameInsetsStyle(frameEl, insets, layout, frameNum = 1) {
+    applyFrameInsetsStyle(frameEl, insets, layout, frameNum = 1, pageData = null) {
       if (!frameEl) return;
-      const top = Math.max(0, parseInt(insets?.top, 10) || 0);
-      const bottom = Math.max(0, parseInt(insets?.bottom, 10) || 0);
-      const left = Math.max(0, parseInt(insets?.left, 10) || 0);
-      const right = Math.max(0, parseInt(insets?.right, 10) || 0);
+      if (!pageData) {
+        const pageElem = frameEl.closest('.dtp-page');
+        const side = pageElem ? pageElem.getAttribute('data-side') : (this.targetPageSlot || 'left');
+        const work = this.getCurrentWork();
+        const cfg = work ? this.getNormalizedConfig(work) : null;
+        const pageIdx = (this.currentSpreadPart - 1) * 2 + (side === 'right' ? 1 : 0);
+        pageData = cfg?.pages?.[pageIdx] || {};
+      }
+
+      // 음수 인셋(영역 밖 확장)도 허용하여 자연스러운 크롭 및 확장 연출 지원
+      const top = parseInt(insets?.top, 10) || 0;
+      const bottom = parseInt(insets?.bottom, 10) || 0;
+      const left = parseInt(insets?.left, 10) || 0;
+      const right = parseInt(insets?.right, 10) || 0;
+
+      // 1) 틀 통째 평행이동 offset (frame_offset_1 / frame_offset_2)
+      const offsetKey = (frameNum === 2) ? 'frame_offset_2' : 'frame_offset_1';
+      const offset = pageData?.[offsetKey] || (frameNum === 1 ? pageData?.frame_offset : null) || { x: 0, y: 0 };
+      const offX = parseInt(offset.x, 10) || 0;
+      const offY = parseInt(offset.y, 10) || 0;
 
       // 절대 좌표 및 크기 강제 적용 (CSS 충돌 원천 방지)
       frameEl.style.setProperty('position', 'absolute', 'important');
@@ -1616,6 +1723,7 @@
       frameEl.style.setProperty('height', 'auto', 'important');
       frameEl.style.setProperty('flex', 'none', 'important');
       frameEl.style.setProperty('overflow', 'visible', 'important');
+      frameEl.style.setProperty('transform', `translate(${offX}px, ${offY}px)`, 'important');
 
       const parentEl = frameEl.parentElement;
       const parentW = (parentEl && parentEl.offsetWidth > 0) ? parentEl.offsetWidth : 400;
@@ -1623,46 +1731,115 @@
 
       let refW = parentW;
       let refH = parentH;
+      if (layout === 'split_vertical' || layout === 'main_detail') {
+        refH = Math.max(100, Math.floor((parentH - 8) / 2));
+      } else if (layout === 'split_horizontal') {
+        refW = Math.max(100, Math.floor((parentW - 8) / 2));
+      }
+
+      // 2) 틀 여백 (frame_inset_1 / frame_inset_2, 0~50px) 독립 연동
+      const insetKey = (frameNum === 2) ? 'frame_inset_2' : 'frame_inset_1';
+      const baseInset = Math.max(0, parseInt(pageData?.[insetKey] !== undefined ? pageData[insetKey] : (pageData?.frame_inset || 0), 10));
+
+      // 3) 그림틀 크기 (frame_scale_1 / frame_scale_2, 10~100%) 독립 비율 축소 연동
+      const scaleKey = (frameNum === 2) ? 'frame_scale_2' : 'frame_scale_1';
+      const frameScale = Math.max(10, Math.min(100, parseInt(pageData?.[scaleKey] !== undefined ? pageData[scaleKey] : (pageData?.frame_scale !== undefined ? pageData.frame_scale : 100), 10)));
+      const scaleRatio = frameScale / 100.0;
+      const scaleMarginX = Math.round((refW * (1.0 - scaleRatio)) / 2);
+      const scaleMarginY = Math.round((refH * (1.0 - scaleRatio)) / 2);
+
+      const totalTop = top + baseInset + scaleMarginY;
+      const totalBottom = bottom + baseInset + scaleMarginY;
+      const totalLeft = left + baseInset + scaleMarginX;
+      const totalRight = right + baseInset + scaleMarginX;
+
+      // [핵심 안전장치]: 최소 그림틀 크기 엄격 보장 (높이 최소 80px, 너비 최소 90px)
+      // 상·하 또는 좌·우 조절 핸들이 서로 겹쳐서 확대를 못하는 현상 100% 원천 방지
+      const minFrameH = 80;
+      const minFrameW = 90;
+
+      let clampedTop = totalTop;
+      let clampedBottom = totalBottom;
+      let clampedLeft = totalLeft;
+      let clampedRight = totalRight;
+
+      if (clampedTop + clampedBottom > refH - minFrameH) {
+        const excess = (clampedTop + clampedBottom) - (refH - minFrameH);
+        const sumPos = Math.max(1, (clampedTop > 0 ? clampedTop : 0) + (clampedBottom > 0 ? clampedBottom : 0));
+        const topRatio = (clampedTop > 0) ? (clampedTop / sumPos) : 0.5;
+        clampedTop = Math.round(clampedTop - excess * topRatio);
+        clampedBottom = Math.round(clampedBottom - excess * (1 - topRatio));
+      }
+
+      if (clampedLeft + clampedRight > refW - minFrameW) {
+        const excess = (clampedLeft + clampedRight) - (refW - minFrameW);
+        const sumPos = Math.max(1, (clampedLeft > 0 ? clampedLeft : 0) + (clampedRight > 0 ? clampedRight : 0));
+        const leftRatio = (clampedLeft > 0) ? (clampedLeft / sumPos) : 0.5;
+        clampedLeft = Math.round(clampedLeft - excess * leftRatio);
+        clampedRight = Math.round(clampedRight - excess * (1 - leftRatio));
+      }
+
+      // [위계 확립]: 1번 그림은 배경(z:10), 2번 그림은 전경 PIP(z:20)로 언제나 위에 안착
+      const baseZIndex = (frameNum === 2) ? 20 : 10;
+      frameEl.style.setProperty('z-index', `${baseZIndex}`, 'important');
 
       if (layout === 'single') {
         // [1장 전체]: 사방 테두리 기준 px 인셋 (상하좌우 띠형 & 창문형 자유자재)
-        frameEl.style.setProperty('top', `${top}px`, 'important');
-        frameEl.style.setProperty('bottom', `${bottom}px`, 'important');
-        frameEl.style.setProperty('left', `${left}px`, 'important');
-        frameEl.style.setProperty('right', `${right}px`, 'important');
-        refW = parentW;
-        refH = parentH;
-      } else if (layout === 'split_vertical' || layout === 'main_detail') {
-        // [상·하 2단 분할]: 1번은 상단 50% 존, 2번은 하단 50% 존으로 독립 앵커 분리 (간섭 0%)
-        refW = parentW;
-        refH = Math.max(100, Math.floor((parentH - 10) / 2));
-        frameEl.style.setProperty('left', `${left}px`, 'important');
-        frameEl.style.setProperty('right', `${right}px`, 'important');
+        frameEl.style.setProperty('top', `${clampedTop}px`, 'important');
+        frameEl.style.setProperty('bottom', `${clampedBottom}px`, 'important');
+        frameEl.style.setProperty('left', `${clampedLeft}px`, 'important');
+        frameEl.style.setProperty('right', `${clampedRight}px`, 'important');
+      } else if (layout === 'overlay_collage') {
+        // [화보 오버레이 / 자유 꼴라주]: 1번 배경 메인 + 2번 전경 꼴라주 (소프트 섀도우 & 자유 경계 돌파)
         if (frameNum === 1) {
-          frameEl.style.setProperty('top', `${top}px`, 'important');
-          frameEl.style.setProperty('bottom', `calc(50% + 5px + ${bottom}px)`, 'important');
+          frameEl.style.setProperty('top', `${clampedTop}px`, 'important');
+          frameEl.style.setProperty('bottom', `${clampedBottom}px`, 'important');
+          frameEl.style.setProperty('left', `${clampedLeft}px`, 'important');
+          frameEl.style.setProperty('right', `${clampedRight}px`, 'important');
         } else {
-          frameEl.style.setProperty('top', `calc(50% + 5px + ${top}px)`, 'important');
-          frameEl.style.setProperty('bottom', `${bottom}px`, 'important');
+          // 2번 프레임: 기본 insets가 없을 때는 1번 프레임 우측 하단에 절반 걸치고 밖으로 삐져나온 황금비율 위치
+          const defTop = (top === 0 && bottom === 0) ? Math.round(parentH * 0.40) : top;
+          const defLeft = (left === 0 && right === 0) ? Math.round(parentW * 0.38) : left;
+          const defRight = (left === 0 && right === 0) ? 15 : right;
+          const defBottom = (top === 0 && bottom === 0) ? 20 : bottom;
+
+          const collTop = defTop + baseInset + scaleMarginY;
+          const collBottom = defBottom + baseInset + scaleMarginY;
+          const collLeft = defLeft + baseInset + scaleMarginX;
+          const collRight = defRight + baseInset + scaleMarginX;
+
+          frameEl.style.setProperty('top', `${collTop}px`, 'important');
+          frameEl.style.setProperty('bottom', `${collBottom}px`, 'important');
+          frameEl.style.setProperty('left', `${collLeft}px`, 'important');
+          frameEl.style.setProperty('right', `${collRight}px`, 'important');
+        }
+      } else if (layout === 'split_vertical' || layout === 'main_detail') {
+        // [상·하 2단 분할]: 1번은 상단 50% 존, 2번은 하단 50% 존 (중앙 간격 8px 컴팩트 분할)
+        frameEl.style.setProperty('left', `${clampedLeft}px`, 'important');
+        frameEl.style.setProperty('right', `${clampedRight}px`, 'important');
+        if (frameNum === 1) {
+          frameEl.style.setProperty('top', `${clampedTop}px`, 'important');
+          frameEl.style.setProperty('bottom', `calc(50% + 4px + ${clampedBottom}px)`, 'important');
+        } else {
+          frameEl.style.setProperty('top', `calc(50% + 4px + ${clampedTop}px)`, 'important');
+          frameEl.style.setProperty('bottom', `${clampedBottom}px`, 'important');
         }
       } else if (layout === 'split_horizontal') {
-        // [좌·우 2단 분할]: 1번은 좌측 50% 존, 2번은 우측 50% 존으로 독립 앵커 분리 (간섭 0%)
-        refW = Math.max(100, Math.floor((parentW - 10) / 2));
-        refH = parentH;
-        frameEl.style.setProperty('top', `${top}px`, 'important');
-        frameEl.style.setProperty('bottom', `${bottom}px`, 'important');
+        // [좌·우 2단 분할]: 1번은 좌측 50% 존, 2번은 우측 50% 존 (중앙 간격 8px 컴팩트 분할)
+        frameEl.style.setProperty('top', `${clampedTop}px`, 'important');
+        frameEl.style.setProperty('bottom', `${clampedBottom}px`, 'important');
         if (frameNum === 1) {
-          frameEl.style.setProperty('left', `${left}px`, 'important');
-          frameEl.style.setProperty('right', `calc(50% + 5px + ${right}px)`, 'important');
+          frameEl.style.setProperty('left', `${clampedLeft}px`, 'important');
+          frameEl.style.setProperty('right', `calc(50% + 4px + ${clampedRight}px)`, 'important');
         } else {
-          frameEl.style.setProperty('left', `calc(50% + 5px + ${left}px)`, 'important');
-          frameEl.style.setProperty('right', `${right}px`, 'important');
+          frameEl.style.setProperty('left', `calc(50% + 4px + ${clampedLeft}px)`, 'important');
+          frameEl.style.setProperty('right', `${clampedRight}px`, 'important');
         }
       } else {
-        frameEl.style.setProperty('top', `${top}px`, 'important');
-        frameEl.style.setProperty('bottom', `${bottom}px`, 'important');
-        frameEl.style.setProperty('left', `${left}px`, 'important');
-        frameEl.style.setProperty('right', `${right}px`, 'important');
+        frameEl.style.setProperty('top', `${clampedTop}px`, 'important');
+        frameEl.style.setProperty('bottom', `${clampedBottom}px`, 'important');
+        frameEl.style.setProperty('left', `${clampedLeft}px`, 'important');
+        frameEl.style.setProperty('right', `${clampedRight}px`, 'important');
       }
 
       // [핵심: 그림틀 원형 보존 및 프레임 중심 안착 시스템]
@@ -1707,7 +1884,8 @@
         const layoutNames = {
           single: "1장 전체",
           split_vertical: "상·하 2단 분할",
-          split_horizontal: "좌·우 2단 분할"
+          split_horizontal: "좌·우 2단 분할",
+          overlay_collage: "🪟 화보 오버레이 (자유 꼴라주 & PIP)"
         };
         window.showToast(`🖼️ ${pageIdx + 1}면 그림 배치가 [${layoutNames[layout] || layout}]로 변경되었습니다.`, "info");
       }
@@ -1739,8 +1917,7 @@
 
       if (!layerImage) return;
 
-      const insetVal = pageData.frame_inset || 0;
-      layerImage.style.padding = `${insetVal}px`;
+      layerImage.style.padding = '0';
       layerImage.style.boxSizing = 'border-box';
 
       // 1) 툴바 버튼 및 분할 드롭다운 표시 제어
@@ -1817,9 +1994,9 @@
           };
           const img1 = frame1.querySelector('img');
           if (img1) {
-            const p1 = pageData.image_pan_1 || pageData.image_pan || {x:0, y:0};
+            const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
             const s1 = pageData.image_scale_1 || 100;
-            const f1 = pageData.image_filter_1 || pageData.image_filter || {vignette: 0, blur: 0, tone: 'none'};
+            const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
             this.applyCustomImageStyle(img1, p1, s1, f1);
           }
           this.attachImagePanDrag(frame1, side, 1);
@@ -1847,7 +2024,7 @@
             <div class="dtp-frame-crop">
               ${cleanPath1 ? `<img src="${cleanPath1}" alt="1번 삽화" draggable="false">` : '<div style="color:#A89F91; font-size:0.78rem;">그림을 등록하세요</div>'}
             </div>
-            <span class="frame-tag">${layout === 'split_sandwich' ? '상단 그림' : '1번 그림'}</span>
+            <span class="frame-tag">${layout === 'overlay_collage' ? '배경 메인' : (layout === 'split_sandwich' ? '상단 그림' : '1번 그림')}</span>
             <button type="button" class="btn-frame-change" onclick="event.stopPropagation(); dtpEditor.openSlotImageFrameManager('${side}', 1)">🎨 1번 그림 변경</button>
           `;
           frame1.onclick = (e) => {
@@ -1858,9 +2035,9 @@
           };
           const img1 = frame1.querySelector('img');
           if (img1) {
-            const p1 = pageData.image_pan_1 || pageData.image_pan || {x:0, y:0};
+            const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
             const s1 = pageData.image_scale_1 || 100;
-            const f1 = pageData.image_filter_1 || pageData.image_filter || {vignette: 0, blur: 0, tone: 'none'};
+            const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
             this.applyCustomImageStyle(img1, p1, s1, f1);
           }
           this.attachImagePanDrag(frame1, side, 1);
@@ -1879,7 +2056,7 @@
             <div class="dtp-frame-crop">
               ${cleanPath2 ? `<img src="${cleanPath2}" alt="2번 삽화" draggable="false">` : '<div style="color:#A89F91; font-size:0.78rem;">그림을 등록하세요</div>'}
             </div>
-            <span class="frame-tag">${layout === 'split_sandwich' ? '하단 그림' : '2번 그림'}</span>
+            <span class="frame-tag">${layout === 'overlay_collage' ? '전경 꼴라주 (PIP)' : (layout === 'split_sandwich' ? '하단 그림' : '2번 그림')}</span>
             <button type="button" class="btn-frame-change" onclick="event.stopPropagation(); dtpEditor.openSlotImageFrameManager('${side}', 2)">🎨 2번 그림 변경</button>
           `;
           frame2.onclick = (e) => {
@@ -1890,9 +2067,9 @@
           };
           const img2 = frame2.querySelector('img');
           if (img2) {
-            const p2 = pageData.image_pan_2 || {x:0, y:0};
+            const p2 = pageData.image_pan_2 || { x: 0, y: 0 };
             const s2 = pageData.image_scale_2 || 100;
-            const f2 = pageData.image_filter_2 || {vignette: 0, blur: 0, tone: 'none'};
+            const f2 = pageData.image_filter_2 || { vignette: 0, blur: 0, tone: 'none' };
             this.applyCustomImageStyle(img2, p2, s2, f2);
           }
           this.attachImagePanDrag(frame2, side, 2);
@@ -1920,7 +2097,11 @@
           if (!trimmed.trim()) {
             return `<p class="poem-line empty-line" data-line-idx="${lIdx}" style="${lineStyle}"><br></p>`;
           }
-          return `<p class="poem-line" data-line-idx="${lIdx}" style="${lineStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
+          // [InDesign DTP 미학] 시각적 여백 정렬 (Optical Margin Alignment)
+          const isHanging = /^["'“‘「『\(\<]/.test(trimmed.trim());
+          const hangClass = isHanging ? ' hang-quote' : '';
+          const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+          return `<p class="poem-line${hangClass}" data-line-idx="${lIdx}" style="${lineStyle} ${hangStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
         }).join('');
       } else if (pageData.role === 'continue' && pageIdx > 0) {
         bodyElem.innerHTML = `<p class="poem-placeholder" style="color:#B5A898; font-style:italic; font-size:0.84rem;">(앞 면에서 본문 글이 마무리되었습니다 — 여백 면)</p>`;
@@ -1938,7 +2119,7 @@
       if (!bodyElem || !pageData) return;
       if (pageData.usage === 'image' || pageData.usage === 'blank' || pageData.role === 'none' || pageData.role === 'independent') return;
 
-      const pt = parseFloat(cfg.font_size_pt) || 13;
+      const pt = parseFloat(cfg.font_size_pt) || 12;
       const lh = parseFloat(cfg.line_height_ratio) || 1.6;
       const fontPx = (pt / 12.0) * 15.2;
       const linePx = fontPx * lh;
@@ -1947,6 +2128,44 @@
       this.populateBodyLinesDom(bodyElem, pageData, pageIdx, textFlowMap, fontFam, linePx);
       if (badgeOverflow) {
         badgeOverflow.style.display = overflowFlags[pageIdx] ? 'block' : 'none';
+      }
+      const boxBody = document.getElementById(`dtpBoxBody${capSide}`);
+      this.updateTextThreadingBadges(boxBody, pageData, pageIdx, cfg, textFlowMap);
+    }
+
+    /**
+     * [InDesign DTP 미학] 텍스트 스레딩 인디케이터 (Text Threading Visualizer)
+     * - 입구 포트 (상단 우측 🔗): 앞면에서 이어지는 면(continue)이면서 현재 면에 본문이 1줄 이상 있을 때만 노출
+     * - 출구 포트 (하단 우측 🔗): 현재 면에 본문이 있고, 다음 면으로 연장되어 다음 면에 1줄 이상 배정되었을 때 노출
+     */
+    updateTextThreadingBadges(boxBody, pageData, pageIdx, cfg, textFlowMap) {
+      if (!boxBody || !pageData) return;
+      boxBody.querySelectorAll('.dtp-thread-badge').forEach(b => b.remove());
+      if (pageData.usage === 'image' || pageData.usage === 'blank' || pageData.role === 'none' || pageData.role === 'independent') return;
+
+      const currentLines = (textFlowMap && textFlowMap[pageIdx]) ? textFlowMap[pageIdx] : [];
+      const nextLines = (textFlowMap && textFlowMap[pageIdx + 1]) ? textFlowMap[pageIdx + 1] : [];
+      const allPages = cfg._all_pages_pool || cfg.pages || [];
+      const nextPageData = allPages[pageIdx + 1];
+
+      // 1. 입구 포트 (상단 우측 🔗): 앞면에서 본문이 잘려 이어져 온 경우(line_start > 0)에만 표시!
+      // (1면이 제목 전용 표제면이라 2면이 본문 1행부터 온전히 시작하는 경우에는 입구 포트 불필요)
+      const lineStart = (pageData.line_start !== undefined) ? parseInt(pageData.line_start, 10) : 0;
+      if (pageData.role === 'continue' && currentLines.length > 0 && lineStart > 0) {
+        const inBadge = document.createElement('div');
+        inBadge.className = 'dtp-thread-badge dtp-thread-in-badge';
+        inBadge.innerHTML = '🔗';
+        inBadge.title = `🔗 앞면에서 이어짐 (${lineStart + 1}행부터)`;
+        boxBody.appendChild(inBadge);
+      }
+
+      // 2. 출구 포트: 현재 면에 본문이 있고, 다음 면으로 본문이 연장되어 다음 면에 실제 행이 있을 때만!
+      if (currentLines.length > 0 && nextPageData && nextPageData.role === 'continue' && nextLines.length > 0) {
+        const outBadge = document.createElement('div');
+        outBadge.className = 'dtp-thread-badge dtp-thread-out-badge';
+        outBadge.innerHTML = '🔗';
+        outBadge.title = '🔗 다음 면으로 본문 이어짐';
+        boxBody.appendChild(outBadge);
       }
     }
 
@@ -1983,12 +2202,14 @@
       if (boxBody) {
         boxBody.onclick = () => {
           this.setTargetPageSlot(side);
+          this.targetBoxType = 'body';
           if (this.currentToolboxTab !== 'text') {
             this.switchToolboxTab('text');
           }
         };
         bodyElem.onfocus = () => {
           this.setTargetPageSlot(side);
+          this.targetBoxType = 'body';
         };
         boxBody.classList.remove('hanji-backdrop');
         boxBody.style.backgroundColor = "transparent";
@@ -1997,19 +2218,60 @@
         boxBody.style.boxShadow = "none";
       }
       if (boxTitle) {
-        if (pageData.usage === 'image_text' && op > 0 && pageData.role === 'start') {
-          boxTitle.classList.add('hanji-backdrop');
-          boxTitle.style.backgroundColor = `rgba(254, 252, 248, ${op * 0.7})`;
-          boxTitle.style.backdropFilter = "blur(2px)";
-          boxTitle.style.webkitBackdropFilter = "blur(2px)";
-          boxTitle.style.borderRadius = "6px";
-          boxTitle.style.boxShadow = `0 0 14px 6px rgba(254, 252, 248, ${op * 0.7})`;
+        boxTitle.onclick = () => {
+          this.setTargetPageSlot(side);
+          this.targetBoxType = 'title';
+          this.setSelectedLine(side, 'title', work.title || '제목');
+          if (this.currentToolboxTab !== 'text') {
+            this.switchToolboxTab('text');
+          }
+        };
+        if (titleElem) {
+          titleElem.onfocus = () => {
+            this.setTargetPageSlot(side);
+            this.targetBoxType = 'title';
+            this.setSelectedLine(side, 'title', work.title || '제목');
+          };
+        }
+        boxTitle.classList.remove('hanji-backdrop');
+        boxTitle.style.removeProperty('background-color');
+        boxTitle.style.removeProperty('backdrop-filter');
+        boxTitle.style.removeProperty('-webkit-backdrop-filter');
+        boxTitle.style.removeProperty('border-radius');
+        boxTitle.style.removeProperty('box-shadow');
+
+        // [제목 및 지은이 국소 한지 틴트]: 상자 전체 판자가 아니라 오직 글자 너비만큼만 부드럽게 감싸줌!
+        if (pageData.usage === 'image_text' && op > 0 && (pageData.role === 'start' || pageData.role === 'title_only')) {
+          const whiteAlpha = Math.min(0.96, 0.45 + (op * 0.5));
+          if (titleElem) {
+            titleElem.classList.add('title-hanji-backdrop');
+            titleElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+            titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+            titleElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            titleElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
+          if (authorElem && authorElem.style.display !== 'none') {
+            authorElem.classList.add('author-hanji-backdrop');
+            authorElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+            authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+            authorElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            authorElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
         } else {
-          boxTitle.classList.remove('hanji-backdrop');
-          boxTitle.style.backgroundColor = "transparent";
-          boxTitle.style.backdropFilter = "none";
-          boxTitle.style.webkitBackdropFilter = "none";
-          boxTitle.style.boxShadow = "none";
+          if (titleElem) {
+            titleElem.classList.remove('title-hanji-backdrop');
+            titleElem.style.removeProperty('background-color');
+            titleElem.style.removeProperty('box-shadow');
+            titleElem.style.removeProperty('backdrop-filter');
+            titleElem.style.removeProperty('-webkit-backdrop-filter');
+          }
+          if (authorElem) {
+            authorElem.classList.remove('author-hanji-backdrop');
+            authorElem.style.removeProperty('background-color');
+            authorElem.style.removeProperty('box-shadow');
+            authorElem.style.removeProperty('backdrop-filter');
+            authorElem.style.removeProperty('-webkit-backdrop-filter');
+          }
         }
       }
 
@@ -2017,15 +2279,47 @@
       const isLightText = (cfg.text_color_mode === 'light' && pageData.usage === 'image_text');
       layerText.classList.toggle('text-color-light', isLightText);
 
-      // 0) [글꼴 단일화] 도구상자 글꼴(cfg.font_family)을 제목·지은이·본문에 100% 일관 적용
+      // 0) [글꼴 및 정렬 단일화] 도구상자 글꼴(cfg.font_family)과 정렬(cfg.text_align)을 제목·지은이·본문에 100% 일관 적용
       const unifiedFontFam = cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif";
-      if (titleElem) titleElem.style.setProperty('font-family', unifiedFontFam, 'important');
-      if (authorElem) authorElem.style.setProperty('font-family', unifiedFontFam, 'important');
+      const align = cfg.text_align || 'left';
+      if (titleElem) {
+        titleElem.style.setProperty('font-family', unifiedFontFam, 'important');
+        titleElem.style.setProperty('text-align', align, 'important');
+      }
+      if (authorElem) {
+        authorElem.style.setProperty('font-family', unifiedFontFam, 'important');
+        authorElem.style.setProperty('text-align', align === 'justify' ? 'right' : align, 'important');
+      }
 
-      // 1) [제목+지은이 상자] - 상단 안전선 준수 (role이 'start'일 때 실재, 'continue'일 때 64px 투명 플레이스홀더로 완벽 정렬)
-      if (pageData.role === 'start') {
+      // 1) [제목+지은이 상자] - 상단 안전선 준수 (start: 제목+지은이, title_only: 단독 표제면, continue: 64px 투명 플레이스홀더로 완벽 정렬)
+      if (pageData.role === 'start' || pageData.role === 'title_only') {
         boxTitle.classList.remove('dtp-title-placeholder');
         showElem(boxTitle, 'block');
+
+        if (pageData.role === 'title_only') {
+          boxTitle.classList.add('dtp-title-only-mode');
+          // 표제면(도비라): 상하/좌우 오프셋을 제목 상자에 직접 반영하여 자유 위치 이동 허용
+          const titleTop = pageData.top_offset ? parseInt(pageData.top_offset, 10) : 0;
+          const titleLeft = pageData.left_offset ? parseInt(pageData.left_offset, 10) : 0;
+          if (titleTop > 0) {
+            boxTitle.style.setProperty("margin-top", `${titleTop}px`, "important");
+          } else {
+            boxTitle.style.removeProperty("margin-top");
+          }
+          if (titleLeft > 0) {
+            boxTitle.style.setProperty("margin-left", `${titleLeft}px`, "important");
+          } else {
+            boxTitle.style.removeProperty("margin-left");
+          }
+          this.attachTitleBoxMoveHandle(boxTitle, side, pageIdx, cfg, work);
+        } else {
+          boxTitle.classList.remove('dtp-title-only-mode');
+          boxTitle.style.removeProperty("margin-top");
+          boxTitle.style.removeProperty("margin-left");
+          const oldMoveBar = boxTitle.querySelector('.dtp-title-move-bar');
+          if (oldMoveBar) oldMoveBar.remove();
+        }
+
         if (titleElem) {
           titleElem.innerText = work.title || '무제';
           titleElem.onblur = () => {
@@ -2057,13 +2351,29 @@
         }
       } else if (pageData.role === 'continue') {
         // 시 이어짐 면: 제목 공간(64px)을 그대로 유지하는 투명 플레이스홀더로 본문 시작선 완벽 통일!
+        boxTitle.classList.remove('dtp-title-only-mode');
+        boxTitle.style.removeProperty("margin-top");
+        boxTitle.style.removeProperty("margin-left");
+        const oldMoveBar = boxTitle.querySelector('.dtp-title-move-bar');
+        if (oldMoveBar) oldMoveBar.remove();
         boxTitle.classList.add('dtp-title-placeholder');
         showElem(boxTitle, 'block');
         if (titleElem) titleElem.innerText = '';
         if (authorElem) hideElem(authorElem);
       } else {
         boxTitle.classList.remove('dtp-title-placeholder');
+        boxTitle.classList.remove('dtp-title-only-mode');
+        boxTitle.style.removeProperty("margin-top");
+        boxTitle.style.removeProperty("margin-left");
+        const oldMoveBar = boxTitle.querySelector('.dtp-title-move-bar');
+        if (oldMoveBar) oldMoveBar.remove();
         hideElem(boxTitle);
+      }
+
+      // [핵심] 표제면(title_only)일 때는 본문 글상자를 완전히 숨기고 다음 면(continue)으로 본문 배정
+      if (pageData.role === 'title_only') {
+        hideElem(boxBody);
+        return;
       }
 
       // 2) [본문 상자] - 상단/하단 핸들 및 높이 조절 지원
@@ -2108,12 +2418,12 @@
         }
 
         const isIndep = (pageData.role === 'independent');
-        const pt = parseFloat((isIndep && pageData.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 13;
+        const pt = parseFloat((isIndep && pageData.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 12;
         const lh = parseFloat((isIndep && pageData.line_height_ratio) ? pageData.line_height_ratio : cfg.line_height_ratio) || 1.6;
         const fontPx = (pt / 12.0) * 15.2;
         const linePx = fontPx * lh;
         const minSingleLineH = Math.round(linePx + 28);
-        const maxAllowedH = Math.max(minSingleLineH, 517 - topOffset);
+        const maxAllowedH = Math.max(minSingleLineH, 468 - topOffset);
         const maxSafeLines = Math.max(1, Math.floor((maxAllowedH - 28 + 2) / linePx));
 
         // 하단 커스텀 높이 적용: 상단 14px + 하단 14px = 28px 여백을 정확히 유지하며 행 높이 100% 일치 보장
@@ -2135,7 +2445,7 @@
 
         bodyElem.style.fontSize = `${fontPx.toFixed(2)}px`;
         bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
-        
+
         // 서체 실시간 적용 (독립 자유글은 개별 font_family 우선)
         const fontFam = (isIndep && pageData.font_family) ? pageData.font_family : (cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif");
         bodyElem.style.setProperty('font-family', fontFam, 'important');
@@ -2159,7 +2469,10 @@
             if (!trimmed.trim()) {
               return `<p class="poem-line empty-line" data-line-idx="${lIdx}" style="${lineStyle}"><br></p>`;
             }
-            return `<p class="poem-line" data-line-idx="${lIdx}" style="${lineStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
+            const isHanging = /^["'“‘「『\(\<]/.test(trimmed.trim());
+            const hangClass = isHanging ? ' hang-quote' : '';
+            const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+            return `<p class="poem-line${hangClass}" data-line-idx="${lIdx}" style="${lineStyle} ${hangStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
           }).join('');
 
           bodyElem.onblur = () => {
@@ -2194,6 +2507,10 @@
             });
           };
         }
+
+        // [InDesign DTP 미학] 텍스트 스레딩 인디케이터 (Text Threading Visualizer)
+        this.updateTextThreadingBadges(boxBody, pageData, pageIdx, cfg, textFlowMap);
+
         // 본문 렌더링 후 실시간 글-그림 겹침 감지 실행
         setTimeout(() => this.detectAndApplyLineOverlap(side), 40);
       }
@@ -2536,7 +2853,7 @@
     }
 
     /**
-     * 글 유형 변경 (start, continue, independent, none)
+     * 글 유형 5종 체계 변경 (start, title_only, continue, independent, none)
      */
     onPageRoleChange(side, newRole) {
       const work = this.getCurrentWork();
@@ -2547,10 +2864,10 @@
       const pageIdx = (this.currentSpreadPart - 1) * 2 + (side === 'left' ? 0 : 1);
       const page = cfg.pages[pageIdx];
 
-      if (newRole === 'start') {
+      if (newRole === 'start' || newRole === 'title_only') {
         const pool = cfg._all_pages_pool || cfg.pages;
         pool.forEach((p, idx) => {
-          if (idx !== pageIdx && p.role === 'start') {
+          if (idx !== pageIdx && (p.role === 'start' || p.role === 'title_only')) {
             p.role = 'continue';
             if (cfg.page_roles[idx]) cfg.page_roles[idx] = 'continue';
           }
@@ -2564,8 +2881,20 @@
       cfg.page_roles[pageIdx] = newRole;
       work.layout_config = cfg;
 
+      const roleLabels = {
+        'start': '🚩 글 시작 (제목+지은이+본문)',
+        'title_only': '🪟 표제면 (제목+지은이만 단독, 본문 다음 면 흘림)',
+        'continue': '🔗 글 이어짐 (본문만)',
+        'independent': '📝 독립 자유글',
+        'none': '[-] 글 없음'
+      };
+
       this.renderSpread(this.currentWorkIndex, this.currentSpreadPart, true);
       this.saveLayoutConfigToServer(work.episode_no, cfg);
+
+      if (window.showToast) {
+        window.showToast(`📄 ${pageIdx + 1}면: [${roleLabels[newRole] || newRole}] 설정 완료`, "info");
+      }
     }
 
     /**
@@ -2590,7 +2919,7 @@
       const { slot, pageIdx, pageData, isIndependent } = this.getTargetPageInfo(cfg);
 
       let targetPt = 12;
-      const curPt = isIndependent && pageData?.font_size_pt ? pageData.font_size_pt : (cfg.font_size_pt || 13);
+      const curPt = isIndependent && pageData?.font_size_pt ? pageData.font_size_pt : (cfg.font_size_pt || 12);
       if (val === "custom") {
         const input = prompt("본문 글자 크기를 pt 단위로 입력하세요 (8 ~ 24):", String(curPt));
         if (!input || isNaN(parseFloat(input))) {
@@ -2675,8 +3004,8 @@
 
         const range = sel.getRangeAt(0);
         const container = range.commonAncestorContainer;
-        const editable = container.nodeType === 1 
-          ? container.closest('[contenteditable="true"]') 
+        const editable = container.nodeType === 1
+          ? container.closest('[contenteditable="true"]')
           : container.parentElement?.closest('[contenteditable="true"]');
 
         if (!editable) {
@@ -2728,7 +3057,7 @@
         isItalic = document.queryCommandState("italic");
         isUnderline = document.queryCommandState("underline");
         isStrike = document.queryCommandState("strikeThrough");
-      } catch (e) {}
+      } catch (e) { }
 
       const ids = [
         ['btnFormatBold', 'fBtnBold', isBold],
@@ -2830,8 +3159,8 @@
       if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
         const container = range.commonAncestorContainer;
-        const editable = container.nodeType === 1 
-          ? container.closest('[contenteditable="true"]') 
+        const editable = container.nodeType === 1
+          ? container.closest('[contenteditable="true"]')
           : container.parentElement?.closest('[contenteditable="true"]');
         return Boolean(editable);
       }
@@ -2887,7 +3216,7 @@
       this.pushUndoState();
 
       const cfg = this.getNormalizedConfig(work);
-      cfg.font_size_pt = 13;
+      cfg.font_size_pt = 12;
       cfg.line_height_ratio = 1.6;
 
       this.renderSpread(this.currentWorkIndex, 1, true);
@@ -2939,24 +3268,55 @@
               boxBody.style.boxShadow = "none";
             }
           }
-          if (boxTitle && pData.role === 'start') {
+          if (boxTitle && (pData.role === 'start' || pData.role === 'title_only')) {
+            boxTitle.classList.remove('hanji-backdrop');
+            boxTitle.style.removeProperty('background-color');
+            boxTitle.style.removeProperty('backdrop-filter');
+            boxTitle.style.removeProperty('-webkit-backdrop-filter');
+            boxTitle.style.removeProperty('border-radius');
+            boxTitle.style.removeProperty('box-shadow');
+
+            const titleElem = document.getElementById(`dtpTitle${side}`);
+            const authorElem = document.getElementById(`dtpAuthor${side}`);
+            const whiteAlpha = Math.min(0.96, 0.45 + (opacity * 0.5));
+
             if (opacity > 0) {
-              boxTitle.classList.add('hanji-backdrop');
-              boxTitle.style.backgroundColor = `rgba(254, 252, 248, ${opacity})`;
-              boxTitle.style.backdropFilter = "blur(3px)";
-              boxTitle.style.webkitBackdropFilter = "blur(3px)";
-              boxTitle.style.borderRadius = "6px";
-              boxTitle.style.boxShadow = `0 0 16px 8px rgba(254, 252, 248, ${opacity})`;
+              if (titleElem) {
+                titleElem.classList.add('title-hanji-backdrop');
+                titleElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+                titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+                titleElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+                titleElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+              }
+              if (authorElem && authorElem.style.display !== 'none') {
+                authorElem.classList.add('author-hanji-backdrop');
+                authorElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+                authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+                authorElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+                authorElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+              }
             } else {
-              boxTitle.classList.remove('hanji-backdrop');
-              boxTitle.style.backgroundColor = "transparent";
-              boxTitle.style.backdropFilter = "none";
-              boxTitle.style.webkitBackdropFilter = "none";
-              boxTitle.style.boxShadow = "none";
+              if (titleElem) {
+                titleElem.classList.remove('title-hanji-backdrop');
+                titleElem.style.removeProperty('background-color');
+                titleElem.style.removeProperty('box-shadow');
+                titleElem.style.removeProperty('backdrop-filter');
+                titleElem.style.removeProperty('-webkit-backdrop-filter');
+              }
+              if (authorElem) {
+                authorElem.classList.remove('author-hanji-backdrop');
+                authorElem.style.removeProperty('background-color');
+                authorElem.style.removeProperty('box-shadow');
+                authorElem.style.removeProperty('backdrop-filter');
+                authorElem.style.removeProperty('-webkit-backdrop-filter');
+              }
             }
           }
         }
       });
+
+      this.detectAndApplyLineOverlap('left');
+      this.detectAndApplyLineOverlap('right');
 
       const lbl = document.getElementById("lblDtpHanjiOpacityVal");
       if (lbl) lbl.textContent = `${Math.round(opacity * 100)}%`;
@@ -3088,8 +3448,9 @@
         'dark': '⚫ 먹색 고정',
         'light': '⚪ 백색 고정'
       };
+      const lineName = (lineIdx === 'title') ? '제목' : `${parseInt(lineIdx, 10) + 1}행`;
       if (window.showToast) {
-        window.showToast(`[${parseInt(lineIdx, 10) + 1}행] 글자색이 [${labels[mode] || mode}]으로 설정되었습니다.`, 'success');
+        window.showToast(`[${lineName}] 글자색이 [${labels[mode] || mode}]으로 설정되었습니다.`, 'success');
       }
     }
 
@@ -3101,7 +3462,6 @@
       const capSide = (side.toLowerCase() === 'left') ? 'Left' : 'Right';
       const layerImage = document.getElementById(`dtpLayerImage${capSide}`);
       const bodyElem = document.getElementById(`dtpBody${capSide}`);
-      if (!bodyElem) return;
 
       const work = this.getCurrentWork();
       if (!work) return;
@@ -3129,7 +3489,7 @@
       }
 
       // 글상자 본문의 각 시 구절 행 검사
-      const lineElems = bodyElem.querySelectorAll('.poem-line');
+      const lineElems = bodyElem ? bodyElem.querySelectorAll('.poem-line') : [];
       lineElems.forEach(p => {
         if (p.classList.contains('empty-line')) return;
         const lineIdx = p.getAttribute('data-line-idx');
@@ -3224,6 +3584,136 @@
           });
         }
       });
+
+      // 4) [핵심] 제목·지은이 상자(boxTitle)의 그림 겹침 감지 및 가독성(한지필터/글자색) 완벽 동기화
+      const boxTitle = document.getElementById(`dtpBoxTitle${capSide}`);
+      const titleElem = document.getElementById(`dtpTitle${capSide}`);
+      const authorElem = document.getElementById(`dtpAuthor${capSide}`);
+      const titleDivider = boxTitle ? boxTitle.querySelector('.dtp-title-divider') : null;
+
+      if (boxTitle && (pageData.role === 'start' || pageData.role === 'title_only')) {
+        let isTitleOverImage = false;
+        if (frameRects.length > 0) {
+          const tRect = (titleElem || boxTitle).getBoundingClientRect();
+          if (tRect.width > 0 && tRect.height > 0) {
+            for (const fRect of frameRects) {
+              const overlapX = Math.max(0, Math.min(tRect.right, fRect.right) - Math.max(tRect.left, fRect.left));
+              const overlapY = Math.max(0, Math.min(tRect.bottom, fRect.bottom) - Math.max(tRect.top, fRect.top));
+              if (overlapX > 10 && overlapY > tRect.height * 0.25) {
+                isTitleOverImage = true;
+                break;
+              }
+            }
+          }
+        }
+
+        const titleManualSetting = lineOverrides['title'];
+        let finalTitleColor = 'dark';
+        if (titleManualSetting === 'light') {
+          finalTitleColor = 'light';
+        } else if (titleManualSetting === 'dark') {
+          finalTitleColor = 'dark';
+        } else if (mode === 'light') {
+          finalTitleColor = 'light';
+        } else if (mode === 'dark') {
+          finalTitleColor = 'dark';
+        } else {
+          finalTitleColor = isTitleOverImage ? 'light' : 'dark';
+        }
+
+        // 제목 상자(boxTitle)는 언제나 투명 유지 (네모난 판자 방지)
+        boxTitle.classList.remove('hanji-backdrop');
+        boxTitle.style.removeProperty('background-color');
+        boxTitle.style.removeProperty('backdrop-filter');
+        boxTitle.style.removeProperty('-webkit-backdrop-filter');
+        boxTitle.style.removeProperty('border-radius');
+        boxTitle.style.removeProperty('box-shadow');
+
+        // [제목 및 지은이 국소 한지 필터]: 상자 전체가 아니라 오직 글자 너비만큼만 부드러운 틴트/블러 적용!
+        if (pageData.usage === 'image_text' && opacity > 0) {
+          const whiteAlpha = Math.min(0.96, 0.45 + (opacity * 0.5));
+          const darkAlpha = Math.min(0.85, 0.25 + (opacity * 0.45));
+
+          if (titleElem) {
+            titleElem.classList.add('title-hanji-backdrop');
+            if (finalTitleColor === 'dark') {
+              titleElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+              titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+            } else {
+              titleElem.style.setProperty('background-color', `rgba(20, 15, 11, ${darkAlpha})`, 'important');
+              titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(20, 15, 11, ${darkAlpha})`, 'important');
+            }
+            titleElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            titleElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
+
+          if (authorElem && authorElem.style.display !== 'none') {
+            authorElem.classList.add('author-hanji-backdrop');
+            if (finalTitleColor === 'dark') {
+              authorElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+              authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+            } else {
+              authorElem.style.setProperty('background-color', `rgba(20, 15, 11, ${darkAlpha * 0.9})`, 'important');
+              authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(20, 15, 11, ${darkAlpha * 0.9})`, 'important');
+            }
+            authorElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            authorElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
+        } else {
+          if (titleElem) {
+            titleElem.classList.remove('title-hanji-backdrop');
+            titleElem.style.removeProperty('background-color');
+            titleElem.style.removeProperty('box-shadow');
+            titleElem.style.removeProperty('backdrop-filter');
+            titleElem.style.removeProperty('-webkit-backdrop-filter');
+          }
+          if (authorElem) {
+            authorElem.classList.remove('author-hanji-backdrop');
+            authorElem.style.removeProperty('background-color');
+            authorElem.style.removeProperty('box-shadow');
+            authorElem.style.removeProperty('backdrop-filter');
+            authorElem.style.removeProperty('-webkit-backdrop-filter');
+          }
+        }
+
+        // 제목 글자색 & 텍스트 섀도우 & 구분선 스타일 (먹색 vs 백색 명도 대비)
+        if (titleElem) {
+          if (finalTitleColor === 'light') {
+            titleElem.style.setProperty('color', '#FFFFFF', 'important');
+            titleElem.style.setProperty('text-shadow', '0 2px 8px rgba(0, 0, 0, 0.85)', 'important');
+          } else {
+            titleElem.style.setProperty('color', '#1A120B', 'important');
+            titleElem.style.setProperty('text-shadow', '0 1px 3px rgba(255, 255, 255, 0.9)', 'important');
+          }
+        }
+        if (authorElem) {
+          if (finalTitleColor === 'light') {
+            authorElem.style.setProperty('color', 'rgba(255, 255, 255, 0.92)', 'important');
+            authorElem.style.setProperty('text-shadow', '0 1px 4px rgba(0, 0, 0, 0.8)', 'important');
+          } else {
+            authorElem.style.setProperty('color', '#6E5340', 'important');
+            authorElem.style.setProperty('text-shadow', '0 1px 2px rgba(255, 255, 255, 0.9)', 'important');
+          }
+        }
+        if (titleDivider) {
+          if (finalTitleColor === 'light') {
+            titleDivider.style.setProperty('background', 'rgba(255, 255, 255, 0.55)', 'important');
+          } else {
+            titleDivider.style.setProperty('background', '#D8C7B4', 'important');
+          }
+        }
+
+        // 제목 클릭 시 '선택 행 개별 조절' 연동
+        if (!boxTitle._titleClickBound) {
+          boxTitle._titleClickBound = true;
+          boxTitle.style.cursor = 'pointer';
+          boxTitle.addEventListener('click', (e) => {
+            this.setTargetPageSlot(side);
+            this.targetBoxType = 'title'; // 도구상자 상자 위치이동 대상: 제목 상자
+            this.setSelectedLine(slot, 'title', work.title || '제목');
+          });
+        }
+      }
     }
 
     /**
@@ -3292,6 +3782,10 @@
     }
 
     applyGuidesVisibility() {
+      const spread = document.getElementById("bookSpreadContainer") || document.querySelector(".book-spread");
+      if (spread) {
+        spread.classList.toggle("guides-hidden", !this.showGuides);
+      }
       document.querySelectorAll(".dtp-guide-box").forEach(box => {
         box.classList.toggle("guides-hidden", !this.showGuides);
       });
@@ -3542,7 +4036,7 @@
     }
 
     /**
-     * 도구상자 접기 / 펼치기 토글
+     * 도구상자 접기 / 펼치기 토글 (우측 인스펙터 사이드바 기준)
      */
     toggleToolboxCollapse() {
       const panel = document.getElementById("dtpToolboxPanel");
@@ -3550,7 +4044,7 @@
       panel.classList.toggle("is-collapsed");
       const isCollapsed = panel.classList.contains("is-collapsed");
       const icon = document.getElementById("btnToggleToolboxIcon");
-      if (icon) icon.textContent = isCollapsed ? "▶" : "◀";
+      if (icon) icon.textContent = isCollapsed ? "◀" : "▶";
     }
 
     /**
@@ -3592,11 +4086,19 @@
           if (p && p.role === 'independent') return;
           const capSide = (s === 'left') ? 'Left' : 'Right';
           const bodyElem = document.getElementById(`dtpBody${capSide}`);
+          const titleElem = document.getElementById(`dtpTitle${capSide}`);
+          const authorElem = document.getElementById(`dtpAuthor${capSide}`);
           if (bodyElem) {
             bodyElem.classList.remove('text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify');
             bodyElem.classList.add(`text-align-${align}`);
             bodyElem.style.textAlign = align;
             bodyElem.style.textAlignLast = (align === 'justify' ? 'justify' : align);
+          }
+          if (titleElem) {
+            titleElem.style.setProperty('text-align', align, 'important');
+          }
+          if (authorElem) {
+            authorElem.style.setProperty('text-align', align === 'justify' ? 'right' : align, 'important');
           }
         });
         if (typeof window.syncPoemEditorWithDtpConfig === 'function') window.syncPoemEditorWithDtpConfig(work);
@@ -3609,6 +4111,100 @@
       if (selAlign) selAlign.value = align;
 
       this.saveLayoutConfigToServer(work.episode_no, cfg);
+    }
+
+    /**
+     * [InDesign 명품 조판] 마스터 감성 프리셋 3종 적용
+     * - traditional: 🎋 정통 수묵 (부크크 명조, 먹색, 12pt, 170% 행간, -0.02em 자간, 왼쪽 정렬, 한지 85%)
+     * - sunset: 🌅 노을빛 서정 (나눔명조, 밤색, 12.5pt, 180% 행간, -0.01em 자간, 가운데 정렬, 한지 90%)
+     * - dongshim: 🍃 맑은 동심 (바탕체, 맑은먹색, 12pt, 160% 행간, 0em 자간, 왼쪽 정렬, 한지 70%)
+     */
+    applyMasterStylePreset(presetKey) {
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      this.pushUndoState();
+      const cfg = this.getNormalizedConfig(work);
+
+      const presets = {
+        traditional: {
+          name: "정통 수묵",
+          icon: "🎋",
+          font_family: "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif",
+          font_size_pt: 12,
+          line_height_ratio: 1.7,
+          letter_spacing_em: -0.02,
+          text_align: "left",
+          text_color_mode: "dark",
+          backdrop_opacity: 0.85
+        },
+        sunset: {
+          name: "노을빛 서정",
+          icon: "🌅",
+          font_family: "'Nanum Myeongjo', '나눔명조', serif",
+          font_size_pt: 12.5,
+          line_height_ratio: 1.8,
+          letter_spacing_em: -0.01,
+          text_align: "center",
+          text_color_mode: "dark",
+          backdrop_opacity: 0.90
+        },
+        dongshim: {
+          name: "맑은 동심",
+          icon: "🍃",
+          font_family: "Batang, KoPub Batang, serif",
+          font_size_pt: 12,
+          line_height_ratio: 1.6,
+          letter_spacing_em: 0.0,
+          text_align: "left",
+          text_color_mode: "dark",
+          backdrop_opacity: 0.70
+        }
+      };
+
+      const preset = presets[presetKey] || presets.traditional;
+
+      // 설정값 일괄 반영
+      cfg.font_family = preset.font_family;
+      cfg.font_size_pt = preset.font_size_pt;
+      cfg.line_height_ratio = preset.line_height_ratio;
+      cfg.letter_spacing_em = preset.letter_spacing_em;
+      cfg.text_align = preset.text_align;
+      cfg.text_color_mode = preset.text_color_mode;
+      cfg.backdrop_opacity = preset.backdrop_opacity;
+
+      work.layout_config = cfg;
+
+      // 도구상자 컨트롤 UI 동기화
+      const selFont = document.getElementById('selectTbFontFamily');
+      if (selFont) selFont.value = preset.font_family;
+      const selAlign = document.getElementById('selectTbTextAlign');
+      if (selAlign) selAlign.value = preset.text_align;
+      const sliderLh = document.getElementById('sliderTbLineHeight');
+      if (sliderLh) sliderLh.value = Math.round(preset.line_height_ratio * 100);
+      const lblLh = document.getElementById('valTbLineHeight');
+      if (lblLh) lblLh.innerText = `${Math.round(preset.line_height_ratio * 100)}%`;
+      const sliderLs = document.getElementById('sliderTbLetterSpacing');
+      if (sliderLs) sliderLs.value = preset.letter_spacing_em;
+      const lblLs = document.getElementById('valTbLetterSpacing');
+      if (lblLs) lblLs.innerText = `${preset.letter_spacing_em}em`;
+      const sliderHanji = document.getElementById('sliderHanjiOpacity');
+      if (sliderHanji) sliderHanji.value = Math.round(preset.backdrop_opacity * 100);
+      const lblHanji = document.getElementById('valHanjiOpacity');
+      if (lblHanji) lblHanji.innerText = `${Math.round(preset.backdrop_opacity * 100)}%`;
+
+      // 전체 스프레드 뷰 즉시 리렌더링
+      this.renderSpread(this.currentWorkIndex, this.currentSpreadPart, true);
+
+      // 도구상자 전체 UI 컨트롤 동기화
+      this.syncToolboxUI(work, cfg);
+
+      // 서버에 저장
+      this.saveLayoutConfigToServer(work.episode_no, cfg);
+
+      if (window.showToast) {
+        window.showToast(`${preset.icon} '${preset.name}' 마스터 감성 프리셋이 적용되었습니다.`, 'success');
+      }
     }
 
     /**
@@ -3722,7 +4318,7 @@
 
       const cfg = this.getNormalizedConfig(work);
       const { pageData, isIndependent } = this.getTargetPageInfo(cfg);
-      const curPt = parseFloat((isIndependent && pageData?.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 13.0;
+      const curPt = parseFloat((isIndependent && pageData?.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 12.0;
       const nextPt = Math.max(8.0, Math.min(28.0, Math.round((curPt + delta) * 10) / 10));
       this.setFontSizePt(nextPt);
     }
@@ -3742,7 +4338,7 @@
         const capSide = (slot === 'left') ? 'Left' : 'Right';
         const bodyElem = document.getElementById(`dtpBody${capSide}`);
         if (bodyElem) {
-          const pt = parseFloat(pageData.font_size_pt || cfg.font_size_pt) || 13;
+          const pt = parseFloat(pageData.font_size_pt || cfg.font_size_pt) || 12;
           const fontPx = (pt / 12.0) * 15.2;
           const linePx = fontPx * ratio;
           bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
@@ -3761,7 +4357,7 @@
           const capSide = (s === 'left') ? 'Left' : 'Right';
           const bodyElem = document.getElementById(`dtpBody${capSide}`);
           if (bodyElem) {
-            const pt = parseFloat(cfg.font_size_pt) || 13;
+            const pt = parseFloat(cfg.font_size_pt) || 12;
             const fontPx = (pt / 12.0) * 15.2;
             const linePx = fontPx * ratio;
             bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
@@ -3866,9 +4462,9 @@
       const selLayout = document.getElementById('selectTbImgLayout');
       if (selLayout) selLayout.value = layout;
 
-      // 2-1) 2분할 상태일 때만 '선택 그림' 선택기 노출
+      // 2-1) 2분할 또는 오버레이 꼴라주 상태일 때 '선택 그림' 선택기 노출
       const rowSub = document.getElementById('rowSubFrameSelector');
-      const isSplit = (layout === 'split_vertical' || layout === 'split_horizontal' || layout === 'main_detail' || layout === 'split_sandwich');
+      const isSplit = (layout === 'split_vertical' || layout === 'split_horizontal' || layout === 'overlay_collage' || layout === 'main_detail' || layout === 'split_sandwich');
       if (rowSub) {
         rowSub.style.display = isSplit ? 'flex' : 'none';
       }
@@ -3878,6 +4474,14 @@
       const btnSub2 = document.getElementById('btnSubFrame2');
       if (btnSub1) btnSub1.classList.toggle('active', frameNum === 1);
       if (btnSub2) btnSub2.classList.toggle('active', frameNum === 2);
+
+      // 2-2) 그림틀 크기 (10% ~ 100%, 1번과 2번 독립 동기화)
+      const frameScaleKey = (frameNum === 2) ? 'frame_scale_2' : 'frame_scale_1';
+      const frameScaleVal = pageData[frameScaleKey] !== undefined ? pageData[frameScaleKey] : (pageData.frame_scale !== undefined ? pageData.frame_scale : 100);
+      const inputFrameScale = document.getElementById('inputTbFrameScale');
+      const lblFrameScale = document.getElementById('lblTbFrameScaleVal');
+      if (inputFrameScale) inputFrameScale.value = frameScaleVal;
+      if (lblFrameScale) lblFrameScale.textContent = `${frameScaleVal}%`;
 
       // 3) 그림 배율 (40% ~ 250%)
       const scaleKey = (frameNum === 2) ? 'image_scale_2' : 'image_scale_1';
@@ -3900,8 +4504,9 @@
       if (inputY) inputY.value = pan.y || 0;
       if (lblY) lblY.textContent = `${pan.y || 0}%`;
 
-      // 5) 그림틀 여백 (0px ~ 40px)
-      const insetVal = pageData.frame_inset || 0;
+      // 5) 그림틀 여백 (0px ~ 50px, 1번과 2번 독립 동기화)
+      const insetKey = (frameNum === 2) ? 'frame_inset_2' : 'frame_inset_1';
+      const insetVal = pageData[insetKey] !== undefined ? pageData[insetKey] : (pageData.frame_inset || 0);
       const inputInset = document.getElementById('inputTbFrameInset');
       const lblInset = document.getElementById('lblTbFrameInsetVal');
       if (inputInset) inputInset.value = insetVal;
@@ -3942,14 +4547,17 @@
       if (btn1) btn1.classList.toggle('active', frameNum === 1);
       if (btn2) btn2.classList.toggle('active', frameNum === 2);
 
-      // 2) 캔버스 프레임 하이라이트 동기화
+      // 2) 캔버스 프레임 하이라이트 및 z-index 최상단 승격 (묻혀 있던 그림도 선택 즉시 맨 위로 드러남)
       const slot = this.targetPageSlot || 'left';
       const capSide = slot.charAt(0).toUpperCase() + slot.slice(1);
       const layer = document.getElementById(`dtpLayerImage${capSide}`);
       if (layer) {
         layer.querySelectorAll('.dtp-image-frame').forEach(f => {
           const fNum = parseInt(f.getAttribute('data-sub-frame') || '1', 10);
-          f.classList.toggle('is-selected', fNum === frameNum);
+          const isSel = (fNum === frameNum);
+          f.classList.toggle('is-selected', isSel);
+          // 선택된 그림틀은 z-index: 60으로 번쩍 승격되어 다른 그림 위에 노출됨
+          f.style.setProperty('z-index', isSel ? '60' : (fNum === 2 ? '20' : '10'), 'important');
         });
       }
 
@@ -3982,13 +4590,22 @@
       else if (filter?.tone === 'vintage') fStr += `sepia(0.3) saturate(1.2) hue-rotate(-10deg) `;
       imgElem.style.filter = fStr.trim();
 
-      if (filter?.vignette > 0) {
-        const vigPct = 100 - (filter.vignette * 0.4);
-        imgElem.style.webkitMaskImage = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
-        imgElem.style.maskImage = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
-      } else {
-        imgElem.style.webkitMaskImage = 'none';
-        imgElem.style.maskImage = 'none';
+      // [개선]: 이미지 자체(imgElem)가 아닌 그림틀 크롭 컨테이너(.dtp-frame-crop)에 마스크 적용!
+      // 이렇게 하면 가로/세로 이동(Pan)이나 배율 확대 시에도 눈에 보이는 그림틀 사각 영역 전체가 종이 속으로 부드럽게 페이드아웃됨
+      imgElem.style.webkitMaskImage = 'none';
+      imgElem.style.maskImage = 'none';
+
+      const frameCrop = imgElem.closest('.dtp-frame-crop') || imgElem.parentElement;
+      if (frameCrop) {
+        if (filter?.vignette > 0) {
+          const vigPct = Math.max(20, 100 - (filter.vignette * 0.5));
+          const maskVal = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+          frameCrop.style.webkitMaskImage = maskVal;
+          frameCrop.style.maskImage = maskVal;
+        } else {
+          frameCrop.style.webkitMaskImage = 'none';
+          frameCrop.style.maskImage = 'none';
+        }
       }
     }
 
@@ -4009,6 +4626,37 @@
       const pageData = cfg.pages[pageIdx];
 
       const capSide = (slot === 'right' || slot === 'Right') ? 'Right' : 'Left';
+      const isTitleTarget = (pageData.role === 'title_only') || (this.targetBoxType === 'title');
+
+      if (isTitleTarget) {
+        // [제목 상자 위치 이동]
+        const boxTitle = document.getElementById(`dtpBoxTitle${capSide}`);
+        const initialTop = parseInt(pageData.top_offset, 10) || 0;
+        const initialLeft = parseInt(pageData.left_offset, 10) || 0;
+        const newTop = Math.max(0, Math.min(380, initialTop + deltaY));
+        const newLeft = Math.max(0, Math.min(220, initialLeft + deltaX));
+
+        pageData.top_offset = newTop;
+        pageData.left_offset = newLeft;
+        if (work.layout_config && Array.isArray(work.layout_config.pages) && work.layout_config.pages[pageIdx]) {
+          work.layout_config.pages[pageIdx].top_offset = newTop;
+          work.layout_config.pages[pageIdx].left_offset = newLeft;
+        }
+
+        if (boxTitle) {
+          boxTitle.style.setProperty("margin-top", `${newTop}px`, "important");
+          boxTitle.style.setProperty("margin-left", `${newLeft}px`, "important");
+        }
+
+        this.renderSpread(this.currentWorkIndex, this.currentSpreadPart, true);
+        this.saveLayoutConfigToServer(work.episode_no, cfg);
+        if (window.showToast) {
+          window.showToast(`🪟 [제목 상자] 위치 이동: 상단 ${newTop}px, 좌측 ${newLeft}px`, "info");
+        }
+        return;
+      }
+
+      // [본문 글상자 위치 이동]
       const boxBody = document.getElementById(`dtpBoxBody${capSide}`);
       const boxH = boxBody ? boxBody.offsetHeight : 100;
 
@@ -4018,7 +4666,7 @@
 
       const safeBoundary = boxBody ? (boxBody.closest(".dtp-safe-boundary") || boxBody.parentElement) : null;
       const boundaryW = safeBoundary ? safeBoundary.clientWidth : 380;
-      const maxTop = Math.max(0, 517 - boxH);
+      const maxTop = Math.max(0, 468 - boxH);
 
       let newTop = Math.max(0, Math.min(maxTop, initialTop + deltaY));
       let newLeft = initialLeft + deltaX;
@@ -4051,7 +4699,7 @@
     }
 
     /**
-     * 그림틀(프레임) 통째 위치 이동 인터랙티브 드래그 핸들 바인딩
+     * 그림틀(프레임) 통째 위치 이동 인터랙티브 드래그 핸들 바인딩 (인디자인 방식: 평행 이동)
      */
     attachFrameMoveHandle(frameEl, side, frameNum) {
       let moveHandle = frameEl.querySelector('.dtp-frame-move-bar');
@@ -4082,53 +4730,27 @@
         const cfg = this.getNormalizedConfig(work);
         const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
         if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+
+        const offsetKey = (frameNum === 2) ? 'frame_offset_2' : 'frame_offset_1';
+        cfg.pages[pageIdx][offsetKey] = cfg.pages[pageIdx][offsetKey] || { x: 0, y: 0 };
+        const offset = cfg.pages[pageIdx][offsetKey];
+
+        const initialOffsetX = parseInt(offset.x, 10) || 0;
+        const initialOffsetY = parseInt(offset.y, 10) || 0;
+
         const insetsKey = (frameNum === 2) ? 'frame_insets_2' : 'frame_insets_1';
-        cfg.pages[pageIdx][insetsKey] = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
-        const insets = cfg.pages[pageIdx][insetsKey];
-
-        const initialTop = parseInt(insets.top, 10) || 0;
-        const initialBottom = parseInt(insets.bottom, 10) || 0;
-        const initialLeft = parseInt(insets.left, 10) || 0;
-        const initialRight = parseInt(insets.right, 10) || 0;
-
+        const insets = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
         const layout = cfg.pages[pageIdx].image_layout || 'single';
 
         const onMouseMove = (ev) => {
           const deltaX = ev.clientX - startX;
           const deltaY = ev.clientY - startY;
 
-          // 세로 이동 (top + bottom 합계 보존 -> 높이 불변)
-          let newTop = initialTop + deltaY;
-          let newBottom = initialBottom - deltaY;
+          offset.x = Math.round(initialOffsetX + deltaX);
+          offset.y = Math.round(initialOffsetY + deltaY);
+          if (frameNum === 1) cfg.pages[pageIdx].frame_offset = { x: offset.x, y: offset.y };
 
-          if (newTop < 0) {
-            newBottom += newTop;
-            newTop = 0;
-          }
-          if (newBottom < 0) {
-            newTop += newBottom;
-            newBottom = 0;
-          }
-
-          // 가로 이동 (left + right 합계 보존 -> 너비 불변)
-          let newLeft = initialLeft + deltaX;
-          let newRight = initialRight - deltaX;
-
-          if (newLeft < 0) {
-            newRight += newLeft;
-            newLeft = 0;
-          }
-          if (newRight < 0) {
-            newLeft += newRight;
-            newRight = 0;
-          }
-
-          insets.top = Math.max(0, Math.round(newTop));
-          insets.bottom = Math.max(0, Math.round(newBottom));
-          insets.left = Math.max(0, Math.round(newLeft));
-          insets.right = Math.max(0, Math.round(newRight));
-
-          this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum);
+          this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum, cfg.pages[pageIdx]);
           this.detectAndApplyLineOverlap(slot);
         };
 
@@ -4141,7 +4763,7 @@
 
           this.saveLayoutConfigToServer(work.episode_no, cfg);
           if (window.showToast) {
-            window.showToast(`🖼️ 그림틀 위치가 이동되었습니다.`, "info");
+            window.showToast(`🖼️ ${frameNum}번 그림틀 위치가 이동되었습니다.`, "info");
           }
         };
 
@@ -4151,7 +4773,7 @@
     }
 
     /**
-     * 선택된 그림틀을 크기 변화 없이 통째로 (deltaX, deltaY)만큼 이동
+     * 선택된 그림틀을 크기 변화 없이 통째로 (deltaX, deltaY)만큼 평행 이동
      */
     moveSelectedFrame(deltaX, deltaY) {
       const slot = this.targetPageSlot || 'left';
@@ -4162,41 +4784,17 @@
       const cfg = this.getNormalizedConfig(work);
       const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
       if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+
+      const offsetKey = (frameNum === 2) ? 'frame_offset_2' : 'frame_offset_1';
+      cfg.pages[pageIdx][offsetKey] = cfg.pages[pageIdx][offsetKey] || { x: 0, y: 0 };
+      const offset = cfg.pages[pageIdx][offsetKey];
+
+      offset.x = (parseInt(offset.x, 10) || 0) + deltaX;
+      offset.y = (parseInt(offset.y, 10) || 0) + deltaY;
+      if (frameNum === 1) cfg.pages[pageIdx].frame_offset = { x: offset.x, y: offset.y };
+
       const insetsKey = (frameNum === 2) ? 'frame_insets_2' : 'frame_insets_1';
-      cfg.pages[pageIdx][insetsKey] = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
-      const insets = cfg.pages[pageIdx][insetsKey];
-
-      const initialTop = parseInt(insets.top, 10) || 0;
-      const initialBottom = parseInt(insets.bottom, 10) || 0;
-      const initialLeft = parseInt(insets.left, 10) || 0;
-      const initialRight = parseInt(insets.right, 10) || 0;
-
-      let newTop = initialTop + deltaY;
-      let newBottom = initialBottom - deltaY;
-      if (newTop < 0) {
-        newBottom += newTop;
-        newTop = 0;
-      }
-      if (newBottom < 0) {
-        newTop += newBottom;
-        newBottom = 0;
-      }
-
-      let newLeft = initialLeft + deltaX;
-      let newRight = initialRight - deltaX;
-      if (newLeft < 0) {
-        newRight += newLeft;
-        newLeft = 0;
-      }
-      if (newRight < 0) {
-        newLeft += newRight;
-        newRight = 0;
-      }
-
-      insets.top = Math.max(0, Math.round(newTop));
-      insets.bottom = Math.max(0, Math.round(newBottom));
-      insets.left = Math.max(0, Math.round(newLeft));
-      insets.right = Math.max(0, Math.round(newRight));
+      const insets = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
 
       const capSide = (slot === 'right' || slot === 'Right') ? 'Right' : 'Left';
       const layer = document.getElementById(`dtpLayerImage${capSide}`);
@@ -4204,7 +4802,7 @@
       const layout = cfg.pages[pageIdx].image_layout || 'single';
 
       if (frameEl) {
-        this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum);
+        this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum, cfg.pages[pageIdx]);
       }
       this.detectAndApplyLineOverlap(slot);
       this.saveLayoutConfigToServer(work.episode_no, cfg);
@@ -4217,7 +4815,8 @@
     }
 
     /**
-     * 그림틀(프레임) 상·하·좌·우 4변 슬림 조절 핸들 바인딩
+     * 그림틀(프레임) 상·하·좌·우 4변 슬림 조절 핸들 바인딩 (인디자인식 직관적 리사이즈)
+     * - 당기면 늘어나고, 밀면 줄어드는 1:1 자연스러운 조작감 보장
      */
     attachFrameResizeHandle(frameEl, side, frameNum, handlePos) {
       let handle = frameEl.querySelector(`.dtp-frame-handle.handle-${handlePos}`);
@@ -4225,10 +4824,10 @@
         handle = document.createElement("div");
         handle.className = `dtp-frame-handle handle-${handlePos}`;
         const labelText = {
-          'top': '▲ 윗변 여백 조절',
-          'bottom': '▼ 아랫변 여백 조절',
-          'left': '◀ 좌변 여백 조절',
-          'right': '▶ 우변 여백 조절'
+          'top': '▲ 윗변 조절',
+          'bottom': '▼ 아랫변 조절',
+          'left': '◀ 좌변 조절',
+          'right': '▶ 우변 조절'
         }[handlePos] || `${frameNum}번 그림틀 조절`;
         handle.innerHTML = `
           <div class="handle-bar-pill"></div>
@@ -4270,45 +4869,49 @@
         const label = handle.querySelector('.handle-label');
         const layout = cfg.pages[pageIdx].image_layout || 'single';
 
-        // 해당 그림틀의 기준 가용 영역(너비/높이) 측정
+        // 해당 그림틀의 가용 기본 크기
         let availW = parentW;
         let availH = parentH;
         if (layout === 'split_vertical') {
-          availH = Math.floor((parentH - 10) / 2);
+          availH = Math.floor((parentH - 8) / 2);
         } else if (layout === 'split_horizontal') {
-          availW = Math.floor((parentW - 10) / 2);
+          availW = Math.floor((parentW - 8) / 2);
         } else if (layout === 'main_detail') {
-          availH = (frameNum === 1) ? Math.floor(parentH * 0.68 - 5) : Math.floor(parentH * 0.32 - 5);
+          availH = (frameNum === 1) ? Math.floor(parentH * 0.68 - 4) : Math.floor(parentH * 0.32 - 4);
         }
 
-        // 최소 45px 크기 보장 (핸들을 놓치지 않도록 방지)
-        const maxTop = Math.max(0, availH - initialBottom - 45);
-        const maxBottom = Math.max(0, availH - initialTop - 45);
-        const maxLeft = Math.max(0, availW - initialRight - 45);
-        const maxRight = Math.max(0, availW - initialLeft - 45);
+        // 최소 크기 엄격 보장 (높이 80px, 너비 90px 미만 축소 방지 -> 상하/좌우 핸들 겹침 원천 차단) 및 영역 밖 확장(-200px) 허용
+        const maxTop = availH - initialBottom - 80;
+        const maxBottom = availH - initialTop - 80;
+        const maxLeft = availW - initialRight - 90;
+        const maxRight = availW - initialLeft - 90;
 
         const onMouseMove = (ev) => {
           ev.preventDefault();
 
           if (handlePos === 'top') {
-            const deltaY = ev.clientY - startY; // 아래로 내리면 상단 여백 증가 (하단 띠형)
-            insets.top = Math.max(0, Math.min(maxTop, Math.round(initialTop + deltaY)));
-            if (label) label.textContent = `▲ 상단 여백: +${insets.top}px`;
+            // 아래로 내리면 축소(+), 위로 올리면 확장(-)
+            const deltaY = ev.clientY - startY;
+            insets.top = Math.max(-200, Math.min(maxTop, Math.round(initialTop + deltaY)));
+            if (label) label.textContent = insets.top <= 0 ? `▲ 상단 확장: ${-insets.top}px` : `▲ 상단 여백: +${insets.top}px`;
           } else if (handlePos === 'bottom') {
-            const deltaY = startY - ev.clientY; // 위로 올리면 하단 여백 증가 (상단 띠형)
-            insets.bottom = Math.max(0, Math.min(maxBottom, Math.round(initialBottom + deltaY)));
-            if (label) label.textContent = `▼ 하단 여백: +${insets.bottom}px`;
+            // 아래로 내리면 확장(-), 위로 올리면 축소(+)
+            const deltaY = ev.clientY - startY;
+            insets.bottom = Math.max(-200, Math.min(maxBottom, Math.round(initialBottom - deltaY)));
+            if (label) label.textContent = insets.bottom <= 0 ? `▼ 하단 확장: ${-insets.bottom}px` : `▼ 하단 여백: +${insets.bottom}px`;
           } else if (handlePos === 'left') {
-            const deltaX = ev.clientX - startX; // 오른쪽으로 밀면 좌측 여백 증가 (우측 띠형)
-            insets.left = Math.max(0, Math.min(maxLeft, Math.round(initialLeft + deltaX)));
-            if (label) label.textContent = `◀ 좌측 여백: +${insets.left}px`;
+            // 오른쪽으로 밀면 축소(+), 왼쪽으로 당기면 확장(-)
+            const deltaX = ev.clientX - startX;
+            insets.left = Math.max(-200, Math.min(maxLeft, Math.round(initialLeft + deltaX)));
+            if (label) label.textContent = insets.left <= 0 ? `◀ 좌측 확장: ${-insets.left}px` : `◀ 좌측 여백: +${insets.left}px`;
           } else if (handlePos === 'right') {
-            const deltaX = startX - ev.clientX; // 왼쪽으로 당기면 우측 여백 증가 (좌측 띠형)
-            insets.right = Math.max(0, Math.min(maxRight, Math.round(initialRight + deltaX)));
-            if (label) label.textContent = `▶ 우측 여백: +${insets.right}px`;
+            // 오른쪽으로 당기면 확장(-), 왼쪽으로 밀면 축소(+)
+            const deltaX = ev.clientX - startX;
+            insets.right = Math.max(-200, Math.min(maxRight, Math.round(initialRight - deltaX)));
+            if (label) label.textContent = insets.right <= 0 ? `▶ 우측 확장: ${-insets.right}px` : `▶ 우측 여백: +${insets.right}px`;
           }
 
-          this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum);
+          this.applyFrameInsetsStyle(frameEl, insets, layout, frameNum, cfg.pages[pageIdx]);
           this.detectAndApplyLineOverlap(slot);
         };
 
@@ -4428,7 +5031,7 @@
 
       // 1) 동적 프레임(.dtp-image-frame) 내부의 img 검색 (단일/분할 공통)
       const frame = layer.querySelector(`.dtp-image-frame[data-sub-frame="${frameNum}"]`) ||
-                    layer.querySelector('.dtp-image-frame');
+        layer.querySelector('.dtp-image-frame');
       if (frame) {
         const img = frame.querySelector('img');
         if (img) return img;
@@ -4482,10 +5085,11 @@
     }
 
     /**
-     * 그림틀 내부 여백 (인쇄범위 내 아담하게 축소/배치: 0px ~ 40px)
+     * 그림틀 크기 (10% ~ 100% 비율 축소 및 100% 원상복원)
      */
-    setImageFrameInset(val) {
+    setImageFrameScale(val) {
       const slot = this.targetPageSlot || 'left';
+      const frameNum = this.selectedSubFrame || 1;
       const work = this.getCurrentWork();
       if (!work) return;
 
@@ -4493,14 +5097,62 @@
       const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
       if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
 
-      const insetVal = Math.max(0, Math.min(40, parseInt(val, 10) || 0));
-      cfg.pages[pageIdx].frame_inset = insetVal;
+      const scaleVal = Math.max(10, Math.min(100, parseInt(val, 10) || 100));
+      const scaleKey = (frameNum === 2) ? 'frame_scale_2' : 'frame_scale_1';
+      cfg.pages[pageIdx][scaleKey] = scaleVal;
+      if (frameNum === 1) cfg.pages[pageIdx].frame_scale = scaleVal;
 
       const capSide = (slot === 'right' || slot === 'Right') ? 'Right' : 'Left';
       const layer = document.getElementById(`dtpLayerImage${capSide}`);
       if (layer) {
-        layer.style.padding = `${insetVal}px`;
-        layer.style.boxSizing = 'border-box';
+        layer.querySelectorAll('.dtp-image-frame').forEach(fEl => {
+          const fNum = parseInt(fEl.getAttribute('data-sub-frame') || '1', 10);
+          const insetsKey = (fNum === 2) ? 'frame_insets_2' : 'frame_insets_1';
+          const insets = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
+          const layout = cfg.pages[pageIdx].image_layout || 'single';
+          this.applyFrameInsetsStyle(fEl, insets, layout, fNum, cfg.pages[pageIdx]);
+        });
+      }
+
+      const lbl = document.getElementById('lblTbFrameScaleVal');
+      if (lbl) lbl.textContent = `${scaleVal}%`;
+
+      work.layout_config = cfg;
+
+      clearTimeout(this._frameScaleDebounce);
+      this._frameScaleDebounce = setTimeout(() => {
+        this.saveLayoutConfigToServer(work.episode_no, cfg);
+      }, 400);
+    }
+
+    /**
+     * 그림틀 외부 종이 여백 (실제 인쇄 마진 안착: 0px ~ 50px)
+     */
+    setImageFrameInset(val) {
+      const slot = this.targetPageSlot || 'left';
+      const frameNum = this.selectedSubFrame || 1;
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      const cfg = this.getNormalizedConfig(work);
+      const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
+      if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+
+      const insetVal = Math.max(0, Math.min(50, parseInt(val, 10) || 0));
+      const insetKey = (frameNum === 2) ? 'frame_inset_2' : 'frame_inset_1';
+      cfg.pages[pageIdx][insetKey] = insetVal;
+      if (frameNum === 1) cfg.pages[pageIdx].frame_inset = insetVal;
+
+      const capSide = (slot === 'right' || slot === 'Right') ? 'Right' : 'Left';
+      const layer = document.getElementById(`dtpLayerImage${capSide}`);
+      if (layer) {
+        layer.querySelectorAll('.dtp-image-frame').forEach(fEl => {
+          const fNum = parseInt(fEl.getAttribute('data-sub-frame') || '1', 10);
+          const insetsKey = (fNum === 2) ? 'frame_insets_2' : 'frame_insets_1';
+          const insets = cfg.pages[pageIdx][insetsKey] || { top: 0, bottom: 0, left: 0, right: 0 };
+          const layout = cfg.pages[pageIdx].image_layout || 'single';
+          this.applyFrameInsetsStyle(fEl, insets, layout, fNum, cfg.pages[pageIdx]);
+        });
       }
 
       const lbl = document.getElementById('lblTbFrameInsetVal');
@@ -4751,7 +5403,7 @@
       // 4) 글자 크기 드롭다운 동기화 (사용자 지정 pt 포함)
       const selSize = document.getElementById('selectTbFontSize');
       if (selSize) {
-        const ptVal = parseFloat((isIndependent && pageData?.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 13;
+        const ptVal = parseFloat((isIndependent && pageData?.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 12;
         const ptStr = String(Math.round(ptVal * 10) / 10);
         let exists = Array.from(selSize.options).some(o => o.value === ptStr);
         if (!exists && ptVal) {
@@ -4810,34 +5462,35 @@
   window.DtpEditorCore = DtpEditorCore;
 
   // 기존 레거시 함수 전면 브리지
-  window.navigateWork = function(delta) {
+  window.navigateWork = function (delta) {
     window.dtpEditor.navigateWork(delta);
   };
-  window.navigatePage = function(delta) {
+  window.navigatePage = function (delta) {
     window.dtpEditor.navigatePage(delta);
   };
-  window.renderBookSpread = function(index) {
+  window.renderBookSpread = function (index) {
     window.dtpEditor.renderSpread(index, window.currentSpreadPart || 1, false);
   };
-  window.onSelectWorkChange = function(val) { window._hasUserSelectedWork = true;
+  window.onSelectWorkChange = function (val) {
+    window._hasUserSelectedWork = true;
     window.dtpEditor.renderSpread(parseInt(val, 10), 1, false);
   };
-  window.onTypographyFontSizeSelectChange = function(val) {
+  window.onTypographyFontSizeSelectChange = function (val) {
     window.dtpEditor.setFontSizePt(val);
   };
-  window.adjustCustomTypography = function(type, delta) {
+  window.adjustCustomTypography = function (type, delta) {
     if (type === 'line') {
       window.dtpEditor.adjustLineHeight(delta);
     } else if (type === 'font') {
       const w = window.dtpEditor.getCurrentWork();
-      const curPt = w?.layout_config?.font_size_pt || 13;
+      const curPt = w?.layout_config?.font_size_pt || 12;
       window.dtpEditor.setFontSizePt(curPt + delta);
     }
   };
-  window.resetCustomTypography = function() {
+  window.resetCustomTypography = function () {
     window.dtpEditor.resetTypography();
   };
-  window.finishAndSaveCurrentLayout = function() {
+  window.finishAndSaveCurrentLayout = function () {
     window.dtpEditor.finishAndSaveLayout();
   };
 

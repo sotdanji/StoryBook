@@ -552,6 +552,20 @@ body {
 }
 
 /* 3번 캡처 영역: 메뉴 내비게이션 (수직 탭 리스트) */
+/* SVG 공통 아이콘 (Hallmark 표준) */
+.svg-icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.18em;
+  flex-shrink: 0;
+}
+
 .nav-tabs {
   display: flex;
   flex-direction: column;
@@ -567,7 +581,7 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -576,12 +590,29 @@ body {
 }
 
 .nav-tab-btn .tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.15rem;
+}
+
+.nav-tab-btn .tab-icon .svg-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .nav-tab-btn:hover {
   background: rgba(158, 107, 85, 0.08);
   color: var(--accent-primary);
+}
+
+.nav-tab-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+.nav-tab-btn:active {
+  transform: scale(0.985);
 }
 
 .nav-tab-btn.active {
@@ -1145,18 +1176,38 @@ body {
 .nav-btn {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  padding: 8px 18px;
+  padding: 8px 16px;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.nav-btn .svg-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .nav-btn:hover:not(:disabled) {
   background: var(--accent-primary);
   color: #FFFFFF;
   border-color: var(--accent-primary);
+}
+
+.nav-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+.nav-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .nav-btn:disabled {

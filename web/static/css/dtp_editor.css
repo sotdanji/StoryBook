@@ -126,20 +126,18 @@
 }
 
 .slot-mixed-image.fade-bottom img {
-  -webkit-mask-image: linear-gradient(to bottom, 
-    rgba(0, 0, 0, 1.0) 0%, 
-    rgba(0, 0, 0, 1.0) 45%, 
-    rgba(0, 0, 0, 0.75) 68%, 
-    rgba(0, 0, 0, 0.25) 86%, 
-    rgba(0, 0, 0, 0.0) 100%
-  );
-  mask-image: linear-gradient(to bottom, 
-    rgba(0, 0, 0, 1.0) 0%, 
-    rgba(0, 0, 0, 1.0) 45%, 
-    rgba(0, 0, 0, 0.75) 68%, 
-    rgba(0, 0, 0, 0.25) 86%, 
-    rgba(0, 0, 0, 0.0) 100%
-  );
+  -webkit-mask-image: linear-gradient(to bottom,
+      rgba(0, 0, 0, 1.0) 0%,
+      rgba(0, 0, 0, 1.0) 45%,
+      rgba(0, 0, 0, 0.75) 68%,
+      rgba(0, 0, 0, 0.25) 86%,
+      rgba(0, 0, 0, 0.0) 100%);
+  mask-image: linear-gradient(to bottom,
+      rgba(0, 0, 0, 1.0) 0%,
+      rgba(0, 0, 0, 1.0) 45%,
+      rgba(0, 0, 0, 0.75) 68%,
+      rgba(0, 0, 0, 0.25) 86%,
+      rgba(0, 0, 0, 0.0) 100%);
 }
 
 /* 🖼️ 하단 그림형: 윗단 35%가 글자 쪽으로 은은하게 번지며 페이드인 */
@@ -148,20 +146,18 @@
 }
 
 .slot-mixed-image.fade-top img {
-  -webkit-mask-image: linear-gradient(to top, 
-    rgba(0, 0, 0, 1.0) 0%, 
-    rgba(0, 0, 0, 1.0) 45%, 
-    rgba(0, 0, 0, 0.75) 68%, 
-    rgba(0, 0, 0, 0.25) 86%, 
-    rgba(0, 0, 0, 0.0) 100%
-  );
-  mask-image: linear-gradient(to top, 
-    rgba(0, 0, 0, 1.0) 0%, 
-    rgba(0, 0, 0, 1.0) 45%, 
-    rgba(0, 0, 0, 0.75) 68%, 
-    rgba(0, 0, 0, 0.25) 86%, 
-    rgba(0, 0, 0, 0.0) 100%
-  );
+  -webkit-mask-image: linear-gradient(to top,
+      rgba(0, 0, 0, 1.0) 0%,
+      rgba(0, 0, 0, 1.0) 45%,
+      rgba(0, 0, 0, 0.75) 68%,
+      rgba(0, 0, 0, 0.25) 86%,
+      rgba(0, 0, 0, 0.0) 100%);
+  mask-image: linear-gradient(to top,
+      rgba(0, 0, 0, 1.0) 0%,
+      rgba(0, 0, 0, 1.0) 45%,
+      rgba(0, 0, 0, 0.75) 68%,
+      rgba(0, 0, 0, 0.25) 86%,
+      rgba(0, 0, 0, 0.0) 100%);
 }
 
 /* 상하 혼합 본문 영역 (시 텍스트) */
@@ -232,6 +228,7 @@
   0% {
     background-position: 0 0;
   }
+
   100% {
     background-position: 36px 0;
   }
@@ -242,23 +239,21 @@
   height: 10px;
   border-radius: 5px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .video-progress-fill-active {
   height: 100%;
   border-radius: 5px;
   background-color: #2B7A4B;
-  background-image: linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.28) 25%,
-    transparent 25%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.28) 50%,
-    rgba(255, 255, 255, 0.28) 75%,
-    transparent 75%,
-    transparent
-  );
+  background-image: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.28) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.28) 50%,
+      rgba(255, 255, 255, 0.28) 75%,
+      transparent 75%,
+      transparent);
   background-size: 36px 36px;
   animation: videoProgressStripes 0.9s linear infinite;
   transition: width 0.35s ease;
@@ -314,11 +309,13 @@
   text-align: center;
   color: #B5A290;
 }
+
 .layer-bg-blank-symbol span {
   font-size: 2.2rem;
   display: block;
   margin-bottom: 6px;
 }
+
 .layer-bg-blank-symbol p {
   font-size: 0.82rem;
   font-style: italic;
@@ -345,9 +342,11 @@
   pointer-events: none;
   z-index: 10;
 }
+
 .print-safety-guide.safety-top {
   top: 24px;
 }
+
 .print-safety-guide.safety-bottom {
   bottom: 24px;
 }
@@ -392,12 +391,13 @@
   align-items: center;
   padding: 0 10px;
 }
+
 .dtp-title-text {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
   color: #2F241E;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.9);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
 }
 
 /* 2) 지은이 상자 (상단 고정) */
@@ -408,11 +408,12 @@
   align-items: center;
   padding: 0 10px;
 }
+
 .dtp-author-text {
   font-size: 0.82rem;
   font-weight: 600;
   color: #6E5340;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.9);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
 }
 
 /* 3) 본문 글상자 (상·하단 신축성 드래그) */
@@ -421,7 +422,7 @@
   flex-direction: column;
   justify-content: flex-start;
   padding: 14px 10px;
-  overflow: hidden;
+  overflow: visible !important; /* 리사이즈 핸들이 박스 바깥으로 돌출되어 선명하게 보이도록 보장 */
 }
 
 .dtp-body-content {
@@ -430,7 +431,7 @@
   font-family: var(--font-myeongjo), 'Noto Serif KR', serif;
   color: #261B14;
   text-align: left;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.85);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.85);
 }
 
 .dtp-body-content .poem-line {
@@ -466,7 +467,7 @@
   height: 6px;
   background: #DC3545;
   border-radius: 3px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transition: transform 0.15s, background-color 0.15s;
 }
 
@@ -520,6 +521,7 @@
   background: transparent !important;
   backdrop-filter: none !important;
 }
+
 .page-layer-fg.hide-guides .dtp-box-tag,
 .page-layer-fg.hide-guides .print-safety-guide,
 .page-layer-fg.hide-guides .dtp-resize-handle {
@@ -864,6 +866,7 @@
   padding: 2px 7px !important;
   cursor: pointer !important;
 }
+
 .btn-dtp-art:hover {
   background: #F5EBE1 !important;
 }
@@ -900,6 +903,7 @@
   width: 100% !important;
   height: 100% !important;
 }
+
 .dtp-art-placeholder .placeholder-icon {
   font-size: 2.2rem !important;
 }
@@ -915,9 +919,11 @@
   background: #FAF6EE !important;
   gap: 10px !important;
 }
+
 .dtp-blank-content .blank-symbol {
   font-size: 2rem !important;
 }
+
 .dtp-blank-content .blank-text {
   font-size: 0.88rem !important;
   font-family: var(--font-serif) !important;
@@ -945,7 +951,7 @@
 .dtp-safe-boundary {
   position: absolute !important;
   top: 24px !important;
-  bottom: 36px !important;
+  bottom: 60px !important;
   left: 28px !important;
   right: 28px !important;
   z-index: 6 !important;
@@ -971,6 +977,7 @@
   border-color: transparent !important;
   background: transparent !important;
 }
+
 .dtp-guide-box.guides-hidden .dtp-guide-label {
   display: none !important;
 }
@@ -989,29 +996,47 @@
   user-select: none !important;
 }
 
-/* 제목/지은이 상자 */
+/* 제목/지은이 상자: 상자 자체는 언제나 투명하여 불필요한 네모 판자가 생기지 않음 */
 .dtp-box-title {
   padding: 8px 12px 6px 12px !important;
   flex-shrink: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .dtp-title-text {
   font-family: var(--font-serif);
   font-size: 1.35rem !important;
   font-weight: 700 !important;
-  color: #2D1A0E !important;
+  color: #2D1A0E;
   margin: 0 !important;
   line-height: 1.3 !important;
   outline: none !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  transition: color 0.2s ease, text-shadow 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .dtp-author-text {
   font-family: var(--font-serif);
   font-size: 0.85rem !important;
-  color: #7A583A !important;
-  text-align: right !important;
+  color: #7A583A;
+  text-align: right;
   margin-top: 4px !important;
   outline: none !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  transition: color 0.2s ease, text-shadow 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .dtp-title-divider {
@@ -1024,10 +1049,11 @@
 /* 본문 상자 */
 .dtp-box-body {
   flex: 1 !important;
+  max-height: 468px !important;
   padding: 14px 12px !important;
   display: flex;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow: visible !important; /* 상·하·좌·우 리사이즈 핸들이 잘리지 않도록 overflow: visible 보장 */
   margin-bottom: 0 !important;
 }
 
@@ -1054,11 +1080,12 @@
 .dtp-layer-text.text-color-light .dtp-title-text,
 .dtp-layer-text.text-color-light .dtp-body-text {
   color: #FFFFFF !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7) !important;
 }
+
 .dtp-layer-text.text-color-light .dtp-author-text {
   color: #E2E8F0 !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* 5. 초과 알림 배지 & 면번호 */
@@ -1081,7 +1108,7 @@
 
 .dtp-page-folio {
   position: absolute !important;
-  bottom: 10px !important;
+  bottom: 26px !important;
   font-size: 0.76rem !important;
   font-family: var(--font-serif) !important;
   font-weight: 600 !important;
@@ -1089,9 +1116,11 @@
   pointer-events: none !important;
   z-index: 10 !important;
 }
+
 .dtp-page-left .dtp-page-folio {
   left: 28px !important;
 }
+
 .dtp-page-right .dtp-page-folio {
   right: 28px !important;
 }
@@ -1127,6 +1156,7 @@
   position: relative !important;
   overflow: hidden !important;
 }
+
 .dtp-layer-image {
   position: absolute !important;
   inset: 38px 0 0 0 !important;
@@ -1134,11 +1164,13 @@
   width: 100% !important;
   height: calc(100% - 38px) !important;
 }
+
 .dtp-art-image {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
 }
+
 .dtp-layer-text {
   position: absolute !important;
   inset: 38px 0 0 0 !important;
@@ -1153,7 +1185,7 @@
 .dtp-page .dtp-safe-boundary {
   position: absolute !important;
   top: 28px !important;
-  bottom: 34px !important;
+  bottom: 60px !important;
   left: 32px !important;
   right: 32px !important;
   display: flex !important;
@@ -1201,7 +1233,7 @@
   z-index: 15 !important;
   pointer-events: none !important;
   white-space: nowrap !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
 }
 
 .dtp-page .dtp-box-title {
@@ -1232,14 +1264,14 @@
 
 
 /* ========================================================
-   [StoryBook DTP Core v4.4] 리사이즈 핸들 및 본문 시작점 일치
+   [StoryBook DTP Core v4.5] 인디자인급 좌우 대칭 제본 여백 (Facing Pages Gutter)
    ======================================================== */
 .dtp-page .dtp-safe-boundary {
   position: absolute !important;
   top: 28px !important;
-  bottom: 34px !important;
-  left: 32px !important;
-  right: 32px !important;
+  bottom: 60px !important;
+  left: 30px !important;
+  right: 30px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
@@ -1247,6 +1279,18 @@
   z-index: 5 !important;
   pointer-events: auto !important;
   overflow: visible !important;
+}
+
+/* 좌측 면 (짝수 쪽): 오른쪽이 제본선(책등) -> 안쪽 제본 여백 36px, 바깥 여백 26px */
+.dtp-page-left .dtp-safe-boundary {
+  left: 26px !important;
+  right: 36px !important;
+}
+
+/* 우측 면 (홀수 쪽): 왼쪽이 제본선(책등) -> 안쪽 제본 여백 36px, 바깥 여백 26px */
+.dtp-page-right .dtp-safe-boundary {
+  left: 36px !important;
+  right: 26px !important;
 }
 
 /* 제목 상자가 없는 시 이어짐(continue) 면의 제목 플레이스홀더: 상단 높이 64px 완벽 유지 */
@@ -1265,10 +1309,10 @@
   display: none !important;
 }
 
-/* 본문 상자 기본 스타일 */
+/* 본문 상자 기본 스타일 - 18행(468px) 수용 & 쪽수 위 안전여백 준수 한도 */
 .dtp-page .dtp-box-body {
   position: relative !important;
-  max-height: 522px !important;
+  max-height: 468px !important;
   box-sizing: border-box !important;
   transition: margin-top 0.05s ease;
 }
@@ -1286,21 +1330,21 @@
   position: absolute !important;
   left: 0 !important;
   right: 0 !important;
-  height: 20px !important;
+  height: 22px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: ns-resize !important;
-  z-index: 50 !important;
+  z-index: 80 !important;
   pointer-events: auto !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-top {
-  top: -10px !important;
+  top: -11px !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-bottom {
-  bottom: -10px !important;
+  bottom: -11px !important;
 }
 
 /* 좌측 및 우측 리사이즈 핸들 (본문 폭 및 좌우 여백 조절) */
@@ -1308,46 +1352,47 @@
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-right {
   top: 0 !important;
   bottom: 0 !important;
-  width: 20px !important;
+  width: 22px !important;
   height: auto !important;
   cursor: ew-resize !important;
+  z-index: 80 !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-left {
-  left: -10px !important;
+  left: -11px !important;
   right: auto !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-right {
-  right: -10px !important;
+  right: -11px !important;
   left: auto !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-left .handle-bar-pill,
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-right .handle-bar-pill {
-  width: 4.5px !important;
-  height: 40px !important;
+  width: 5px !important;
+  height: 44px !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-left:hover .handle-label {
-  left: 24px !important;
+  left: 26px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle.handle-right:hover .handle-label {
-  right: 24px !important;
+  right: 26px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
 
 .dtp-page .dtp-guide-box .dtp-resize-handle .handle-bar-pill {
-  width: 44px !important;
-  height: 4.5px !important;
-  background: #C2410C !important;
-  border: 1px solid #9A3412 !important;
-  border-radius: 2.5px !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+  width: 46px !important;
+  height: 5px !important;
+  background: #DC2626 !important;
+  border: 1px solid #B91C1C !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
   transition: transform 0.15s, background-color 0.15s !important;
 }
 
@@ -1369,7 +1414,7 @@
   border-radius: 4px !important;
   white-space: nowrap !important;
   pointer-events: none !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
   z-index: 60 !important;
 }
 
@@ -1413,6 +1458,7 @@
   padding: 0 !important;
   line-height: inherit !important;
 }
+
 .dtp-page .poem-line.empty-line {
   min-height: 1em;
 }
@@ -1446,16 +1492,40 @@
 
 .dtp-layer-image.layout-split_vertical .dtp-image-frame,
 .dtp-layer-image.layout-split_horizontal .dtp-image-frame,
+.dtp-layer-image.layout-overlay_collage .dtp-image-frame,
 .dtp-layer-image.layout-main_detail .dtp-image-frame {
   position: absolute !important;
   box-sizing: border-box !important;
 }
 
+/* 🪟 그림틀 겹침 및 활성 선택 시 최상단 승격 (묻힌 그림 선택 시 맨 위로 노출) */
+.dtp-image-frame[data-sub-frame="1"] {
+  z-index: 10 !important;
+}
+
+.dtp-image-frame[data-sub-frame="2"] {
+  z-index: 20 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 28px rgba(35, 20, 10, 0.22), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dtp-image-frame[data-sub-frame="2"] .dtp-frame-crop {
+  border-radius: 8px !important;
+}
+
+/* 어느 프레임이든 선택(클릭 또는 도구상자 선택)되면 무조건 최상단(z:60)으로 번쩍 드러남! */
+.dtp-image-frame.is-selected {
+  z-index: 60 !important;
+  box-shadow: 0 14px 42px rgba(37, 99, 235, 0.35), 0 2px 10px rgba(0, 0, 0, 0.15) !important;
+}
+
 .dtp-image-frame {
   position: relative !important;
+  min-width: 90px !important;
+  min-height: 80px !important;
   width: 100% !important;
   height: 100% !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border-radius: 6px !important;
   background: #F5EFEB !important;
   border: 1.5px dashed #2563EB !important;
@@ -1463,7 +1533,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
 }
 
 .dtp-image-frame img {
@@ -1487,7 +1557,7 @@
   pointer-events: none !important;
   z-index: 10 !important;
   backdrop-filter: blur(2px) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
 .dtp-image-frame .btn-frame-change {
@@ -1502,7 +1572,7 @@
   border-radius: 4px !important;
   border: 1px solid #D5C2B0 !important;
   cursor: pointer !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   opacity: 0.9 !important;
   transition: all 0.15s ease !important;
   z-index: 10 !important;
@@ -1523,26 +1593,39 @@
    StoryBook Studio — DTP 편집 도구상자 (Canva 대체형 사이드 DTP 패널)
    ========================================================================== */
 
-/* 1. 도구상자 + 2면 스프레드를 감싸는 작업 공간 래퍼 */
+/* 1. 작업 공간 래퍼 (중앙 책장 스테이지 + 우측 인스펙터 사이드바) */
 .dtp-workspace-area {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: flex-start !important;
   justify-content: center !important;
-  gap: 20px !important;
+  gap: 24px !important;
   width: 100% !important;
-  max-width: 1560px !important;
+  max-width: 1440px !important;
   margin: 0 auto !important;
   position: relative !important;
+  box-sizing: border-box !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* 2. 도구상자 메인 패널 (사이드바와 편집 페이지 사이) */
+/* 1-1. 중앙 책장 편집 스테이지 (책장 양면 + 하단 페이지 넘김 바 일체형) */
+.dtp-book-stage {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-width: 0 !important;
+  position: relative !important;
+}
+
+/* 2. 도구상자 메인 패널 (Canva / InDesign 스타일 우측 인스펙터 사이드바) */
 .dtp-toolbox-panel {
   width: 320px;
   min-width: 320px;
   max-width: 320px;
+  flex-shrink: 0;
   background: #FFFDF9;
   border: 1.5px solid #E6DDD0;
   border-radius: 12px;
@@ -1557,11 +1640,11 @@
   transition: width 0.28s ease, min-width 0.28s ease, transform 0.28s ease, opacity 0.28s ease;
 }
 
-/* 접힌 상태 (Collapsed) */
+/* 접힌 상태 (Collapsed - 우측 가장자리 밀착) */
 .dtp-toolbox-panel.is-collapsed {
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   background: #FAF6F0;
   border-color: #E2D7C8;
 }
@@ -1580,7 +1663,7 @@
 }
 
 .dtp-toolbox-panel.is-collapsed .btn-toolbox-toggle {
-  transform: rotate(180deg);
+  transform: none;
 }
 
 /* 3. 도구상자 헤더 */
@@ -1677,6 +1760,7 @@
 .dtp-toolbox-body::-webkit-scrollbar {
   width: 5px;
 }
+
 .dtp-toolbox-body::-webkit-scrollbar-thumb {
   background: #D8CBB9;
   border-radius: 4px;
@@ -2179,8 +2263,9 @@
 }
 
 .dtp-image-frame img,
-.dtp-layer-image > img {
-  pointer-events: none; /* 마우스 이벤트가 부모 프레임으로 가도록 */
+.dtp-layer-image>img {
+  pointer-events: none;
+  /* 마우스 이벤트가 부모 프레임으로 가도록 */
   user-select: none;
   -webkit-user-drag: none;
   transition: filter 0.2s ease, transform 0.15s ease;
@@ -2386,7 +2471,7 @@
   border-radius: 4px !important;
   white-space: nowrap !important;
   pointer-events: none !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
   z-index: 40 !important;
 }
 
@@ -2406,7 +2491,11 @@
 /* 3. 스마트 국소 한지 패널 스타일 (글상자/제목상자 배경) */
 .dtp-box-body.hanji-backdrop,
 .dtp-box-title.hanji-backdrop {
-  transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, backdrop-filter 0.2s ease !important;
+}
+
+.dtp-box-title.hanji-backdrop {
+  border-radius: 8px !important;
 }
 
 
@@ -2590,7 +2679,7 @@
 
 .dtp-color-swatch:hover {
   transform: scale(1.18);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
 }
 
 /* ==============================================================================
@@ -2646,14 +2735,17 @@
   z-index: 25 !important;
   pointer-events: auto !important;
 }
+
 .dtp-page[data-usage="image"] .dtp-image-frame {
   pointer-events: auto !important;
 }
+
 .dtp-page[data-usage="image"] .dtp-frame-handle {
   display: flex !important;
   pointer-events: auto !important;
   z-index: 70 !important;
 }
+
 .dtp-page[data-usage="image"] .btn-frame-change {
   display: inline-flex !important;
   pointer-events: auto !important;
@@ -2665,56 +2757,73 @@
   z-index: 25 !important;
   pointer-events: auto !important;
 }
+
 .book-spread.tab-mode-image .dtp-image-frame {
   pointer-events: auto !important;
 }
+
 .book-spread.tab-mode-image .dtp-frame-handle {
   display: flex !important;
   pointer-events: auto !important;
   z-index: 75 !important;
 }
+
 .book-spread.tab-mode-image .btn-frame-change {
   display: inline-flex !important;
   pointer-events: auto !important;
   z-index: 75 !important;
 }
-/* 그림 편집 중에는 글상자가 마우스 이벤트를 가로채지 못하도록 비활성화 */
+
+/* 글상자 및 리사이즈 핸들은 그림 편집 탭에서도 상시 활성화 & 선명하게 노출 */
 .book-spread.tab-mode-image .dtp-layer-text {
-  z-index: 10 !important;
+  z-index: 26 !important;
   pointer-events: none !important;
 }
-.book-spread.tab-mode-image .dtp-layer-text .dtp-safe-boundary,
-.book-spread.tab-mode-image .dtp-layer-text .dtp-guide-box {
-  pointer-events: none !important;
+
+.book-spread.tab-mode-image .dtp-layer-text .dtp-guide-box,
+.book-spread.tab-mode-image .dtp-layer-text .dtp-box-body {
+  pointer-events: auto !important;
 }
-.book-spread.tab-mode-image .dtp-layer-text .dtp-resize-handle {
-  display: none !important;
+
+.book-spread.tab-mode-image .dtp-layer-text .dtp-resize-handle,
+.book-spread.tab-mode-image .dtp-layer-text .dtp-box-move-bar {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 75 !important;
 }
 
 /* 2. 텍스트 조판 탭(tab-mode-text)이 활성화되었을 때 */
 .book-spread.tab-mode-text .dtp-layer-text {
-  z-index: 25 !important;
+  z-index: 28 !important;
   pointer-events: none !important;
 }
+
 .book-spread.tab-mode-text .dtp-layer-text .dtp-safe-boundary {
   pointer-events: none !important;
 }
-.book-spread.tab-mode-text .dtp-layer-text .dtp-guide-box {
+
+.book-spread.tab-mode-text .dtp-layer-text .dtp-guide-box,
+.book-spread.tab-mode-text .dtp-layer-text .dtp-box-body {
   pointer-events: auto !important;
 }
-.book-spread.tab-mode-text .dtp-layer-text .dtp-resize-handle {
+
+.book-spread.tab-mode-text .dtp-layer-text .dtp-resize-handle,
+.book-spread.tab-mode-text .dtp-layer-text .dtp-box-move-bar {
   display: flex !important;
   pointer-events: auto !important;
-  z-index: 70 !important;
+  z-index: 75 !important;
 }
+
 .book-spread.tab-mode-text .dtp-layer-image {
   z-index: 5 !important;
   pointer-events: auto !important;
 }
+
 /* 텍스트 모드에서 그림+글 페이지의 기본 그림 조절 핸들은 숨김 */
 .book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-frame-handle {
   display: none !important;
 }
+
 /* 단, 선택되었거나 마우스가 올라간 그림틀은 즉시 핸들을 표시하여 조절화살표 및 리사이즈 허용 */
 .book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame.is-selected .dtp-frame-handle,
 .book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame:hover .dtp-frame-handle {
@@ -2722,16 +2831,19 @@
   pointer-events: auto !important;
   z-index: 75 !important;
 }
+
 .book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame:hover,
 .book-spread.tab-mode-text .dtp-page[data-usage="image_text"] .dtp-image-frame.is-selected {
   pointer-events: auto !important;
   z-index: 30 !important;
 }
+
 /* 단, 텍스트 모드라도 전면 그림 면은 그림 레이어 및 핸들이 최상단 */
 .book-spread.tab-mode-text .dtp-page[data-usage="image"] .dtp-layer-image {
   z-index: 28 !important;
   pointer-events: auto !important;
 }
+
 .book-spread.tab-mode-text .dtp-page[data-usage="image"] .dtp-frame-handle {
   display: flex !important;
   pointer-events: auto !important;
@@ -2775,20 +2887,27 @@
   line-height: 1 !important;
 }
 
-/* 선택된 그림틀은 텍스트 모드에서도 항상 위로 노출되고 이동 바와 핸들이 선명하게 표시됨 */
+/* 선택된 그림틀은 묻혀 있던 그림이라도 무조건 최상단(z:60)으로 번쩍 노출됨 */
 .book-spread .dtp-image-frame.is-selected {
-  z-index: 40 !important;
+  z-index: 60 !important;
   pointer-events: auto !important;
 }
+
 .book-spread .dtp-image-frame.is-selected .dtp-frame-move-bar {
   display: inline-flex !important;
   pointer-events: auto !important;
   z-index: 99 !important;
 }
+
 .book-spread .dtp-image-frame.is-selected .dtp-frame-handle {
   display: flex !important;
   pointer-events: auto !important;
-  z-index: 85 !important;
+  z-index: 95 !important;
+}
+
+.book-spread .dtp-image-frame .btn-frame-change {
+  z-index: 25 !important;
+  /* 버튼이 핸들 밑에 위치하여 클릭 간섭 방지 */
 }
 
 /* 글상자 통째 위치 이동 핸들 바 (상단선 바깥에 밀착한 미니 ✥ 버튼) */
@@ -2836,4 +2955,128 @@
 .dtp-guide-box.is-moving-box {
   box-shadow: 0 0 0 2.5px #E53E3E, 0 8px 24px rgba(229, 62, 62, 0.3) !important;
   transition: none !important;
+}
+
+/* ========================================================
+   [InDesign DTP 미학 1] 시각적 여백 정렬 (Optical Margin Alignment)
+   여는 따옴표/괄호로 시작하는 시 구절을 살짝 좌측으로 돌출시켜 수직선 일치
+   ======================================================== */
+.poem-line.hang-quote {
+  text-indent: -0.55em !important;
+  display: block !important;
+}
+
+/* ========================================================
+   [InDesign DTP 미학 2] 텍스트 스레딩 인디케이터 (Text Threading)
+   본문 글을 전혀 가리지 않도록 글상자 테두리 우측 모서리에 위치하는 미니 🔗 아이콘
+   (가이드선 활성화 상태에서만 노출, 안내선 OFF 또는 인쇄 시 글상자와 함께 자동 숨김)
+   ======================================================== */
+.dtp-thread-badge {
+  position: absolute !important;
+  right: 6px !important;
+  z-index: 85 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  transition: transform 0.15s ease, background-color 0.15s ease !important;
+}
+
+.dtp-thread-badge:hover {
+  transform: scale(1.15) !important;
+}
+
+/* 뒷면 입구 포트 (상단 우측 모서리선에 밀착 - 첫 행 절대 침범 안 함) */
+.dtp-thread-in-badge {
+  top: -11px !important;
+  background: #2C5282 !important;
+  color: #FFFFFF !important;
+}
+
+.dtp-thread-in-badge:hover {
+  background: #1A365D !important;
+}
+
+/* 앞면 출구 포트 (하단 우측 모서리선에 밀착 - 마지막 행 절대 침범 안 함) */
+.dtp-thread-out-badge {
+  bottom: -11px !important;
+  background: #744210 !important;
+  color: #FFFFFF !important;
+}
+
+.dtp-thread-out-badge:hover {
+  background: #55300B !important;
+}
+
+/* 안내선 OFF 시 글상자 경계선, 라벨, 이동바와 함께 완전 숨김 */
+.book-spread.guides-hidden .dtp-thread-badge,
+.dtp-guide-box.guides-hidden .dtp-thread-badge,
+.guides-hidden .dtp-thread-badge {
+  display: none !important;
+}
+
+/* ========================================================
+   [InDesign DTP 미학 3] 마스터 스타일 프리셋 3종 버튼 UI
+   도구상자 본문 탭 상단에 노출되는 원클릭 명품 시집 테마 버튼
+   ======================================================== */
+.dtp-master-presets-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #E2D9CF;
+}
+
+.btn-master-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  border: 1px solid #D6C7B2;
+  border-radius: 6px;
+  background: #FCFBF9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn-master-preset:hover {
+  background: #F3ECE2;
+  border-color: #8C4B27;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(140, 75, 39, 0.15);
+}
+
+.btn-master-preset:active {
+  transform: translateY(0);
+}
+
+.btn-master-preset .preset-icon {
+  font-size: 1.15rem;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.btn-master-preset .preset-name {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #3C2A1E;
+}
+
+.btn-master-preset .preset-desc {
+  font-size: 0.62rem;
+  color: #7D6B5D;
+  margin-top: 1px;
 }

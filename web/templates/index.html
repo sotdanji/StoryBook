@@ -7,7 +7,7 @@
   <title>StoryBook Studio | 기억 기반 시화집 독립출판</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="stylesheet" href="/static/css/style.css?v=v1793776800">
-  <link rel="stylesheet" href="/static/css/dtp_editor.css?v=v1793776950">
+  <link rel="stylesheet" href="/static/css/dtp_editor.css?v=v1793976000">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>window.name = "StoryBookStudio";</script>
 </head>
@@ -20,7 +20,13 @@
       <span>☰</span>
     </button>
     <div class="mobile-brand">
-      <span class="mobile-brand-icon">📖</span>
+      <span class="mobile-brand-icon">
+        <svg class="svg-icon" viewBox="0 0 24 24">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+          <path d="M6 2v20" />
+          <path d="M4 19.5a2.5 2.5 0 0 1 2.5-2.5H20" />
+        </svg>
+      </span>
       <span class="mobile-brand-title">StoryBook Studio</span>
     </div>
     <div class="mobile-status-pill">
@@ -41,7 +47,14 @@
       <!-- 1. 사이드바 브랜딩 헤더 -->
       <div class="sidebar-header">
         <div class="brand-area">
-          <div class="brand-icon">📖</div>
+          <div class="brand-icon">
+            <svg class="svg-icon" style="width: 1.8rem; height: 1.8rem; color: var(--accent-primary);"
+              viewBox="0 0 24 24">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+              <path d="M6 2v20" />
+              <path d="M4 19.5a2.5 2.5 0 0 1 2.5-2.5H20" />
+            </svg>
+          </div>
           <div class="brand-text">
             <h1 class="brand-title">StoryBook Studio</h1>
             <div class="brand-art-title" id="headerProjectSubtitle" title="그림이 되는 시, 노래가 되는 시">
@@ -60,7 +73,13 @@
       <!-- 2. [2번 캡처 영역] 집필 시집 선택 및 관리 카드 -->
       <div class="sidebar-section project-manager-card">
         <div class="sidebar-section-title">
-          <span>📚</span> 집필 시집
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="m16 6 4 14" />
+            <path d="M12 6v14" />
+            <path d="M8 8v12" />
+            <path d="M4 4v16" />
+          </svg>
+          <span>집필 시집</span>
         </div>
         <div class="project-selector-wrapper">
           <select id="selectProjectDropdown" class="project-select" onchange="onProjectSelectChange(this.value)">
@@ -70,12 +89,22 @@
         <div class="project-btn-row" style="display: flex; flex-direction: column; gap: 0.35rem;">
           <button type="button" class="btn-new-project" id="btnOpenNewProjectModal" onclick="openNewProjectModal()"
             title="[새 시집 추가] 새로운 제목, 부제, 시인명으로 독립출판 시집 프로젝트를 새로 개설합니다.">
-            <span>➕ 새 시집 추가</span>
+            <svg class="svg-icon" viewBox="0 0 24 24">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+            <span>새 시집 추가</span>
           </button>
           <button type="button" class="btn-bulk-import-sidebar" id="btnOpenBulkImportSidebar"
             onclick="openBulkImportModal()"
             title="[완성본으로 새 시집 개설 / 일괄 등록] 이미 작성해 둔 원고 전체(30~50편)를 텍스트로 붙여넣어 새 시집 프로젝트를 개설하거나 기존 시집에 일괄 등록합니다.">
-            <span>📑 완성본 불러오기</span>
+            <svg class="svg-icon" viewBox="0 0 24 24">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M9 15h6" />
+              <path d="M12 18v-6" />
+            </svg>
+            <span>원고 일괄 불러오기</span>
           </button>
         </div>
       </div>
@@ -83,27 +112,52 @@
       <!-- 3. [3번 캡처 영역] 메인 메뉴 네비게이션 탭 (수직 배열) -->
       <div class="sidebar-section">
         <div class="sidebar-section-title">
-          <span>🧭</span> 작업 공간
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+          </svg>
+          <span>작업 공간</span>
         </div>
         <nav class="nav-tabs" id="navTabs">
           <button class="nav-tab-btn active" id="tabBtnStudio" data-target="panelStudio"
             title="[시화 창작 스튜디오] 기억 인터뷰를 통해 시를 빚고, 3종 퇴고로 다듬으며, 맞춤형 수채화 삽화와 노래를 제작하는 핵심 창작 공간입니다.">
-            <span class="tab-icon">✍️</span>
+            <span class="tab-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                <path d="m15 5 4 4" />
+              </svg>
+            </span>
             <span class="tab-label">시화 창작</span>
           </button>
           <button class="nav-tab-btn" id="tabBtnBook" data-target="panelBook"
             title="[시화집 조판 편집] 실제 책의 인쇄 판형과 안전선 기준 본문 넘침을 점검하고, 한 페이지 압축 또는 2페이지 연속 조판을 결정하는 출판 조판실입니다.">
-            <span class="tab-icon">📖</span>
+            <span class="tab-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+              </svg>
+            </span>
             <span class="tab-label">시화집 조판 편집</span>
           </button>
           <button class="nav-tab-btn" id="tabBtnExport" data-target="panelExport"
             title="[출판 데이터 센터] 인쇄용 완제 PDF 다운로드, 캔바(Canva) 대량 조판용 CSV, 전체 원고 백업 ZIP 등을 내려받는 독립출판 지원실입니다.">
-            <span class="tab-icon">📑</span>
+            <span class="tab-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" x2="12" y1="15" y2="3" />
+              </svg>
+            </span>
             <span class="tab-label">출판 데이터</span>
           </button>
           <button class="nav-tab-btn" id="tabBtnVideo" data-target="panelVideo"
             title="[영상 만들기] 서정 시 낭송 영상 및 노래 영상을 제작하는 영상 스튜디오입니다.">
-            <span class="tab-icon">🎬</span>
+            <span class="tab-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="m9 8 7 4-7 4Z" />
+              </svg>
+            </span>
             <span class="tab-label">영상 만들기</span>
           </button>
         </nav>
@@ -158,7 +212,8 @@
           title="[독자용 시화 갤러리 열기] 감성적인 배경음악과 부드러운 책장 넘김 효과가 적용된 독자 감상용 웹 갤러리를 새 창으로 엽니다.">
           <span>🎨 독자용 시화 갤러리 열기</span>
         </button>
-        <button type="button" class="btn-sidebar-gallery" onclick="window.open('https://cafe.naver.com/eduaihub', '_blank')"
+        <button type="button" class="btn-sidebar-gallery"
+          onclick="window.open('https://cafe.naver.com/eduaihub', '_blank')"
           style="background: linear-gradient(135deg, #03C75A 0%, #009F43 100%); border: 1.5px solid #008537; color: #FFFFFF; font-weight: 700; box-shadow: 0 2px 6px rgba(3,199,90,0.3);"
           title="[공식 네이버 카페 바로가기] 전국의 시인들과 시화 갤러리를 자랑하고, 1:1 조판 코칭 및 부크크 출판 팁을 나눌 수 있는 공식 커뮤니티로 이동합니다.">
           <span>☕ 공식 네이버 카페 (소통방)</span>
@@ -744,7 +799,8 @@
                     <div class="sub-block-title">
                       <span>⚡ <strong>방법 1.</strong> 원클릭 서정 삽화 생성 (100% 무료)</span>
                     </div>
-                    <p class="sub-block-desc">외부 사이트 가입이나 복잡한 설정 없이, 시의 정서에 어울리는 고품격 서정 수채화 1장을 생성합니다. (AI 서버 상태에 따라 생성 대기 필요)</p>
+                    <p class="sub-block-desc">외부 사이트 가입이나 복잡한 설정 없이, 시의 정서에 어울리는 고품격 서정 수채화 1장을 생성합니다. (AI 서버 상태에 따라 생성
+                      대기 필요)</p>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                       <button type="button" id="btnStudioGenerateFree" class="btn-sub-action"
                         onclick="onStudioGenerateFreeImage()"
@@ -1146,29 +1202,58 @@
               <!-- 좌측: 작품 이동 & 실물 100% & 목차·순서 & 인쇄안전선 상태 배지 -->
               <div class="toolbar-nav-group" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                 <button id="btnPrevWork" class="nav-btn" onclick="dtpEditor.navigateWork(-1)"
-                  title="[이전 시화] (단축키: Ctrl+←)">◀ 이전</button>
+                  title="[이전 시화] (단축키: Ctrl+←)" style="display: inline-flex; align-items: center; gap: 4px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                  <span>이전</span>
+                </button>
                 <span id="navWorkIndexText"
                   style="font-weight: 700; color: #553412; font-size: 0.85rem; min-width: 55px; text-align: center;">1 /
                   1</span>
                 <button id="btnNextWork" class="nav-btn" onclick="dtpEditor.navigateWork(1)"
-                  title="[다음 시화] (단축키: Ctrl+→)">다음 ▶</button>
+                  title="[다음 시화] (단축키: Ctrl+→)" style="display: inline-flex; align-items: center; gap: 4px;">
+                  <span>다음</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
 
                 <button id="btnToggleRealScale" class="nav-btn btn-quick-action" onclick="dtpEditor.toggleRealScale()"
-                  style="margin-left: 4px; background: #FFF; border: 1.5px solid #D5C2B0; color: #643E19; font-weight: 700;"
+                  style="margin-left: 4px; background: #FFF; border: 1.5px solid #D5C2B0; color: #643E19; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;"
                   title="[A5 실물 크기 1:1 감상] 실제 A5 종이책(148x210mm) 비율로 화면 배율을 맞춥니다.">
-                  <span>🔍 실물 100%</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                    <path d="M11 8v6" />
+                    <path d="M8 11h6" />
+                  </svg>
+                  <span>실물 100%</span>
                 </button>
 
                 <button id="btnOpenTocEditor" class="nav-btn btn-quick-action" onclick="openTocEditorModal()"
-                  style="margin-left: 2px;" title="[시집 목차 & 순서 편집] 큰 주제별 묶음(부/챕터) 구성 및 작품 순서를 자유롭게 변경합니다.">
-                  <span>📚 책 구성표</span>
+                  style="margin-left: 2px; display: inline-flex; align-items: center; gap: 5px;"
+                  title="[시집 목차 & 순서 편집] 큰 주제별 묶음(부/챕터) 구성 및 작품 순서를 자유롭게 변경합니다.">
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <line x1="8" x2="21" y1="6" y2="6" />
+                    <line x1="8" x2="21" y1="12" y2="12" />
+                    <line x1="8" x2="21" y1="18" y2="18" />
+                    <line x1="3" x2="3.01" y1="6" y2="6" />
+                    <line x1="3" x2="3.01" y1="12" y2="12" />
+                    <line x1="3" x2="3.01" y1="18" y2="18" />
+                  </svg>
+                  <span>책 구성표</span>
                 </button>
 
                 <!-- 실제 인쇄안전선 안착 상태 배지만 유지 (4쪽 조판, 1부/2부 버튼 제거) -->
-                <div id="layoutStatusBadge" class="layout-badge badge-ok" style="margin-left: 4px;"
+                <div id="layoutStatusBadge" class="layout-badge badge-ok"
+                  style="margin-left: 4px; display: inline-flex; align-items: center; gap: 5px;"
                   title="실제 종이책 인쇄 안전 한계선 내에 본문이 안정적으로 안착되어 있는지 실시간 판정합니다.">
-                  <span class="badge-dot">●</span>
-                  <span id="layoutStatusText">✅ 인쇄안전선 안착</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="color: #16A34A; width: 0.95rem; height: 0.95rem;">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <path d="m9 11 3 3L22 4" />
+                  </svg>
+                  <span id="layoutStatusText">인쇄안전선 안착</span>
                 </div>
               </div>
 
@@ -1179,16 +1264,28 @@
                 <button type="button" class="btn-primary" id="btnFinishLayout" onclick="finishAndSaveCurrentLayout()"
                   style="padding: 6px 14px; font-size: 0.82rem; font-weight: 700; background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); border: 1.5px solid #166534; color: #FFF; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(22,163,74,0.25); white-space: nowrap !important;"
                   title="[조판 완료] 현재 회차의 시화 배치와 설정을 확정하고 공식 원고에 영구 저장합니다.">
-                  <span>✅ 조판 완료</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width: 0.95rem; height: 0.95rem;">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>조판 완료</span>
                 </button>
                 <a href="/api/bookk/export_interior?format_key=a5" class="btn-primary" id="btnDownloadBookkPdf"
                   onclick="onDownloadPdfGuide('bookk')"
-                  style="padding: 6px 13px; font-size: 0.8rem; text-decoration: none; background: #15803D; border: 1px solid #166534; white-space: nowrap !important; display: inline-flex; align-items: center; justify-content: center;">
-                  <span>📗 인쇄용 A5 PDF</span>
+                  style="padding: 6px 13px; font-size: 0.8rem; text-decoration: none; background: #15803D; border: 1px solid #166534; white-space: nowrap !important; display: inline-flex; align-items: center; gap: 5px; justify-content: center;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width: 0.95rem; height: 0.95rem;">
+                    <path d="M6 9V2h12v7" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect width="12" height="8" x="6" y="14" />
+                  </svg>
+                  <span>인쇄용 A5 PDF</span>
                 </a>
                 <button type="button" class="btn-primary" id="btnDownloadReadingPdf" onclick="downloadReadingPdf()"
-                  style="padding: 6px 13px; font-size: 0.8rem; background: #8C5335; border: 1px solid #73432A; white-space: nowrap !important;">
-                  <span>📕 열람용 PDF</span>
+                  style="padding: 6px 13px; font-size: 0.8rem; background: #8C5335; border: 1px solid #73432A; white-space: nowrap !important; display: inline-flex; align-items: center; gap: 5px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="width: 0.95rem; height: 0.95rem;">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                  <span>열람용 PDF</span>
                 </button>
               </div>
             </div>
@@ -1197,7 +1294,209 @@
           <!-- [StoryBook DTP] 작업 공간 영역 (좌측 DTP 편집 도구상자 + 중앙 책 스프레드) -->
           <div class="dtp-workspace-area">
             <!-- 🛠️ DTP 편집 도구상자 (Canva 대체형 독립 사이드 패널) -->
-            <aside class="dtp-toolbox-panel" id="dtpToolboxPanel">
+            <!-- 📖 중앙: 책장 편집 스테이지 (책장 양면 + 하단 페이지 넘김 바 정중앙 무대) -->
+            <div class="dtp-book-stage" id="dtpBookStage">
+              <!-- 2페이지 펼침면 스프레드 북 (모듈형 2-Layer 대칭 컴포넌트) -->
+              <div class="book-spread dtp-spread-container" id="bookSpreadContainer">
+                <div class="book-crease"></div>
+
+                <!-- 좌측 페이지 (Slot A) -->
+                <div class="dtp-page dtp-page-left" id="dtpPageLeft" data-side="left">
+                  <!-- 1) 페이지 상단 툴바: 용도, 역할, 도구 -->
+                  <div class="dtp-page-header">
+                    <div class="dtp-header-left">
+                      <span class="dtp-page-badge" id="lblPageLeftNum">1면(좌)</span>
+                      <!-- [요구사항 4] 페이지 용도 -->
+                      <select id="selectPageUsageLeft" class="dtp-select dtp-select-usage"
+                        onchange="dtpEditor.onPageUsageChange('left', this.value)" title="페이지 용도 선택">
+                        <option value="image">🖼️ 전면 그림</option>
+                        <option value="text">✍️ 본문 전용</option>
+                        <option value="image_text">🖼️+✍️ 그림 + 글</option>
+                        <option value="blank">❦ 문학적 여백</option>
+                      </select>
+                      <!-- [요구사항 4] 글 유형 5종 체계 -->
+                      <select id="selectPageRoleLeft" class="dtp-select dtp-select-role"
+                        onchange="dtpEditor.onPageRoleChange('left', this.value)" title="글 유형 선택">
+                        <option value="none">[-] 글 없음</option>
+                        <option value="start">🚩 글 시작 (제목+지은이+본문)</option>
+                        <option value="title_only">🪟 표제면 (제목+지은이만)</option>
+                        <option value="continue">🔗 글 이어짐 (본문만)</option>
+                        <option value="independent">📝 독립 자유글</option>
+                      </select>
+                    </div>
+                    <div class="dtp-header-right" style="display: flex; gap: 4px; align-items: center;">
+                      <select class="select-micro dtp-img-layout-select" id="selectImgLayoutLeft"
+                        onchange="dtpEditor.onImageLayoutChange('left', this.value)" title="그림 분할/배치 형태 선택"
+                        style="display: none !important;">
+                        <option value="single">🖼️ 1장 전체</option>
+                        <option value="split_vertical">⬒ 상·하 2단</option>
+                        <option value="split_horizontal">◧ 좌·우 2단</option>
+                        <option value="overlay_collage">🪟 화보 오버레이 (자유 꼴라주 & PIP)</option>
+                      </select>
+
+                    </div>
+                  </div>
+
+                  <!-- 2) Layer 1: 그림 레이어 (독립적) -->
+                  <div class="dtp-layer-image" id="dtpLayerImageLeft">
+                    <img id="dtpImgLeft" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
+                    <div id="dtpPlaceholderLeft" class="dtp-art-placeholder is-hidden" style="display: none;">
+                      <span class="placeholder-icon">🎨</span>
+                      <span class="placeholder-text">그림을 끌어다 놓으세요</span>
+                    </div>
+                    <div id="dtpBlankLeft" class="dtp-blank-content is-hidden" style="display: none;">
+                      <span class="blank-symbol">❦</span>
+                      <span class="blank-text">여백 속에 머무는 시의 숨결</span>
+                    </div>
+                  </div>
+
+                  <!-- 3) Layer 2: 글 레이어 (독립적, 빨간색 가이드선) -->
+                  <div class="dtp-layer-text" id="dtpLayerTextLeft">
+                    <!-- 한지 가독성 패널 (그림 위 글일 때 투명도 슬라이더 연동) -->
+                    <div class="dtp-hanji-panel" id="dtpHanjiLeft" style="display: none;"></div>
+
+                    <!-- 인쇄 안전 마진 (Safe Boundary) -->
+                    <div class="dtp-safe-boundary">
+                      <!-- [제목+지은이 상자] - 상단 인쇄안전선 준수 -->
+                      <div class="dtp-guide-box dtp-box-title is-hidden" id="dtpBoxTitleLeft" style="display: none;">
+                        <div class="dtp-guide-label label-title">🟥 제목·지은이 상자</div>
+                        <div class="dtp-title-text" id="dtpTitleLeft" contenteditable="true" spellcheck="false">시 제목
+                        </div>
+                        <div class="dtp-author-text" id="dtpAuthorLeft" contenteditable="true" spellcheck="false">지은이
+                        </div>
+                        <div class="dtp-title-divider"></div>
+                      </div>
+
+                      <!-- [본문 상자] - 하단 인쇄안전선 준수 -->
+                      <div class="dtp-guide-box dtp-box-body is-hidden" id="dtpBoxBodyLeft" style="display: none;">
+                        <div class="dtp-guide-label label-body">🟥 본문 글상자</div>
+                        <div class="dtp-body-text" id="dtpBodyLeft" contenteditable="true" spellcheck="false">
+                          본문 글이 여기에 배치됩니다.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 4) 초과 알림 및 면 번호 -->
+                  <div class="dtp-overflow-badge" id="dtpOverflowLeft" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
+                  <div class="dtp-page-folio" id="lblBookFolioLeft">1</div>
+
+                  <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
+                  <div class="dtp-matter-overlay" id="dtpMatterOverlayLeft"
+                    style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;">
+                  </div>
+                </div>
+
+                <!-- 우측 페이지 (Slot B) - 완벽한 좌우 대칭 구조! -->
+                <div class="dtp-page dtp-page-right" id="dtpPageRight" data-side="right">
+                  <!-- 1) 페이지 상단 툴바: 용도, 역할, 도구 -->
+                  <div class="dtp-page-header">
+                    <div class="dtp-header-left">
+                      <span class="dtp-page-badge" id="lblPageRightNum">2면(우)</span>
+                      <!-- [요구사항 4] 페이지 용도 -->
+                      <select id="selectPageUsageRight" class="dtp-select dtp-select-usage"
+                        onchange="dtpEditor.onPageUsageChange('right', this.value)" title="페이지 용도 선택">
+                        <option value="text">✍️ 본문 전용</option>
+                        <option value="image">🖼️ 전면 그림</option>
+                        <option value="image_text">🖼️+✍️ 그림 + 글</option>
+                        <option value="blank">❦ 문학적 여백</option>
+                      </select>
+                      <!-- [요구사항 4] 글 유형 5종 체계 -->
+                      <select id="selectPageRoleRight" class="dtp-select dtp-select-role"
+                        onchange="dtpEditor.onPageRoleChange('right', this.value)" title="글 유형 선택">
+                        <option value="start">🚩 글 시작 (제목+지은이+본문)</option>
+                        <option value="title_only">🪟 표제면 (제목+지은이만)</option>
+                        <option value="continue">🔗 글 이어짐 (본문만)</option>
+                        <option value="independent">📝 독립 자유글</option>
+                        <option value="none">[-] 글 없음</option>
+                      </select>
+                    </div>
+                    <div class="dtp-header-right" style="display: flex; gap: 4px; align-items: center;">
+                      <select class="select-micro dtp-img-layout-select" id="selectImgLayoutRight"
+                        onchange="dtpEditor.onImageLayoutChange('right', this.value)" title="그림 분할/배치 형태 선택"
+                        style="display: none !important;">
+                        <option value="single">🖼️ 1장 전체</option>
+                        <option value="split_vertical">⬒ 상·하 2단</option>
+                        <option value="split_horizontal">◧ 좌·우 2단</option>
+                        <option value="overlay_collage">🪟 화보 오버레이 (자유 꼴라주 & PIP)</option>
+                      </select>
+
+                    </div>
+                  </div>
+
+                  <!-- 2) Layer 1: 그림 레이어 (독립적) -->
+                  <div class="dtp-layer-image" id="dtpLayerImageRight">
+                    <img id="dtpImgRight" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
+                    <div id="dtpPlaceholderRight" class="dtp-art-placeholder is-hidden" style="display: none;">
+                      <span class="placeholder-icon">🎨</span>
+                      <span class="placeholder-text">그림을 끌어다 놓으세요</span>
+                    </div>
+                    <div id="dtpBlankRight" class="dtp-blank-content is-hidden" style="display: none;">
+                      <span class="blank-symbol">❦</span>
+                      <span class="blank-text">여백 속에 머무는 시의 숨결</span>
+                    </div>
+                  </div>
+
+                  <!-- 3) Layer 2: 글 레이어 (독립적, 빨간색 가이드선) -->
+                  <div class="dtp-layer-text" id="dtpLayerTextRight">
+                    <!-- 한지 가독성 패널 (그림 위 글일 때 투명도 슬라이더 연동) -->
+                    <div class="dtp-hanji-panel" id="dtpHanjiRight" style="display: none;"></div>
+
+                    <!-- 인쇄 안전 마진 (Safe Boundary) -->
+                    <div class="dtp-safe-boundary">
+                      <!-- [제목+지은이 상자] - 상단 인쇄안전선 준수 -->
+                      <div class="dtp-guide-box dtp-box-title is-hidden" id="dtpBoxTitleRight" style="display: none;">
+                        <div class="dtp-guide-label label-title">🟥 제목·지은이 상자</div>
+                        <div class="dtp-title-text" id="dtpTitleRight" contenteditable="true" spellcheck="false">시 제목
+                        </div>
+                        <div class="dtp-author-text" id="dtpAuthorRight" contenteditable="true" spellcheck="false">지은이
+                        </div>
+                        <div class="dtp-title-divider"></div>
+                      </div>
+
+                      <!-- [본문 상자] - 하단 인쇄안전선 준수 -->
+                      <div class="dtp-guide-box dtp-box-body is-hidden" id="dtpBoxBodyRight" style="display: none;">
+                        <div class="dtp-guide-label label-body">🟥 본문 글상자</div>
+                        <div class="dtp-body-text" id="dtpBodyRight" contenteditable="true" spellcheck="false">
+                          본문 글이 여기에 배치됩니다.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 4) 초과 알림 및 면 번호 -->
+                  <div class="dtp-overflow-badge" id="dtpOverflowRight" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)
+                  </div>
+                  <div class="dtp-page-folio" id="lblBookFolioRight">2</div>
+
+                  <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
+                  <div class="dtp-matter-overlay" id="dtpMatterOverlayRight"
+                    style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- [StoryBook DTP] 책장 하단: 페이지 단위 연속 이동 내비게이션 바 -->
+              <div class="book-page-turn-bar" id="bookPageTurnBar">
+                <button type="button" class="btn-page-turn btn-turn-prev" id="btnPageTurnPrev"
+                  onclick="dtpEditor.navigatePage(-1)" title="[이전 페이지] 이전 면으로 책장을 넘깁니다 (앞 시 또는 같은 시의 앞면)">
+                  <span class="turn-arrow">◀</span>
+                  <span class="turn-label">이전 페이지</span>
+                </button>
+                <div class="page-turn-indicator" id="pageTurnIndicator"
+                  style="font-weight: 700; color: #553412; font-size: 0.88rem;">
+                  제01화 「새벽 대청」 — 1·2면
+                </div>
+                <button type="button" class="btn-page-turn btn-turn-next" id="btnPageTurnNext"
+                  onclick="dtpEditor.navigatePage(1)" title="[다음 페이지] 다음 면으로 책장을 넘깁니다 (같은 시의 연장면 또는 뒷 시)">
+                  <span class="turn-label">다음 페이지</span>
+                  <span class="turn-arrow">▶</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 🛠️ 우측: DTP 편집 도구상자 (Canva / InDesign 스타일 우측 인스펙터 사이드바) -->
+            <aside class="dtp-toolbox-panel dtp-toolbox-right" id="dtpToolboxPanel">
               <!-- 1. 패널 헤더 -->
               <div class="toolbox-header">
                 <div class="toolbox-title-group">
@@ -1206,7 +1505,7 @@
                 </div>
                 <button type="button" class="btn-toolbox-toggle" id="btnToggleToolbox"
                   onclick="dtpEditor.toggleToolboxCollapse()" title="도구상자 접기/펼치기">
-                  <span id="btnToggleToolboxIcon">◀</span>
+                  <span id="btnToggleToolboxIcon">▶</span>
                   <span class="toolbox-title-text">접기</span>
                 </button>
               </div>
@@ -1231,6 +1530,31 @@
               <div class="dtp-toolbox-body">
                 <!-- [탭 1: ✍️ 글 편집] 상하 배열 (Row Stack) -->
                 <div class="dtp-tab-content active" id="toolboxTabText">
+                  <!-- [InDesign 명품 조판] 마스터 스타일 프리셋 3종 -->
+                  <div style="margin-bottom: 10px;">
+                    <div style="font-size: 0.74rem; font-weight: 700; color: #6E5340; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                      <span>❦ 마스터 감성 프리셋</span>
+                      <span style="font-size: 0.64rem; font-weight: normal; color: #9A806E;">인디자인 원클릭 서체·여백</span>
+                    </div>
+                    <div class="dtp-master-presets-container">
+                      <button type="button" class="btn-master-preset" onclick="dtpEditor.applyMasterStylePreset('traditional')" title="🎋 정통 수묵: 부크크 명조, 진한 먹색, 단아한 행간(170%), 은은한 한지필터">
+                        <span class="preset-icon">🎋</span>
+                        <span class="preset-name">정통 수묵</span>
+                        <span class="preset-desc">명조 / 먹색</span>
+                      </button>
+                      <button type="button" class="btn-master-preset" onclick="dtpEditor.applyMasterStylePreset('sunset')" title="🌅 노을빛 서정: 나눔명조, 따스한 밤색, 여유로운 행간(180%), 가운데 정렬, 온기 한지필터">
+                        <span class="preset-icon">🌅</span>
+                        <span class="preset-name">노을빛 서정</span>
+                        <span class="preset-desc">나눔 / 밤색</span>
+                      </button>
+                      <button type="button" class="btn-master-preset" onclick="dtpEditor.applyMasterStylePreset('dongshim')" title="🍃 맑은 동심: 바탕체, 맑은 먹색, 정갈한 행간(160%), 왼쪽 정렬, 투명 한지필터">
+                        <span class="preset-icon">🍃</span>
+                        <span class="preset-name">맑은 동심</span>
+                        <span class="preset-desc">바탕 / 청아</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- 1. 작업제어 -->
                   <div class="dtp-control-row">
                     <span class="dtp-row-label">작업제어</span>
@@ -1294,8 +1618,8 @@
                         <option value="9">9pt</option>
                         <option value="10">10pt</option>
                         <option value="11">11pt</option>
-                        <option value="12">12pt</option>
-                        <option value="13" selected>13pt (기본)</option>
+                        <option value="12" selected>12pt (기본)</option>
+                        <option value="13">13pt</option>
                         <option value="14">14pt</option>
                         <option value="15">15pt</option>
                         <option value="16">16pt</option>
@@ -1361,13 +1685,22 @@
                   </div>
 
                   <!-- 4-2. 본문 글상자 통째 위치 이동 (크기 불변) -->
-                  <div class="dtp-control-row" title="글상자 크기를 유지한 채 캔버스 안에서 위치를 상·하·좌·우로 통째로 이동합니다. (글상자 좌상단의 ✥ 핸들로도 마우스 드래그 가능)">
+                  <div class="dtp-control-row"
+                    title="글상자 크기를 유지한 채 캔버스 안에서 위치를 상·하·좌·우로 통째로 이동합니다. (글상자 좌상단의 ✥ 핸들로도 마우스 드래그 가능)">
                     <span class="dtp-row-label">상자 위치이동</span>
                     <div class="dtp-row-control" style="display: flex; gap: 4px;">
-                      <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedTextBox(0, -15)" title="위로 15px 이동">▲ 위로</button>
-                      <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedTextBox(0, 15)" title="아래로 15px 이동">▼ 아래</button>
-                      <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedTextBox(-15, 0)" title="왼쪽으로 15px 이동">◀ 좌로</button>
-                      <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedTextBox(15, 0)" title="오른쪽으로 15px 이동">▶ 우로</button>
+                      <button type="button" class="btn-control-sub"
+                        style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                        onclick="dtpEditor.moveSelectedTextBox(0, -15)" title="위로 15px 이동">▲ 위로</button>
+                      <button type="button" class="btn-control-sub"
+                        style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                        onclick="dtpEditor.moveSelectedTextBox(0, 15)" title="아래로 15px 이동">▼ 아래</button>
+                      <button type="button" class="btn-control-sub"
+                        style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                        onclick="dtpEditor.moveSelectedTextBox(-15, 0)" title="왼쪽으로 15px 이동">◀ 좌로</button>
+                      <button type="button" class="btn-control-sub"
+                        style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                        onclick="dtpEditor.moveSelectedTextBox(15, 0)" title="오른쪽으로 15px 이동">▶ 우로</button>
                     </div>
                   </div>
 
@@ -1456,39 +1789,60 @@
                           <option value="single" selected>🖼️ 1장 전체 (기본)</option>
                           <option value="split_vertical">⬒ 상·하 2단</option>
                           <option value="split_horizontal">◧ 좌·우 2단</option>
+                          <option value="overlay_collage">🪟 화보 오버레이 (자유 꼴라주 & PIP)</option>
                         </select>
                       </div>
                     </div>
 
                     <!-- 2-1. 선택 그림 (분할 시 종속되어 바로 아래 표시) -->
                     <div class="dtp-control-row" id="rowSubFrameSelector"
-                      style="display: none; background: #FFF9F5; border-color: #FCD9C6;">
-                      <span class="dtp-row-label" style="color: #8C3A14;">선택 그림</span>
-                      <div class="dtp-row-control">
-                        <button type="button" class="btn-control-sub active" id="btnSubFrame1"
-                          onclick="dtpEditor.setSelectedSubFrame(1)">🖼️ 1번 그림</button>
-                        <button type="button" class="btn-control-sub" id="btnSubFrame2"
-                          onclick="dtpEditor.setSelectedSubFrame(2)">🖼️ 2번 그림</button>
+                      style="display: none; background: #FFF9F5; border-color: #FCD9C6; flex-direction: column; align-items: stretch; gap: 6px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span class="dtp-row-label" style="color: #8C3A14;">선택 그림</span>
+                        <div class="dtp-row-control"
+                          style="flex: 1; display: flex; gap: 4px; justify-content: flex-end;">
+                          <button type="button" class="btn-control-sub active" id="btnSubFrame1"
+                            onclick="dtpEditor.setSelectedSubFrame(1)" title="1번 그림 선택 (맨 위로 드러남)">🖼️ 1번 그림</button>
+                          <button type="button" class="btn-control-sub" id="btnSubFrame2"
+                            onclick="dtpEditor.setSelectedSubFrame(2)" title="2번 그림 선택 (맨 위로 드러남)">🪟 2번 그림</button>
+                        </div>
+                      </div>
+                      <div
+                        style="font-size: 0.70rem; color: #8C3A14; line-height: 1.35; background: #FFF3EB; padding: 4px 7px; border-radius: 4px; border: 1px dashed #F5C6A5;">
+                        💡 <b>원클릭 맨 위로</b>: 다른 그림 뒤에 묻힌 그림도 <b>[선택 그림]</b> 버튼을 누르면 즉시 최상단으로 드러나 편하게 조절할 수 있습니다.
                       </div>
                     </div>
 
-                    <!-- 2-2. 그림틀 조절 및 크기 복원 -->
-                    <div class="dtp-control-row" title="그림틀 테두리의 상·하·좌·우 핸들을 마우스로 드래그하여 사각형 크기를 줄일 수 있습니다.">
+                    <!-- 2-2. 그림틀 크기 (10%~100% 비율 축소 슬라이더) -->
+                    <div class="dtp-control-row" title="그림틀의 비율을 유지하며 10%~100% 크기로 조절합니다. (100% 설정 시 기본 크기로 복원)">
                       <span class="dtp-row-label">그림틀 크기</span>
                       <div class="dtp-row-control">
-                        <button type="button" class="btn-control-sub" style="width: 100%; font-size: 0.72rem;"
-                          onclick="dtpEditor.resetSelectedFrameRect()" title="선택된 그림틀을 100% 꽉 채운 원래 크기로 복원합니다.">⟲ 선택 그림틀 100% 크기 복원</button>
+                        <input type="range" id="inputTbFrameScale" min="10" max="100" step="10" value="100"
+                          style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageFrameScale(this.value)">
+                        <span class="tool-val-badge" id="lblTbFrameScaleVal">100%</span>
+                        <button type="button" class="btn-control-sub"
+                          style="padding: 2px 6px; font-size: 0.72rem; min-width: auto;"
+                          onclick="dtpEditor.resetSelectedFrameRect()" title="100% 기본 크기 복원">⟲</button>
                       </div>
                     </div>
 
                     <!-- 2-3. 그림틀 통째 위치 이동 (크기 불변) -->
-                    <div class="dtp-control-row" title="그림틀 크기를 유지한 채 캔버스 안에서 위치를 상·하·좌·우로 통째로 이동합니다. (그림틀 좌상단의 ✥ 핸들로도 마우스 드래그 가능)">
+                    <div class="dtp-control-row"
+                      title="그림틀 크기를 유지한 채 캔버스 안에서 위치를 상·하·좌·우로 통째로 이동합니다. (그림틀 좌상단의 ✥ 핸들로도 마우스 드래그 가능)">
                       <span class="dtp-row-label">틀 위치이동</span>
                       <div class="dtp-row-control" style="display: flex; gap: 4px;">
-                        <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedFrame(0, -15)" title="위로 15px 이동">▲ 위로</button>
-                        <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedFrame(0, 15)" title="아래로 15px 이동">▼ 아래</button>
-                        <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedFrame(-15, 0)" title="왼쪽으로 15px 이동">◀ 좌로</button>
-                        <button type="button" class="btn-control-sub" style="flex: 1; padding: 4px 2px; font-size: 0.72rem;" onclick="dtpEditor.moveSelectedFrame(15, 0)" title="오른쪽으로 15px 이동">▶ 우로</button>
+                        <button type="button" class="btn-control-sub"
+                          style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                          onclick="dtpEditor.moveSelectedFrame(0, -15)" title="위로 15px 이동">▲ 위로</button>
+                        <button type="button" class="btn-control-sub"
+                          style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                          onclick="dtpEditor.moveSelectedFrame(0, 15)" title="아래로 15px 이동">▼ 아래</button>
+                        <button type="button" class="btn-control-sub"
+                          style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                          onclick="dtpEditor.moveSelectedFrame(-15, 0)" title="왼쪽으로 15px 이동">◀ 좌로</button>
+                        <button type="button" class="btn-control-sub"
+                          style="flex: 1; padding: 4px 2px; font-size: 0.72rem;"
+                          onclick="dtpEditor.moveSelectedFrame(15, 0)" title="오른쪽으로 15px 이동">▶ 우로</button>
                       </div>
                     </div>
 
@@ -1522,11 +1876,11 @@
                       </div>
                     </div>
 
-                    <!-- 6. 그림틀 여백 (인쇄범위 내 아담하게 축소/배치) -->
-                    <div class="dtp-control-row" title="그림틀의 내부 여백을 조절하여 인쇄범위 내에서 그림을 아담하게 축소 및 배치합니다.">
+                    <!-- 6. 그림틀 여백 (0~50px) -->
+                    <div class="dtp-control-row" title="그림틀 바깥에 종이 여백(마진)을 둘러싸서 아담하게 안쪽으로 들여놓습니다.">
                       <span class="dtp-row-label">틀 여백</span>
                       <div class="dtp-row-control">
-                        <input type="range" id="inputTbFrameInset" min="0" max="40" step="2" value="0"
+                        <input type="range" id="inputTbFrameInset" min="0" max="50" step="2" value="0"
                           style="flex: 1; cursor: pointer;" oninput="dtpEditor.setImageFrameInset(this.value)">
                         <span class="tool-val-badge" id="lblTbFrameInsetVal">0px</span>
                       </div>
@@ -1629,199 +1983,7 @@
                 </div>
               </div>
             </aside>
-            <!-- 2페이지 펼침면 스프레드 북 (모듈형 2-Layer 대칭 컴포넌트) -->
-            <div class="book-spread dtp-spread-container" id="bookSpreadContainer">
-              <div class="book-crease"></div>
-
-              <!-- 좌측 페이지 (Slot A) -->
-              <div class="dtp-page dtp-page-left" id="dtpPageLeft" data-side="left">
-                <!-- 1) 페이지 상단 툴바: 용도, 역할, 도구 -->
-                <div class="dtp-page-header">
-                  <div class="dtp-header-left">
-                    <span class="dtp-page-badge" id="lblPageLeftNum">1면(좌)</span>
-                    <!-- [요구사항 4] 페이지 용도 -->
-                    <select id="selectPageUsageLeft" class="dtp-select dtp-select-usage"
-                      onchange="dtpEditor.onPageUsageChange('left', this.value)" title="페이지 용도 선택">
-                      <option value="image">🖼️ 전면 그림</option>
-                      <option value="text">✍️ 본문 전용</option>
-                      <option value="image_text">🖼️+✍️ 그림 + 글</option>
-                      <option value="blank">❦ 문학적 여백</option>
-                    </select>
-                    <!-- [요구사항 4] 글 유형 -->
-                    <select id="selectPageRoleLeft" class="dtp-select dtp-select-role"
-                      onchange="dtpEditor.onPageRoleChange('left', this.value)" title="글 유형 선택">
-                      <option value="none">[-] 글 없음</option>
-                      <option value="start">🚩 글 시작 (제목+지은이+본문)</option>
-                      <option value="continue">🔗 글 이어짐 (본문만)</option>
-                      <option value="independent">📝 독립 자유글</option>
-                    </select>
-                  </div>
-                  <div class="dtp-header-right" style="display: flex; gap: 4px; align-items: center;">
-                    <select class="select-micro dtp-img-layout-select" id="selectImgLayoutLeft"
-                      onchange="dtpEditor.onImageLayoutChange('left', this.value)" title="그림 분할/배치 형태 선택"
-                      style="display: none !important;">
-                      <option value="single">🖼️ 1장 전체</option>
-                      <option value="split_vertical">⬒ 상·하 2단</option>
-                      <option value="split_horizontal">◧ 좌·우 2단</option>
-                    </select>
-
-                  </div>
-                </div>
-
-                <!-- 2) Layer 1: 그림 레이어 (독립적) -->
-                <div class="dtp-layer-image" id="dtpLayerImageLeft">
-                  <img id="dtpImgLeft" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
-                  <div id="dtpPlaceholderLeft" class="dtp-art-placeholder is-hidden" style="display: none;">
-                    <span class="placeholder-icon">🎨</span>
-                    <span class="placeholder-text">그림을 끌어다 놓으세요</span>
-                  </div>
-                  <div id="dtpBlankLeft" class="dtp-blank-content is-hidden" style="display: none;">
-                    <span class="blank-symbol">❦</span>
-                    <span class="blank-text">여백 속에 머무는 시의 숨결</span>
-                  </div>
-                </div>
-
-                <!-- 3) Layer 2: 글 레이어 (독립적, 빨간색 가이드선) -->
-                <div class="dtp-layer-text" id="dtpLayerTextLeft">
-                  <!-- 한지 가독성 패널 (그림 위 글일 때 투명도 슬라이더 연동) -->
-                  <div class="dtp-hanji-panel" id="dtpHanjiLeft" style="display: none;"></div>
-
-                  <!-- 인쇄 안전 마진 (Safe Boundary) -->
-                  <div class="dtp-safe-boundary">
-                    <!-- [제목+지은이 상자] - 상단 인쇄안전선 준수 -->
-                    <div class="dtp-guide-box dtp-box-title is-hidden" id="dtpBoxTitleLeft" style="display: none;">
-                      <div class="dtp-guide-label label-title">🟥 제목·지은이 상자</div>
-                      <div class="dtp-title-text" id="dtpTitleLeft" contenteditable="true" spellcheck="false">시 제목</div>
-                      <div class="dtp-author-text" id="dtpAuthorLeft" contenteditable="true" spellcheck="false">지은이
-                      </div>
-                      <div class="dtp-title-divider"></div>
-                    </div>
-
-                    <!-- [본문 상자] - 하단 인쇄안전선 준수 -->
-                    <div class="dtp-guide-box dtp-box-body is-hidden" id="dtpBoxBodyLeft" style="display: none;">
-                      <div class="dtp-guide-label label-body">🟥 본문 글상자</div>
-                      <div class="dtp-body-text" id="dtpBodyLeft" contenteditable="true" spellcheck="false">
-                        본문 글이 여기에 배치됩니다.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 4) 초과 알림 및 면 번호 -->
-                <div class="dtp-overflow-badge" id="dtpOverflowLeft" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
-                <div class="dtp-page-folio" id="lblBookFolioLeft">1</div>
-
-                <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
-                <div class="dtp-matter-overlay" id="dtpMatterOverlayLeft"
-                  style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;">
-                </div>
-              </div>
-
-              <!-- 우측 페이지 (Slot B) - 완벽한 좌우 대칭 구조! -->
-              <div class="dtp-page dtp-page-right" id="dtpPageRight" data-side="right">
-                <!-- 1) 페이지 상단 툴바: 용도, 역할, 도구 -->
-                <div class="dtp-page-header">
-                  <div class="dtp-header-left">
-                    <span class="dtp-page-badge" id="lblPageRightNum">2면(우)</span>
-                    <!-- [요구사항 4] 페이지 용도 -->
-                    <select id="selectPageUsageRight" class="dtp-select dtp-select-usage"
-                      onchange="dtpEditor.onPageUsageChange('right', this.value)" title="페이지 용도 선택">
-                      <option value="text">✍️ 본문 전용</option>
-                      <option value="image">🖼️ 전면 그림</option>
-                      <option value="image_text">🖼️+✍️ 그림 + 글</option>
-                      <option value="blank">❦ 문학적 여백</option>
-                    </select>
-                    <!-- [요구사항 4] 글 유형 -->
-                    <select id="selectPageRoleRight" class="dtp-select dtp-select-role"
-                      onchange="dtpEditor.onPageRoleChange('right', this.value)" title="글 유형 선택">
-                      <option value="start">🚩 글 시작 (제목+지은이+본문)</option>
-                      <option value="continue">🔗 글 이어짐 (본문만)</option>
-                      <option value="independent">📝 독립 자유글</option>
-                      <option value="none">[-] 글 없음</option>
-                    </select>
-                  </div>
-                  <div class="dtp-header-right" style="display: flex; gap: 4px; align-items: center;">
-                    <select class="select-micro dtp-img-layout-select" id="selectImgLayoutRight"
-                      onchange="dtpEditor.onImageLayoutChange('right', this.value)" title="그림 분할/배치 형태 선택"
-                      style="display: none !important;">
-                      <option value="single">🖼️ 1장 전체</option>
-                      <option value="split_vertical">⬒ 상·하 2단</option>
-                      <option value="split_horizontal">◧ 좌·우 2단</option>
-                    </select>
-
-                  </div>
-                </div>
-
-                <!-- 2) Layer 1: 그림 레이어 (독립적) -->
-                <div class="dtp-layer-image" id="dtpLayerImageRight">
-                  <img id="dtpImgRight" class="dtp-art-image is-hidden" src="" alt="삽화" style="display: none;">
-                  <div id="dtpPlaceholderRight" class="dtp-art-placeholder is-hidden" style="display: none;">
-                    <span class="placeholder-icon">🎨</span>
-                    <span class="placeholder-text">그림을 끌어다 놓으세요</span>
-                  </div>
-                  <div id="dtpBlankRight" class="dtp-blank-content is-hidden" style="display: none;">
-                    <span class="blank-symbol">❦</span>
-                    <span class="blank-text">여백 속에 머무는 시의 숨결</span>
-                  </div>
-                </div>
-
-                <!-- 3) Layer 2: 글 레이어 (독립적, 빨간색 가이드선) -->
-                <div class="dtp-layer-text" id="dtpLayerTextRight">
-                  <!-- 한지 가독성 패널 (그림 위 글일 때 투명도 슬라이더 연동) -->
-                  <div class="dtp-hanji-panel" id="dtpHanjiRight" style="display: none;"></div>
-
-                  <!-- 인쇄 안전 마진 (Safe Boundary) -->
-                  <div class="dtp-safe-boundary">
-                    <!-- [제목+지은이 상자] - 상단 인쇄안전선 준수 -->
-                    <div class="dtp-guide-box dtp-box-title is-hidden" id="dtpBoxTitleRight" style="display: none;">
-                      <div class="dtp-guide-label label-title">🟥 제목·지은이 상자</div>
-                      <div class="dtp-title-text" id="dtpTitleRight" contenteditable="true" spellcheck="false">시 제목
-                      </div>
-                      <div class="dtp-author-text" id="dtpAuthorRight" contenteditable="true" spellcheck="false">지은이
-                      </div>
-                      <div class="dtp-title-divider"></div>
-                    </div>
-
-                    <!-- [본문 상자] - 하단 인쇄안전선 준수 -->
-                    <div class="dtp-guide-box dtp-box-body is-hidden" id="dtpBoxBodyRight" style="display: none;">
-                      <div class="dtp-guide-label label-body">🟥 본문 글상자</div>
-                      <div class="dtp-body-text" id="dtpBodyRight" contenteditable="true" spellcheck="false">
-                        본문 글이 여기에 배치됩니다.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 4) 초과 알림 및 면 번호 -->
-                <div class="dtp-overflow-badge" id="dtpOverflowRight" style="display: none;">⚠️ 본문 초과 (2쪽 자동 추가됨)</div>
-                <div class="dtp-page-folio" id="lblBookFolioRight">2</div>
-
-                <!-- 5) [Full Book Architecture] 부속물(표지·속표지·서문·목차·판권) 전용 실물 양면 오버레이 -->
-                <div class="dtp-matter-overlay" id="dtpMatterOverlayRight"
-                  style="display: none; position: absolute; inset: 0; z-index: 50; background: #FAF7F2; overflow: hidden;">
-                </div>
-              </div>
-            </div>
           </div>
-
-          <!-- [StoryBook DTP] 책장 하단: 페이지 단위 연속 이동 내비게이션 바 -->
-          <div class="book-page-turn-bar" id="bookPageTurnBar">
-            <button type="button" class="btn-page-turn btn-turn-prev" id="btnPageTurnPrev"
-              onclick="dtpEditor.navigatePage(-1)" title="[이전 페이지] 이전 면으로 책장을 넘깁니다 (앞 시 또는 같은 시의 앞면)">
-              <span class="turn-arrow">◀</span>
-              <span class="turn-label">이전 페이지</span>
-            </button>
-            <div class="page-turn-indicator" id="pageTurnIndicator"
-              style="font-weight: 700; color: #553412; font-size: 0.88rem;">
-              제01화 「새벽 대청」 — 1·2면
-            </div>
-            <button type="button" class="btn-page-turn btn-turn-next" id="btnPageTurnNext"
-              onclick="dtpEditor.navigatePage(1)" title="[다음 페이지] 다음 면으로 책장을 넘깁니다 (같은 시의 연장면 또는 뒷 시)">
-              <span class="turn-label">다음 페이지</span>
-              <span class="turn-arrow">▶</span>
-            </button>
-          </div>
-        </div>
       </section>
 
       <!-- ========================================================
@@ -2221,26 +2383,72 @@
               </a>
             </div>
 
-            <!-- 카드 5: 온라인 시화 갤러리 웹 배포용 패키지 (ZIP) -->
-            <div class="tool-card" style="border-top: 4px solid #C59B27;">
-              <h2 class="section-title">🌐 온라인 갤러리 웹 배포 (ZIP)</h2>
-              <p class="section-desc">Netlify Drop, GitHub Pages, Vercel 등에 올려 전 세계 독자들에게 온라인 시화 갤러리를 무료로 공개할 수 있는 순수 정적 웹 패키지입니다.</p>
+            <!-- 카드 5: 🌐 온라인 시화 갤러리 배포 & 독자 나눔 센터 -->
+            <div class="tool-card" style="border-top: 4px solid #C59B27; background: #FFFDF9;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <h2 class="section-title"
+                  style="color: #643E19; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" style="color: #C59B27;">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" x2="22" y1="12" y2="12" />
+                    <path
+                      d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                  <span>온라인 갤러리 배포 &amp; 나눔 센터</span>
+                </h2>
+                <span
+                  style="font-size: 0.72rem; background: #FEF3C7; color: #92400E; padding: 2px 7px; border-radius: 4px; font-weight: 700;">전세계
+                  독자 공유</span>
+              </div>
+              <p class="section-desc">내가 빚은 시화집을 웹 링크나 독립 압축팩(ZIP)으로 전 세계 독자들에게 무료로 공개하고, 소통방에 공유할 수 있는 작가 전용 배포 센터입니다.
+              </p>
 
               <div
-                style="background: #FCFAF7; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-subtle); margin-bottom: 1.5rem;">
-                <p style="font-size: 0.9rem; margin-bottom: 6px;"><strong>구성:</strong> index.html + 미디어 에셋 + 배포가이드</p>
-                <p style="font-size: 0.85rem; color: #8B5A2B;"><strong>배포:</strong> Netlify Drop 드래그 앤 드롭 10초 완성 (가이드 동봉)</p>
+                style="background: #FAF6F0; padding: 0.9rem; border-radius: 8px; border: 1px solid #EBDCCB; margin-bottom: 1.2rem; font-size: 0.83rem;">
+                <div style="margin-bottom: 5px;"><strong>🌐 웹 갤러리:</strong> 감성 배경음악 + 3D 양면 책장 넘김 + 시 낭송 / MV 영상 내장
+                </div>
+                <div style="color: #8B5A2B; font-size: 0.78rem;">✓ Netlify Drop 드래그 앤 드롭 10초 무료 호스팅 · 카카오톡 원클릭 링크 공유
+                </div>
               </div>
 
-              <div style="display: flex; gap: 8px; flex-direction: column;">
+              <!-- 4대 작가 액션 그리드 -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <a href="/api/projects/export_gallery_zip" class="btn-primary" id="btnExportGalleryZipCard"
-                  style="text-decoration: none; background: #C59B27;"
+                  style="text-decoration: none; background: #C59B27; text-align: center; padding: 8px 10px; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 5px;"
                   title="[웹 배포용 ZIP 다운로드] Netlify, GitHub Pages, Vercel 등에 올릴 수 있는 독립 정적 웹 갤러리 ZIP을 다운로드합니다.">
-                  <span>🌐 웹 배포용 ZIP 다운로드</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" x2="12" y1="15" y2="3" />
+                  </svg>
+                  <span>웹 배포용 ZIP</span>
                 </a>
-                <a href="/gallery" target="_blank" class="btn-secondary" style="text-align: center; text-decoration: none; padding: 0.5rem;"
+                <button type="button" class="btn-primary" onclick="copyGalleryUrlToClipboard()"
+                  style="background: #FFFFFF; border: 1.5px solid #D4A373; color: #643E19; font-weight: 700; padding: 8px 10px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;"
+                  title="[갤러리 주소 복사] 지인들에게 카톡이나 문자로 보낼 수 있는 갤러리 웹 주소를 복사합니다.">
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <span>링크 주소 복사</span>
+                </button>
+                <button type="button" class="btn-primary" onclick="shareGalleryToCafe()"
+                  style="background: linear-gradient(135deg, #03C75A 0%, #009F43 100%); border: 1px solid #008537; color: #FFF; font-weight: 700; padding: 8px 10px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;"
+                  title="[소통방에 자랑하기] 네이버 카페 [내 갤러리 구경오세요] 게시판에 시화 갤러리를 소개합니다.">
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>내 갤러리 구경오세요</span>
+                </button>
+                <a href="/gallery" target="_blank" class="btn-secondary"
+                  style="text-align: center; text-decoration: none; padding: 8px 10px; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 5px;"
                   title="[온라인 갤러리 미리보기] 배포 전 갤러리 화면을 새 창에서 미리 확인합니다.">
-                  <span>🖼️ 내 갤러리 미리보기 ↗</span>
+                  <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" x2="21" y1="14" y2="3" />
+                  </svg>
+                  <span>독자 갤러리 열기 ↗</span>
                 </a>
               </div>
             </div>
@@ -2811,7 +3019,7 @@
       if (confirm("로그아웃하고 집필실을 나가시겠습니까?")) {
         try {
           await fetch("/api/auth/logout", { method: "POST" });
-        } catch (e) {  }
+        } catch (e) { }
         try {
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
@@ -2819,10 +3027,77 @@
               localStorage.removeItem(key);
             }
           }
-        } catch (e)  { }
+        } catch (e) { }
         window.location.href = "/login";
       }
-      </script>
+
+      /* 🌟 온라인 갤러리 공유 & 나눔 센터 액션 */
+      function copyGalleryUrlToClipboard() {
+        const proto = window.location.protocol;
+        const host = window.location.hostname;
+        const isLocal = proto === 'file:' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+
+        if (isLocal) {
+          Swal.fire({
+            icon: 'warning',
+            title: '로컬 환경 안내',
+            html: `현재는 <strong>내 컴퓨터(로컬)</strong>에서 실행 중이므로, 이 주소를 다른 사람에게 카톡 등으로 보내면 상대방 기기에서는 열리지 않습니다.<br><br>
+              <div style="background:#FAF6F0; border:1px solid #E6D8C5; border-radius:8px; padding:12px; font-size:0.85rem; text-align:left; color:#52361B; line-height:1.6;">
+                💡 <strong>누구나 열어볼 수 있는 웹 주소 만드는 법:</strong><br>
+                1. 바로 옆의 <strong>[웹 배포용 ZIP]</strong>을 다운로드합니다.<br>
+                2. 무료 웹 호스팅(Netlify Drop 등)에 ZIP을 드래그하면 <strong>10초 만에 평생 무료 웹 주소</strong>가 완성됩니다.<br>
+                3. 배포된 웹사이트 주소를 가족과 지인들에게 공유하세요! 😊
+              </div>`,
+            confirmButtonColor: '#C59B27',
+            confirmButtonText: '이해했습니다'
+          });
+          return;
+        }
+
+        const url = window.location.origin + '/gallery';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(() => {
+            Swal.fire({
+              icon: 'success',
+              title: '갤러리 주소 복사 완료!',
+              html: `독자 감상용 갤러리 웹 주소가 복사되었습니다.<br><strong style="color:#7C4A1E; display:inline-block; margin-top:6px; word-break:break-all;">${url}</strong><br><small style="color:#666; margin-top:4px; display:inline-block;">지인이나 카카오톡, 밴드에 붙여넣어 시집을 자랑하세요.</small>`,
+              confirmButtonColor: '#7C4A1E',
+              confirmButtonText: '확인'
+            });
+          }).catch(() => {
+            prompt('아래 갤러리 주소를 복사하세요:', url);
+          });
+        } else {
+          prompt('아래 갤러리 주소를 복사하세요:', url);
+        }
+      }
+
+      function shareGalleryToCafe() {
+        const url = window.location.origin + '/gallery';
+        Swal.fire({
+          icon: 'info',
+          title: '내 갤러리 자랑하기 (소통방)',
+          html: `공식 네이버 카페 <strong>[내 갤러리 구경오세요]</strong> 게시판으로 이동합니다.<br><br>
+            <div style="background:#FAF6F0; border:1px solid #E6D8C5; border-radius:8px; padding:10px; font-size:0.85rem; text-align:left; color:#52361B;">
+              <strong>📋 추천 공유 문구:</strong><br>
+              "제가 StoryBook Studio로 빚은 시화집 갤러리 구경 오세요! 😊"<br>
+              주소: <strong>${url}</strong>
+            </div>`,
+          showCancelButton: true,
+          confirmButtonColor: '#03C75A',
+          cancelButtonColor: '#8C7E70',
+          confirmButtonText: '네이버 카페 소통방 가기 ↗',
+          cancelButtonText: '닫기'
+        }).then((res) => {
+          if (res.isConfirmed) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(`StoryBook Studio로 빚은 시화집 구경 오세요!\n${url}`);
+            }
+            window.open('https://cafe.naver.com/eduaihub', '_blank');
+          }
+        });
+      }
+  </script>
 
   <!-- ========================================================
        StoryBook Studio - 2-Layer 스마트 조판 사용자 가이드 모달
@@ -2850,7 +3125,8 @@
       style="color: #FCA5A5;">⌫</button>
   </div>
   <!-- 우측 하단 고정: 1:1 비밀 상담 & 편집 요청 플로팅 버튼 -->
-  <button type="button" id="floatingInquiryBtn" class="floating-inquiry-btn" onclick="openInquiryModal()" title="[1:1 비밀 상담] 시화집 조판 코칭 도움 요청 및 버그 제보">
+  <button type="button" id="floatingInquiryBtn" class="floating-inquiry-btn" onclick="openInquiryModal()"
+    title="[1:1 비밀 상담] 시화집 조판 코칭 도움 요청 및 버그 제보">
     <span class="inquiry-icon">💬</span>
     <span class="inquiry-text"><strong>1:1 상담실</strong> <small>(편집 코칭)</small></span>
   </button>

@@ -372,15 +372,21 @@ class BookkPDFBuilder:
                 page_count = cfg.get("page_count", 2)
                 text_align = cfg.get("text_align", "left")
 
-                def draw_aligned_text(canvas, line_str, bx, cy, align_mode, bw):
+                def draw_aligned_text(canvas, line_str, bx, cy, align_mode, bw, font_size_pt=12.0):
                     if not line_str:
                         return
+                    effective_bx = bx
+                    # [InDesign DTP 미학] 시각적 여백 정렬 (Optical Margin Alignment)
+                    # 여는 따옴표/괄호로 시작할 경우 좌측으로 살짝 밀어내어(Hanging) 수직선 일치
+                    if align_mode == "left" and line_str and line_str[0] in ('"', "'", '“', '‘', '「', '『', '(', '<'):
+                        effective_bx = bx - (font_size_pt * 0.52)
+
                     if align_mode == "center":
                         canvas.drawCentredString(bx + (bw / 2.0), cy, line_str)
                     elif align_mode == "right":
                         canvas.drawRightString(bx + bw, cy, line_str)
                     else:
-                        canvas.drawString(bx, cy, line_str)
+                        canvas.drawString(effective_bx, cy, line_str)
                 pages_meta = cfg.get("pages", [])
                 raw_slots = cfg.get("slots", [])
                 raw_roles = cfg.get("page_roles", [])
@@ -398,11 +404,11 @@ class BookkPDFBuilder:
                     slots.append(s_val)
                     roles.append(r_val)
 
-                # 텍스트 슬롯 인덱스 & 순차 용량(Capacity) 배분
+                # 텍스트 슬롯 인덱스 & 순차 용량(Capacity) 배분 (표제면 title_only는 본문 0행 배정 후 다음 면 이월)
                 text_slot_indices = [
                     idx for idx, s in enumerate(slots)
                     if s in ("text", "image_text", "image_top", "image_bottom", "mixed_top", "mixed_bottom")
-                    and roles[idx] not in ("none", "independent")
+                    and roles[idx] not in ("none", "independent", "title_only")
                 ]
                 text_count = len(text_slot_indices)
 
@@ -450,6 +456,17 @@ class BookkPDFBuilder:
                                 box_y = m["bottom"] + 15
                                 box_w = m["content_w"]
                                 box_h = self.canvas_h_pt - (m["top"] + m["bottom"] + 15)
+
+                                # frame_inset(틀 여백) 및 frame_scale(그림틀 크기) 반영
+                                base_inset = float(p_obj.get("frame_inset", 0) or 0) * 0.75
+                                frame_scale = float(p_obj.get("frame_scale", 100) or 100) / 100.0
+                                scale_margin_x = (box_w * (1.0 - frame_scale)) / 2.0
+                                scale_margin_y = (box_h * (1.0 - frame_scale)) / 2.0
+                                box_x += (base_inset + scale_margin_x)
+                                box_y += (base_inset + scale_margin_y)
+                                box_w = max(20.0, box_w - (base_inset + scale_margin_x) * 2)
+                                box_h = max(20.0, box_h - (base_inset + scale_margin_y) * 2)
+
                                 self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file)
                             # 한지 가독성 필터 오버레이
                             c.saveState()
@@ -459,7 +476,7 @@ class BookkPDFBuilder:
                             c.rect(m["left"] - 4, m["bottom"] + 10, m["content_w"] + 8, self.canvas_h_pt - (m["top"] + m["bottom"] + 5), fill=1, stroke=0)
                             c.restoreState()
 
-                        # 2) 독립 자유글(independent) vs 시 본문(start/continue)
+                        # 2) 독립 자유글(independent) vs 표제면(title_only) vs 시 본문(start/continue)
                         if role_here == "independent":
                             custom_txt = p_obj.get("custom_text") or ""
                             ind_lines = [l.rstrip() for l in custom_txt.split("\n")]
@@ -476,8 +493,33 @@ class BookkPDFBuilder:
                             for line in ind_lines:
                                 if curr_y < m["bottom"] + 15:
                                     break
-                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
+                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
                                 curr_y -= line_h
+                        elif role_here == "title_only":
+                            # 🪟 표제면(도비라): 제목과 시인만 단독으로 우아하게 표기 (본문은 다음 면으로 이어짐)
+                            pages_list = cfg.get("pages", [])
+                            page_info = pages_list[slot_idx] if slot_idx < len(pages_list) else {}
+                            top_offset_pt = float(page_info.get("top_offset", 0)) * 0.75
+                            left_offset_pt = float(page_info.get("left_offset", 0)) * 0.75
+                            title_x = m["left"] + left_offset_pt
+                            title_y = self.canvas_h_pt - m["top"] - top_offset_pt
+
+                            if slot_type == "image_text" and is_light_text:
+                                c.setFillColorRGB(0.99, 0.98, 0.96)
+                            else:
+                                c.setFillColorRGB(0.18, 0.16, 0.15)
+                            c.setFont(FONT_BOLD_NAME, 18.0)
+                            c.drawString(title_x, title_y, work.title)
+
+                            work_author = getattr(work, 'author', '').strip()
+                            if is_collab and work_author:
+                                c.setFont(FONT_NAME, 10.0)
+                                c.setFillColorRGB(0.48, 0.42, 0.38)
+                                c.drawRightString(self.canvas_w_pt - m["right"], title_y + 2, f"{work_author}")
+
+                            c.setStrokeColorRGB(0.86, 0.82, 0.78)
+                            c.setLineWidth(0.8)
+                            c.line(title_x, title_y - 12, self.canvas_w_pt - m["right"], title_y - 12)
                         elif role_here != "none":
                             c_idx = chunk_map.get(slot_idx, 0)
                             chunk_lines = chunks[c_idx] if c_idx < len(chunks) else []
@@ -526,7 +568,7 @@ class BookkPDFBuilder:
                             for line in chunk_lines:
                                 if curr_y < m["bottom"] + 15:
                                     break
-                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
+                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
                                 curr_y -= line_h
 
                             if not is_last and len(chunk_lines) > 0:
@@ -583,7 +625,7 @@ class BookkPDFBuilder:
                         for line in chunk_lines:
                             if curr_y < m["bottom"] + 15:
                                 break
-                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
+                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
                             curr_y -= line_h
 
                         if not is_last:
@@ -637,7 +679,7 @@ class BookkPDFBuilder:
                         for line in chunk_lines:
                             if curr_y < text_limit_y:
                                 break
-                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w)
+                            draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
                             curr_y -= line_h
 
                         # 2) 하단 삽화 배치
@@ -662,6 +704,16 @@ class BookkPDFBuilder:
                             box_y = m["bottom"] + 15
                             box_w = m["content_w"]
                             box_h = self.canvas_h_pt - (m["top"] + m["bottom"] + 15)
+
+                            # frame_inset(틀 여백) 및 frame_scale(그림틀 크기) 반영
+                            base_inset = float(p_obj.get("frame_inset", 0) or 0) * 0.75
+                            frame_scale = float(p_obj.get("frame_scale", 100) or 100) / 100.0
+                            scale_margin_x = (box_w * (1.0 - frame_scale)) / 2.0
+                            scale_margin_y = (box_h * (1.0 - frame_scale)) / 2.0
+                            box_x += (base_inset + scale_margin_x)
+                            box_y += (base_inset + scale_margin_y)
+                            box_w = max(20.0, box_w - (base_inset + scale_margin_x) * 2)
+                            box_h = max(20.0, box_h - (base_inset + scale_margin_y) * 2)
                             img_layout = p_obj.get("image_layout", "single")
                             img_file_2 = p_obj.get("image_file_2") or getattr(work, "image_file_2", "") or img_file
 
@@ -675,6 +727,27 @@ class BookkPDFBuilder:
                                 half_w = (box_w - gap) / 2
                                 self._draw_artwork(c, work, images_dir, box_x, box_y, half_w, box_h, img_override_file=img_file)
                                 self._draw_artwork(c, work, images_dir, box_x + half_w + gap, box_y, half_w, box_h, img_override_file=img_file_2)
+                            elif img_layout == "overlay_collage":
+                                # 1) 1번 배경 메인 그림 렌더링
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file)
+
+                                # 2) 2번 전경 꼴라주 프레임 (인디자인 소프트 섀도우 & 우측 하단 일부 걸침 삐져나옴)
+                                frame_scale_2 = float(p_obj.get("frame_scale_2", 100) or 100) / 100.0
+                                coll_w = max(30.0, (box_w * 0.55) * frame_scale_2)
+                                coll_h = max(30.0, (box_h * 0.55) * frame_scale_2)
+                                coll_x = box_x + box_w - (coll_w * 0.75)
+                                coll_y = box_y - (coll_h * 0.20)
+
+                                # 은은한 인쇄용 소프트 그림자 오버레이
+                                c.saveState()
+                                if hasattr(c, "setFillAlpha"):
+                                    c.setFillAlpha(0.22)
+                                c.setFillColorRGB(0.15, 0.10, 0.05)
+                                c.roundRect(coll_x + 3, coll_y - 4, coll_w, coll_h, 6, fill=1, stroke=0)
+                                c.restoreState()
+
+                                # 2번 그림 렌더링
+                                self._draw_artwork(c, work, images_dir, coll_x, coll_y, coll_w, coll_h, img_override_file=img_file_2)
                             elif img_layout == "main_detail":
                                 gap = 10
                                 detail_h = (box_h - gap) * 0.30

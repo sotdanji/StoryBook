@@ -416,38 +416,105 @@
       text-align: center;
     }
 
-    .sidebar-bottom-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    /* SVG 공통 아이콘 (Hallmark 표준) */
+    .svg-icon {
+      display: inline-block;
+      width: 1.15em;
+      height: 1.15em;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: -0.16em;
+      flex-shrink: 0;
+    }
+
+    /* 🌟 사이드바 [갤러리 공유 & 다운로드] 섹션 */
+    .sidebar-share-section {
+      margin-top: 10px;
+      padding-top: 12px;
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
       gap: 6px;
     }
-    .btn-pdf-download {
+    .sidebar-share-header {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 2px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 9px 10px;
-      background: linear-gradient(135deg, #7a4e23 0%, #542e0d 100%);
-      border: 1px solid #422308;
-      border-radius: 8px;
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
+      gap: 5px;
+      letter-spacing: -0.2px;
     }
-    .btn-pdf-download:hover {
+    .sidebar-share-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .btn-sidebar-share {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+      width: 100%;
+      text-align: left;
+    }
+    .btn-sidebar-share:hover {
+      background: #FAF7F2;
+      border-color: var(--accent-brown);
+      color: var(--accent-brown-dark);
+    }
+    .btn-sidebar-share:active {
+      transform: scale(0.985);
+    }
+    .btn-sidebar-share.btn-pdf {
+      background: linear-gradient(135deg, #7a4e23 0%, #542e0d 100%);
+      color: #FFFFFF;
+      border-color: #422308;
+    }
+    .btn-sidebar-share.btn-pdf:hover {
       background: linear-gradient(135deg, #8f5d2b 0%, #683a12 100%);
+      color: #FFFFFF;
+    }
+    .btn-sidebar-share.btn-community {
+      background: #FCF9F5;
+      border-color: #D4A373;
+      color: #8B5A2B;
+    }
+    .btn-sidebar-share.btn-community:hover {
+      background: #F5EBE1;
     }
     .btn-studio-link {
       display: none;
       align-items: center;
       justify-content: center;
       gap: 5px;
-      padding: 9px 10px;
+      padding: 8px 10px;
       background: #e6dfd2;
       border: 1px solid #d4c8b6;
+      border-radius: 6px;
+      color: #4f3319;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.15s ease;
+    }
+    .btn-studio-link:hover {
+      background: #ded5c5;
+    }
       border-radius: 8px;
       font-size: 13px;
       font-weight: 700;
@@ -468,25 +535,14 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 16px 28px;
+      padding: 10px 24px;
       position: relative;
-      gap: 12px;
+      gap: 10px;
     }
 
-    /* 상단 리더 상태 & 미디어 통합 바 */
+    /* 상단 리더 상태 바 숨김 (하단 일체형 원스톱 컨트롤로 통합) */
     .gallery-reader-topbar {
-      width: 960px;
-      max-width: 100%;
-      background: rgba(255, 253, 249, 0.96);
-      border: 1px solid #e2d8c9;
-      border-radius: 12px;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      box-shadow: 0 4px 14px rgba(60, 40, 20, 0.06);
-      z-index: 30;
+      display: none !important;
     }
     .reader-title-info {
       display: flex;
@@ -513,15 +569,16 @@
       text-overflow: ellipsis;
     }
     .reader-page-meta {
+      display: none !important;
       font-size: 12px;
       color: #8c7560;
       font-weight: 600;
       white-space: nowrap;
     }
 
-    /* 다면(4P/6P) 1부·2부 전환 탭 */
+    /* 다면(4P/6P) 1부·2부 전환 탭 (하단 이전면/다음면으로 대체되어 숨김) */
     .spread-part-switcher {
-      display: none;
+      display: none !important;
       align-items: center;
       gap: 4px;
       background: #fef3c7;
@@ -609,6 +666,8 @@
       border: 1px solid #DFD5C6;
       transform-origin: center center;
       transition: transform 0.2s ease;
+      perspective: 2200px;
+      perspective-origin: center center;
     }
 
     /* 책등 중앙 접힘선 (Center Crease) */
@@ -678,6 +737,11 @@
       box-sizing: border-box;
       overflow: visible;
     }
+    .dtp-image-frame[data-sub-frame="1"] { z-index: 10; }
+    .dtp-image-frame[data-sub-frame="2"] {
+      z-index: 20;
+      box-shadow: 0 12px 32px rgba(35, 20, 10, 0.26), 0 2px 8px rgba(0, 0, 0, 0.10);
+    }
     .dtp-frame-crop {
       position: absolute;
       inset: 0;
@@ -727,7 +791,7 @@
     .dtp-safe-boundary {
       position: absolute;
       top: 28px;
-      bottom: 34px;
+      bottom: 60px;
       left: 32px;
       right: 32px;
       display: flex;
@@ -773,12 +837,12 @@
       margin-top: 6px;
     }
 
-    /* 본문 글상자 */
+    /* 본문 글상자 (18행 수용 & 쪽수 위 안전 여백 확보 한도) */
     .dtp-box-body {
       flex: 1 1 auto;
       position: relative;
-      max-height: 522px;
-      padding: 14px;
+      max-height: 468px;
+      padding: 8px 14px;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
@@ -793,9 +857,21 @@
       word-break: keep-all;
       overflow-y: auto;
       scrollbar-width: thin;
+      scrollbar-color: rgba(140, 110, 80, 0.25) transparent;
     }
-    .dtp-body-text::-webkit-scrollbar { width: 4px; }
-    .dtp-body-text::-webkit-scrollbar-thumb { background: rgba(140, 110, 80, 0.3); border-radius: 3px; }
+    .dtp-body-text::-webkit-scrollbar {
+      width: 4px;
+    }
+    .dtp-body-text::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .dtp-body-text::-webkit-scrollbar-thumb {
+      background: rgba(140, 110, 80, 0.25);
+      border-radius: 4px;
+    }
+    .dtp-body-text::-webkit-scrollbar-thumb:hover {
+      background: rgba(140, 110, 80, 0.5);
+    }
 
     .poem-line {
       position: relative;
@@ -805,8 +881,11 @@
       line-height: inherit;
       word-break: keep-all;
     }
+    .poem-line.hang-quote {
+      text-indent: -0.55em !important;
+    }
     .poem-line.empty-line {
-      min-height: 1.5em;
+      min-height: inherit;
     }
     .poem-line .line-text {
       display: inline;
@@ -863,7 +942,7 @@
     /* 페이지 하단 쪽수 (Folio) & 다음 면 이어짐 배지 */
     .dtp-page-folio {
       position: absolute;
-      bottom: 10px;
+      bottom: 26px;
       font-size: 0.76rem;
       font-family: var(--font-serif);
       font-weight: 600;
@@ -874,24 +953,9 @@
     .dtp-page-left .dtp-page-folio { left: 28px; }
     .dtp-page-right .dtp-page-folio { right: 28px; }
 
+    /* 이어짐 배지 숨김 (하단 내비게이션으로 대체되어 종이책 판면 보호) */
     .dtp-continue-badge {
-      position: absolute;
-      bottom: 9px;
-      right: 68px;
-      background: rgba(139, 90, 43, 0.12);
-      color: #7c4a27;
-      border: 1px solid rgba(139, 90, 43, 0.28);
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 10px;
-      border-radius: 12px;
-      cursor: pointer;
-      z-index: 30;
-      transition: all 0.15s;
-    }
-    .dtp-continue-badge:hover {
-      background: #8b5a2b;
-      color: #ffffff;
+      display: none !important;
     }
 
     /* 부속물(표지/속표지/서문/목차/판권지) 전용 양면 오버레이 */
@@ -909,10 +973,10 @@
        ======================================================== */
     .floating-audio-drawer {
       position: absolute;
-      top: 64px;
-      right: 28px;
+      bottom: 58px;
+      left: 28px;
       width: 420px;
-      max-width: calc(100vw - 420px);
+      max-width: calc(100vw - 360px);
       background: rgba(255, 253, 249, 0.98);
       border: 1.5px solid #d4a373;
       border-radius: 14px;
@@ -969,28 +1033,56 @@
     }
     .btn-music-close:hover { background: #e4d8c8; }
 
-    /* 하단 책장 넘기기 바 */
+    /* 하단 책장 넘기기 & 미디어 일체형 컨트롤 바 (양끝 쪽수 수직 정렬 & 양단 고정) */
     .gallery-bottom-turnbar {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 28px;
+      box-sizing: border-box;
+      z-index: 50;
+      position: relative;
+    }
+    .turnbar-middle-zone {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) auto minmax(110px, 1fr);
       align-items: center;
       justify-content: center;
-      gap: 16px;
-      z-index: 25;
+      gap: 8px;
+      margin: 0 10px;
+    }
+    .turnbar-media-slot.left-media {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .turnbar-media-slot.right-media {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
     }
     .btn-page-turn {
       background: #ffffff;
       border: 1px solid #d8cfc2;
       border-radius: 20px;
-      padding: 6px 16px;
+      padding: 6px 18px;
       font-size: 13px;
       font-weight: 700;
       color: #4a3b2c;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
+      min-width: 96px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.04);
       transition: all 0.15s;
+      user-select: none;
+      flex-shrink: 0;
     }
     .btn-page-turn:hover:not(:disabled) {
       background: #8b5a2b;
@@ -998,13 +1090,191 @@
       border-color: #8b5a2b;
     }
     .btn-page-turn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* 하단 미디어 버튼 (오디오 / 영상 감상) */
+    .btn-bottom-media {
+      background: #ffffff;
+      border: 1px solid #d8cfc2;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #4a3b2c;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-bottom-media.audio-btn {
+      background: #faf6f0;
+      border-color: #d4a373;
+      color: #7c4a27;
+    }
+    .btn-bottom-media.audio-btn:hover, .btn-bottom-media.audio-btn.active {
+      background: #7c4a27;
+      color: #ffffff;
+      border-color: #7c4a27;
+    }
+    .btn-bottom-media.video-btn {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .btn-bottom-media.video-btn:hover, .btn-bottom-media.video-btn.active {
+      background: #1d4ed8;
+      color: #ffffff;
+      border-color: #1d4ed8;
+    }
     .turn-status-label {
       font-family: var(--font-serif);
       font-size: 13.5px;
       font-weight: 700;
       color: #553412;
       min-width: 240px;
+      max-width: 360px;
       text-align: center;
+      padding: 6px 18px;
+      background: rgba(255, 253, 249, 0.94);
+      border: 1px solid #e5ded5;
+      border-radius: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    /* ========================================================
+       3D 감성 책장 넘김 (Sensory 3D Page Flip Motion)
+       ======================================================== */
+    .flip-page-leaf {
+      position: absolute;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      z-index: 120;
+      transform-style: preserve-3d;
+      pointer-events: none;
+      box-shadow: 0 8px 30px rgba(35, 20, 10, 0.18);
+    }
+
+    /* 다음 면 넘김 (우측 ➔ 좌측 회전, 0.52초 자연스러운 전환) */
+    .flip-page-leaf.flip-forward {
+      left: 50%;
+      transform-origin: left center;
+      animation: flipForwardAnim 0.52s cubic-bezier(0.28, 0.85, 0.32, 1) forwards;
+    }
+
+    /* 이전 면 넘김 (좌측 ➔ 우측 회전, 0.52초 자연스러운 전환) */
+    .flip-page-leaf.flip-backward {
+      left: 0;
+      transform-origin: right center;
+      animation: flipBackwardAnim 0.52s cubic-bezier(0.28, 0.85, 0.32, 1) forwards;
+    }
+
+    @keyframes flipForwardAnim {
+      0% {
+        transform: rotateY(0deg);
+        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+      }
+      45% {
+        filter: drop-shadow(-14px 18px 28px rgba(40, 22, 10, 0.32));
+      }
+      100% {
+        transform: rotateY(-180deg);
+        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+      }
+    }
+
+    @keyframes flipBackwardAnim {
+      0% {
+        transform: rotateY(0deg);
+        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+      }
+      45% {
+        filter: drop-shadow(14px 18px 28px rgba(40, 22, 10, 0.32));
+      }
+      100% {
+        transform: rotateY(180deg);
+        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+      }
+    }
+
+    /* 넘어가는 잎사귀의 앞면(현재 페이지) & 뒷면(한지 질감과 음영) */
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      overflow: hidden;
+      background: #FCF9F2;
+    }
+
+    .flip-face.flip-front {
+      z-index: 2;
+      transform: rotateY(0deg);
+    }
+
+    .flip-face.flip-back {
+      z-index: 1;
+      transform: rotateY(180deg);
+      background: linear-gradient(135deg, #FAF6EE 0%, #F3EBDF 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 60px rgba(110, 75, 45, 0.08);
+    }
+
+    .flip-back-spine-shadow {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 36px;
+      background: linear-gradient(to right, rgba(0,0,0,0.14) 0%, transparent 100%);
+    }
+    .flip-forward .flip-back-spine-shadow { right: 0; transform: scaleX(-1); }
+    .flip-backward .flip-back-spine-shadow { left: 0; }
+
+    .flip-back-watermark {
+      font-family: var(--font-serif);
+      color: #9C826C;
+      font-size: 2.2rem;
+      opacity: 0.35;
+      user-select: none;
+    }
+
+    /* 바닥 페이지에 드리우는 부드러운 전환 그림자 */
+    .flip-floor-shadow {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      z-index: 95;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .flip-floor-shadow.left-shadow {
+      left: 0;
+      background: linear-gradient(to left, rgba(40,22,10,0.22) 0%, transparent 65%);
+      animation: shadowFadeAnim 0.52s ease forwards;
+    }
+    .flip-floor-shadow.right-shadow {
+      right: 0;
+      background: linear-gradient(to right, rgba(40,22,10,0.22) 0%, transparent 65%);
+      animation: shadowFadeAnim 0.52s ease forwards;
+    }
+
+    @keyframes shadowFadeAnim {
+      0% { opacity: 0; }
+      45% { opacity: 0.85; }
+      100% { opacity: 0; }
     }
   </style>
 </head>
@@ -1073,13 +1343,24 @@
         </button>
       </div>
 
-      <div class="sidebar-bottom-actions">
-        <a href="시화집_완성본.pdf" download="노을빛기억_시화집_완성본.pdf" class="btn-pdf-download" id="btnPdfDownload" title="인쇄·제본용 300DPI 고화질 시화집 PDF 다운로드">
-          <span>📖</span> <span>PDF 다운로드</span>
-        </a>
-        <button type="button" class="btn-studio-link" id="btnStudioLink" onclick="openStudioEditor()" title="스토리북 스튜디오 편집기를 엽니다">
-          <span>🛠️</span> <span>스튜디오 편집기</span>
-        </button>
+      <!-- 📖 [독자용 시집 소장 & 공유] -->
+      <div class="sidebar-share-section">
+        <div class="sidebar-share-header">
+          <svg class="svg-icon" style="width: 13px; height: 13px; color: var(--accent-brown);" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+          <span>시집 소장 &amp; 공유</span>
+        </div>
+        <div class="sidebar-share-grid">
+          <!-- 1. PDF 소장본 다운로드 -->
+          <a href="시화집_완성본.pdf" download="노을빛기억_시화집_완성본.pdf" class="btn-sidebar-share btn-pdf" id="btnPdfDownload" title="인쇄·소장용 300DPI 고화질 시화집 PDF 다운로드">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            <span>시화집 PDF 소장본</span>
+          </a>
+          <!-- 2. 링크 복사 -->
+          <button type="button" class="btn-sidebar-share" onclick="shareGalleryLink()" title="현재 시화 갤러리 웹 주소를 복사하여 지인이나 카톡에 공유합니다.">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <span>시집 링크 복사하기</span>
+          </button>
+        </div>
       </div>
     </div>
   </aside>
@@ -1088,52 +1369,12 @@
        우측 메인 뷰포트: DTP 2-Layer 양면 펼침 북 리더
        ======================================================== -->
   <main class="main-viewport" id="mainViewport">
-    <!-- 상단 바: 현재 작품/섹션 정보 + 다면(1부/2부) 전환 + 오디오/비디오 컨트롤 -->
-    <div class="gallery-reader-topbar">
-      <div class="reader-title-info">
-        <span class="reader-ep-badge" id="poemBadge">제01화</span>
-        <h2 class="reader-work-title" id="poemTitle">새벽 대청</h2>
-        <span class="reader-page-meta" id="readerPageMeta"></span>
-      </div>
-
-      <!-- 다면 조판(4P/6P) 시 1부(1·2면) / 2부(3·4면) 전환 스위치 -->
-      <div class="spread-part-switcher" id="spreadPartSwitcher">
-        <button type="button" class="btn-part-tab active" id="btnSpreadPart1" onclick="switchGallerySpreadPart(1)">1부 (1·2면)</button>
-        <button type="button" class="btn-part-tab" id="btnSpreadPart2" onclick="switchGallerySpreadPart(2)">2부 (3·4면)</button>
-        <button type="button" class="btn-part-tab" id="btnSpreadPart3" onclick="switchGallerySpreadPart(3)" style="display:none;">3부 (5·6면)</button>
-      </div>
-
-      <!-- 오디오 & 비디오 통합 툴바 -->
-      <div class="reader-media-actions" id="galleryUnifiedMediaBar">
-        <button type="button" class="btn-top-media" id="btnGalleryAudioUnified" onclick="toggleGalleryAudioPlayer()" style="display:none;" title="시 낭송 또는 노래 오디오 플레이어를 엽니다">
-          <span id="galleryAudioIcon">🎧</span> <span id="galleryAudioText">오디오 듣기</span>
-        </button>
-        <button type="button" class="btn-top-media video-btn" id="btnGalleryVideoUnified" onclick="toggleGalleryVideoMenu(event)" style="display:none;" title="완성된 시화 영상을 감상합니다">
-          <span>🎬 영상 감상</span> <span style="font-size:10px; opacity:0.75;">▼</span>
-        </button>
-
-        <div id="galleryVideoDropdown" style="display:none; position:absolute; top:42px; right:0; background:#FFF; border:1.5px solid #60A5FA; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); z-index:1000; min-width:165px; overflow:hidden;">
-          <button type="button" id="menuGalleryPoemVideo" onclick="selectGalleryVideo('poem')" style="width:100%; text-align:left; padding:10px 14px; background:none; border:none; font-size:13px; font-weight:600; color:#1E3A8A; cursor:pointer; display:flex; align-items:center; gap:8px;">
-            <span>📖</span> <span>시 낭송 영상</span>
-          </button>
-          <button type="button" id="menuGallerySongVideo" onclick="selectGalleryVideo('song')" style="width:100%; text-align:left; padding:10px 14px; background:none; border:none; border-top:1px solid #DBEAFE; font-size:13px; font-weight:600; color:#1D4ED8; cursor:pointer; display:flex; align-items:center; gap:8px;">
-            <span>🎵</span> <span>노래 뮤직비디오</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 🌟 공유 및 웹 배포 도구 그룹 -->
-      <div class="gallery-share-actions" style="display: flex; gap: 8px; align-items: center; margin-left: 10px;">
-        <button type="button" class="btn-top-media" onclick="shareGalleryLink()" style="background: #ffffff; border: 1.5px solid #d4a373; color: #643e19; font-weight: 700; padding: 6px 12px; font-size: 0.82rem; border-radius: 6px; cursor: pointer;" title="현재 시화 갤러리 웹 주소를 복사하여 지인이나 카톡에 공유합니다.">
-          <span>🔗 링크 복사</span>
-        </button>
-        <button type="button" class="btn-top-media" onclick="shareToCommunityModal()" style="background: linear-gradient(135deg, #8b4513 0%, #643e19 100%); color: #ffffff; border: none; font-weight: 700; padding: 6px 14px; font-size: 0.82rem; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 5px rgba(100,62,25,0.25);" title="소통방에 [내 갤러리 구경 오세요] 글과 함께 시집을 공유하고 조언을 받습니다.">
-          <span>💬 내 갤러리 구경 오세요</span>
-        </button>
-        <button type="button" class="btn-top-media" onclick="exportWebGalleryZip()" style="background: #fdfaf6; border: 1.5px solid #c59b27; color: #8b5a2b; font-weight: 600; padding: 6px 12px; font-size: 0.82rem; border-radius: 6px; cursor: pointer;" title="Netlify, GitHub Pages, Vercel 등에 올릴 수 있는 독립 웹 갤러리 ZIP을 다운로드합니다.">
-          <span>🌐 웹 배포용 ZIP</span>
-        </button>
-      </div>
+    <!-- 상단 숨김 메타 (스크립트 참조용 안전 더미 컨테이너) -->
+    <div style="display: none !important;">
+      <span id="poemBadge"></span>
+      <h2 id="poemTitle"></h2>
+      <span id="readerPageMeta"></span>
+      <div id="spreadPartSwitcher"></div>
     </div>
 
     <!-- 플로팅 오디오 & 가사 드로어 -->
@@ -1244,12 +1485,45 @@
       </div>
     </div>
 
-    <!-- 하단: 연속 책장 넘기기 바 (1·2면 ➔ 3·4면 ➔ 다음 작품 자연스럽게 연결) -->
-    <div class="gallery-bottom-turnbar">
+    <!-- 하단: 연속 책장 넘기기 & 미디어 일체형 원스톱 컨트롤 바 (양끝 쪽수 수직 정렬 & 양단 고정) -->
+    <div class="gallery-bottom-turnbar" id="galleryUnifiedMediaBar">
+      <!-- 1. 좌측 끝 고정: [◀ 이전 면] (책장 좌측 쪽수 위치 수직 정렬) -->
       <button type="button" class="btn-page-turn" id="btnTurnPrev" onclick="navigateSpreadStep(-1)" title="이전 펼침면으로 책장을 넘깁니다 (키보드 ◀)">
         <span>◀</span> <span>이전 면</span>
       </button>
-      <div class="turn-status-label" id="turnStatusLabel">제01화 「새벽 대청」 — 1·2면</div>
+
+      <!-- 2. 중앙 영역: [오디오 듣기] + [시 정보 라벨] + [영상 감상 ▲] (대칭 정렬) -->
+      <div class="turnbar-middle-zone">
+        <div class="turnbar-media-slot left-media">
+          <button type="button" class="btn-bottom-media audio-btn" id="btnGalleryAudioUnified" onclick="toggleGalleryAudioPlayer()" style="display:none;" title="시 낭송 또는 노래 오디오 플레이어를 엽니다">
+            <svg class="svg-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            <span id="galleryAudioText">오디오 듣기</span>
+          </button>
+        </div>
+
+        <div class="turn-status-label" id="turnStatusLabel" title="현재 펼침면 정보">제01화 「새벽 대청」 — 1·2면</div>
+
+        <div class="turnbar-media-slot right-media">
+          <div class="bottom-video-wrap" id="bottomVideoWrap" style="position: relative; display: none;">
+            <button type="button" class="btn-bottom-media video-btn" id="btnGalleryVideoUnified" onclick="toggleGalleryVideoMenu(event)" title="완성된 시화 영상을 감상합니다">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 8 7 4-7 4Z"/></svg>
+              <span>영상 감상</span> <span style="font-size:10px; opacity:0.8;">▲</span>
+            </button>
+
+            <!-- 영상 드롭업 메뉴 (버튼 위로 팝업) -->
+            <div id="galleryVideoDropdown" style="display:none; position:absolute; bottom:calc(100% + 8px); right:0; background:#FFF; border:1.5px solid #60A5FA; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.18); z-index:1000; min-width:165px; overflow:hidden;">
+              <button type="button" id="menuGalleryPoemVideo" onclick="selectGalleryVideo('poem')" style="width:100%; text-align:left; padding:10px 14px; background:none; border:none; font-size:13px; font-weight:600; color:#1E3A8A; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> <span>시 낭송 영상</span>
+              </button>
+              <button type="button" id="menuGallerySongVideo" onclick="selectGalleryVideo('song')" style="width:100%; text-align:left; padding:10px 14px; background:none; border:none; border-top:1px solid #DBEAFE; font-size:13px; font-weight:600; color:#1D4ED8; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> <span>노래 뮤직비디오</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 우측 끝 고정: [다음 면 ▶] (책장 우측 쪽수 위치 수직 정렬) -->
       <button type="button" class="btn-page-turn" id="btnTurnNext" onclick="navigateSpreadStep(1)" title="다음 펼침면으로 책장을 넘깁니다 (키보드 ▶)">
         <span>다음 면</span> <span>▶</span>
       </button>
@@ -1419,18 +1693,117 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 4,
+          "font_size_pt": 12,
+          "line_height_ratio": 1.7,
+          "text_align": "left",
+          "backdrop_opacity": 0.85,
+          "text_color_mode": "dark",
+          "pages": [
+            {
+              "page_num": 1,
+              "usage": "image",
+              "role": "none",
+              "image_file": "./images/01_삽화.jpg",
+              "custom_text": "",
+              "image_scale_1": 105,
+              "image_scale": 105,
+              "frame_insets_1": {
+                "top": 0,
+                "bottom": 0,
+                "left": 0,
+                "right": 0
+              },
+              "frame_inset": 0,
+              "image_filter_1": {
+                "vignette": 48,
+                "blur": 0,
+                "tone": "none"
+              },
+              "image_filter": {
+                "vignette": 48,
+                "blur": 0,
+                "tone": "none"
+              },
+              "image_pan_1": {
+                "x": 0,
+                "y": -1
+              },
+              "image_pan": {
+                "x": 0,
+                "y": -1
+              },
+              "image_layout": "single",
+              "frame_insets_2": {
+                "top": -31,
+                "bottom": 74,
+                "left": 38,
+                "right": -76
+              },
+              "image_scale_2": 120,
+              "frame_scale": 80,
+              "image_pan_2": {
+                "x": 9,
+                "y": 14
+              },
+              "frame_scale_1": 80,
+              "frame_scale_2": 60,
+              "frame_offset_1": {
+                "x": 0,
+                "y": 0
+              },
+              "frame_offset": {
+                "x": 0,
+                "y": 0
+              },
+              "frame_offset_2": {
+                "x": -40,
+                "y": 94
+              },
+              "frame_inset_1": 0
+            },
+            {
+              "page_num": 2,
+              "usage": "text",
+              "role": "start",
+              "image_file": "",
+              "custom_text": "",
+              "max_lines": null
+            },
+            {
+              "page_num": 3,
+              "usage": "text",
+              "role": "continue",
+              "image_file": "images/01_새벽대청.jpg",
+              "custom_text": ""
+            },
+            {
+              "page_num": 4,
+              "usage": "text",
+              "role": "continue",
+              "image_file": "",
+              "custom_text": ""
+            }
+          ],
           "slots": [
             "image",
             "text",
             "text",
             "text"
           ],
+          "page_roles": [
+            "none",
+            "start",
+            "continue",
+            "continue"
+          ],
           "image_settings": {
             "page_1": {
               "mode": "image",
               "file": "./images/01_새벽대청.jpg"
             }
-          }
+          },
+          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif",
+          "letter_spacing_em": -0.02
         }
       },
       "start_page": 6,
@@ -1462,7 +1835,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -1485,7 +1858,10 @@
                 "left": 0,
                 "right": 0
               },
-              "max_lines": 6
+              "max_lines": 4,
+              "line_color_overrides": {
+                "title": "dark"
+              }
             },
             {
               "page_num": 2,
@@ -1503,8 +1879,7 @@
             "start",
             "continue"
           ],
-          "image_settings": {},
-          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+          "image_settings": {}
         }
       },
       "start_page": 10,
@@ -1536,7 +1911,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 4,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -1643,37 +2018,40 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
-          "backdrop_opacity": 0.85,
+          "backdrop_opacity": 1,
           "text_color_mode": "dark",
           "pages": [
             {
               "page_num": 1,
-              "usage": "image",
-              "role": "none",
+              "usage": "image_text",
+              "role": "title_only",
               "image_file": "images/04_밍밭에서.jpg",
-              "custom_text": ""
+              "custom_text": "",
+              "top_offset": 71,
+              "left_offset": 4,
+              "line_color_overrides": {}
             },
             {
               "page_num": 2,
               "usage": "text",
-              "role": "start",
+              "role": "continue",
               "image_file": "",
-              "custom_text": "독립 자유글을 이곳에 입력하세요."
+              "custom_text": "독립 자유글을 이곳에 입력하세요.",
+              "line_color_overrides": {}
             }
           ],
           "slots": [
-            "image",
+            "image_text",
             "text"
           ],
           "page_roles": [
-            "none",
-            "start"
+            "title_only",
+            "continue"
           ],
-          "image_settings": {},
-          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+          "image_settings": {}
         }
       },
       "start_page": 16,
@@ -1705,7 +2083,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 4,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -1773,7 +2151,7 @@
               "frame_insets_1": {
                 "top": 0,
                 "bottom": 418,
-                "left": 5,
+                "left": -11,
                 "right": 270
               },
               "top_offset": 173,
@@ -1812,7 +2190,7 @@
                 "top": 406,
                 "bottom": 26,
                 "left": 282,
-                "right": 0
+                "right": -17
               },
               "frame_insets_2": {
                 "top": 6,
@@ -1879,7 +2257,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -1945,16 +2323,16 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.91,
-          "text_color_mode": "dark",
+          "text_color_mode": "auto",
           "pages": [
             {
               "page_num": 1,
               "usage": "image_text",
-              "role": "start",
+              "role": "title_only",
               "image_file": "images/07_연을날리다.jpg",
               "custom_text": "",
               "max_lines": 4,
@@ -1985,6 +2363,11 @@
                 "vignette": 63,
                 "blur": 0,
                 "tone": "none"
+              },
+              "top_offset": 35,
+              "left_offset": 0,
+              "line_color_overrides": {
+                "title": "dark"
               }
             },
             {
@@ -2000,11 +2383,10 @@
             "text"
           ],
           "page_roles": [
-            "start",
+            "title_only",
             "continue"
           ],
-          "image_settings": {},
-          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+          "image_settings": {}
         }
       },
       "start_page": 24,
@@ -2036,7 +2418,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 4,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -2137,7 +2519,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 4,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -2237,7 +2619,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
@@ -2272,7 +2654,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -2301,8 +2683,7 @@
             "none",
             "start"
           ],
-          "image_settings": {},
-          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+          "image_settings": {}
         }
       },
       "start_page": 36,
@@ -2334,10 +2715,38 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
-          "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+          "backdrop_opacity": 0.85,
+          "text_color_mode": "dark",
+          "pages": [
+            {
+              "page_num": 1,
+              "usage": "image_text",
+              "role": "title_only",
+              "image_file": "./images/12_삽화.jpg",
+              "custom_text": "",
+              "top_offset": 79,
+              "left_offset": 14
+            },
+            {
+              "page_num": 2,
+              "usage": "text",
+              "role": "continue",
+              "image_file": "",
+              "custom_text": ""
+            }
+          ],
+          "slots": [
+            "image_text",
+            "text"
+          ],
+          "page_roles": [
+            "title_only",
+            "continue"
+          ],
+          "image_settings": {}
         }
       },
       "start_page": 38,
@@ -2369,7 +2778,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
@@ -2404,7 +2813,7 @@
         "author": "임종훈",
         "layout_config": {
           "page_count": 2,
-          "font_size_pt": 13,
+          "font_size_pt": 12,
           "line_height_ratio": 1.6,
           "text_align": "left",
           "backdrop_opacity": 0.85,
@@ -2572,18 +2981,117 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 4,
+      "font_size_pt": 12,
+      "line_height_ratio": 1.7,
+      "text_align": "left",
+      "backdrop_opacity": 0.85,
+      "text_color_mode": "dark",
+      "pages": [
+        {
+          "page_num": 1,
+          "usage": "image",
+          "role": "none",
+          "image_file": "./images/01_삽화.jpg",
+          "custom_text": "",
+          "image_scale_1": 105,
+          "image_scale": 105,
+          "frame_insets_1": {
+            "top": 0,
+            "bottom": 0,
+            "left": 0,
+            "right": 0
+          },
+          "frame_inset": 0,
+          "image_filter_1": {
+            "vignette": 48,
+            "blur": 0,
+            "tone": "none"
+          },
+          "image_filter": {
+            "vignette": 48,
+            "blur": 0,
+            "tone": "none"
+          },
+          "image_pan_1": {
+            "x": 0,
+            "y": -1
+          },
+          "image_pan": {
+            "x": 0,
+            "y": -1
+          },
+          "image_layout": "single",
+          "frame_insets_2": {
+            "top": -31,
+            "bottom": 74,
+            "left": 38,
+            "right": -76
+          },
+          "image_scale_2": 120,
+          "frame_scale": 80,
+          "image_pan_2": {
+            "x": 9,
+            "y": 14
+          },
+          "frame_scale_1": 80,
+          "frame_scale_2": 60,
+          "frame_offset_1": {
+            "x": 0,
+            "y": 0
+          },
+          "frame_offset": {
+            "x": 0,
+            "y": 0
+          },
+          "frame_offset_2": {
+            "x": -40,
+            "y": 94
+          },
+          "frame_inset_1": 0
+        },
+        {
+          "page_num": 2,
+          "usage": "text",
+          "role": "start",
+          "image_file": "",
+          "custom_text": "",
+          "max_lines": null
+        },
+        {
+          "page_num": 3,
+          "usage": "text",
+          "role": "continue",
+          "image_file": "images/01_새벽대청.jpg",
+          "custom_text": ""
+        },
+        {
+          "page_num": 4,
+          "usage": "text",
+          "role": "continue",
+          "image_file": "",
+          "custom_text": ""
+        }
+      ],
       "slots": [
         "image",
         "text",
         "text",
         "text"
       ],
+      "page_roles": [
+        "none",
+        "start",
+        "continue",
+        "continue"
+      ],
       "image_settings": {
         "page_1": {
           "mode": "image",
           "file": "./images/01_새벽대청.jpg"
         }
-      }
+      },
+      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif",
+      "letter_spacing_em": -0.02
     },
     "chapter": "",
     "author": "임종훈"
@@ -2625,7 +3133,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -2648,7 +3156,10 @@
             "left": 0,
             "right": 0
           },
-          "max_lines": 6
+          "max_lines": 4,
+          "line_color_overrides": {
+            "title": "dark"
+          }
         },
         {
           "page_num": 2,
@@ -2666,8 +3177,7 @@
         "start",
         "continue"
       ],
-      "image_settings": {},
-      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+      "image_settings": {}
     },
     "chapter": "",
     "author": "임종훈"
@@ -2709,7 +3219,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 4,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -2826,37 +3336,40 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
-      "backdrop_opacity": 0.85,
+      "backdrop_opacity": 1,
       "text_color_mode": "dark",
       "pages": [
         {
           "page_num": 1,
-          "usage": "image",
-          "role": "none",
+          "usage": "image_text",
+          "role": "title_only",
           "image_file": "images/04_밍밭에서.jpg",
-          "custom_text": ""
+          "custom_text": "",
+          "top_offset": 71,
+          "left_offset": 4,
+          "line_color_overrides": {}
         },
         {
           "page_num": 2,
           "usage": "text",
-          "role": "start",
+          "role": "continue",
           "image_file": "",
-          "custom_text": "독립 자유글을 이곳에 입력하세요."
+          "custom_text": "독립 자유글을 이곳에 입력하세요.",
+          "line_color_overrides": {}
         }
       ],
       "slots": [
-        "image",
+        "image_text",
         "text"
       ],
       "page_roles": [
-        "none",
-        "start"
+        "title_only",
+        "continue"
       ],
-      "image_settings": {},
-      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+      "image_settings": {}
     },
     "chapter": "",
     "author": "임종훈"
@@ -2898,7 +3411,7 @@
     "part2_mode": "image",
     "layout_config": {
       "page_count": 4,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -2966,7 +3479,7 @@
           "frame_insets_1": {
             "top": 0,
             "bottom": 418,
-            "left": 5,
+            "left": -11,
             "right": 270
           },
           "top_offset": 173,
@@ -3005,7 +3518,7 @@
             "top": 406,
             "bottom": 26,
             "left": 282,
-            "right": 0
+            "right": -17
           },
           "frame_insets_2": {
             "top": 6,
@@ -3082,7 +3595,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -3158,16 +3671,16 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.91,
-      "text_color_mode": "dark",
+      "text_color_mode": "auto",
       "pages": [
         {
           "page_num": 1,
           "usage": "image_text",
-          "role": "start",
+          "role": "title_only",
           "image_file": "images/07_연을날리다.jpg",
           "custom_text": "",
           "max_lines": 4,
@@ -3198,6 +3711,11 @@
             "vignette": 63,
             "blur": 0,
             "tone": "none"
+          },
+          "top_offset": 35,
+          "left_offset": 0,
+          "line_color_overrides": {
+            "title": "dark"
           }
         },
         {
@@ -3213,11 +3731,10 @@
         "text"
       ],
       "page_roles": [
-        "start",
+        "title_only",
         "continue"
       ],
-      "image_settings": {},
-      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+      "image_settings": {}
     },
     "chapter": "",
     "author": "임종훈"
@@ -3259,7 +3776,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 4,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -3370,7 +3887,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 4,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -3480,7 +3997,7 @@
     "part2_mode": "motif_symbol",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
@@ -3525,7 +4042,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -3554,8 +4071,7 @@
         "none",
         "start"
       ],
-      "image_settings": {},
-      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+      "image_settings": {}
     },
     "chapter": "",
     "author": "임종훈"
@@ -3597,10 +4113,38 @@
     "part2_mode": "motif_symbol",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
-      "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
+      "backdrop_opacity": 0.85,
+      "text_color_mode": "dark",
+      "pages": [
+        {
+          "page_num": 1,
+          "usage": "image_text",
+          "role": "title_only",
+          "image_file": "./images/12_삽화.jpg",
+          "custom_text": "",
+          "top_offset": 79,
+          "left_offset": 14
+        },
+        {
+          "page_num": 2,
+          "usage": "text",
+          "role": "continue",
+          "image_file": "",
+          "custom_text": ""
+        }
+      ],
+      "slots": [
+        "image_text",
+        "text"
+      ],
+      "page_roles": [
+        "title_only",
+        "continue"
+      ],
+      "image_settings": {}
     },
     "chapter": "",
     "author": "임종훈"
@@ -3642,7 +4186,7 @@
     "part2_mode": "motif_symbol",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "font_family": "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif"
@@ -3687,7 +4231,7 @@
     "part2_mode": "poem_text",
     "layout_config": {
       "page_count": 2,
-      "font_size_pt": 13,
+      "font_size_pt": 12,
       "line_height_ratio": 1.6,
       "text_align": "left",
       "backdrop_opacity": 0.85,
@@ -3735,7 +4279,7 @@
 ];
     // [AUTO-SYNC-GALLERY-DATA-END]
 
-    let currentIndex = 0;           // 현재 선택된 시화 작품 인덱스 (EPISODES 기준)
+    let currentIndex = -1;          // 현재 선택된 시화 작품 인덱스 (초기 로드 감지를 위해 -1로 시작)
     let currentSpreadPart = 1;      // 1 = 1·2면, 2 = 3·4면, 3 = 5·6면
     let currentSectionId = null;    // 부속물 열람 시 섹션 ID ('cover', 'half_title', 'prologue', 'toc', 'epilogue', 'colophon', 'back_cover', 'part_1' 등)
     let tocMode = 'poems';          // 'poems' (시화 작품만) | 'full' (표지·서문·목차·간지·판권 포함 전권 구성)
@@ -3776,13 +4320,25 @@
     function adjustSpreadScale() {
       const wrap = document.getElementById('spreadStageWrap');
       const spread = document.getElementById('bookSpreadContainer');
+      const mediaBar = document.getElementById('galleryUnifiedMediaBar');
       if (!wrap || !spread) return;
       const availW = wrap.clientWidth - 16;
       const availH = wrap.clientHeight - 8;
       const scaleW = availW / 960;
       const scaleH = availH / 660;
-      const scale = Math.max(0.55, Math.min(1.18, Math.min(scaleW, scaleH)));
+      const scale = Math.max(0.55, Math.min(1.28, Math.min(scaleW, scaleH)));
       spread.style.transform = `scale(${scale.toFixed(3)})`;
+
+      if (mediaBar) {
+        // 책장의 실제 시각적 너비(960 * scale)에 하단 바 너비를 100% 일치
+        const visualW = 960 * scale;
+        mediaBar.style.width = `${visualW.toFixed(1)}px`;
+        mediaBar.style.maxWidth = `${visualW.toFixed(1)}px`;
+        // 책장의 좌/우 쪽수(left: 28px, right: 28px) 위치에 맞춰 수직 정렬 패딩
+        const pad = Math.round(28 * scale);
+        mediaBar.style.paddingLeft = `${pad}px`;
+        mediaBar.style.paddingRight = `${pad}px`;
+      }
     }
     window.addEventListener('resize', adjustSpreadScale);
 
@@ -3880,7 +4436,7 @@
       const rawBody = (work.poem_body || work.body || '').replace(/\r\n/g, '\n').replace(/  \n/g, '\n').trim();
       const rawLines = rawBody ? rawBody.split('\n') : [];
 
-      const pt = parseFloat(cfg.font_size_pt) || 13;
+      const pt = parseFloat(cfg.font_size_pt) || 12;
       const lh = parseFloat(cfg.line_height_ratio) || 1.6;
       const fontPx = (pt / 12.0) * 15.2;
       const linePx = fontPx * lh;
@@ -3891,7 +4447,7 @@
         const leftOff = (pageObj && pageObj.left_offset) ? parseInt(pageObj.left_offset, 10) : 0;
         const rightOff = (pageObj && pageObj.right_offset) ? parseInt(pageObj.right_offset, 10) : 0;
         const effWidth = Math.max(120, 365 - leftOff - rightOff);
-        const chars = Math.max(8, Math.floor(effWidth / (fontPx * 0.95)));
+        const chars = Math.max(8, Math.floor(effWidth / (fontPx * 0.78)));
         return Math.max(1, Math.ceil(trimmed.length / chars));
       };
 
@@ -3924,7 +4480,8 @@
         }
 
         const topOffset = p.top_offset ? parseInt(p.top_offset, 10) : 0;
-        const maxSafeHeight = Math.max(100, 522 - topOffset);
+        // 18행(468px) 수용 & 쪽수 위 여백 확보
+        const maxSafeHeight = Math.max(100, 468 - topOffset);
         const availableHeight = Math.max(100, maxSafeHeight - 28);
         const maxSafeLines = Math.max(3, Math.floor(availableHeight / linePx));
         const customLines = p.max_lines ? parseInt(p.max_lines, 10) : 0;
@@ -3985,64 +4542,138 @@
     // --------------------------------------------------------
     // 5. DTP Layer 1 (그림 레이어) & Layer 2 (글 레이어) 렌더러
     // --------------------------------------------------------
-    function applyFrameInsetsStyle(frameEl, insets, layout, frameNum = 1) {
+    function applyFrameInsetsStyle(frameEl, insets, layout, frameNum = 1, pageData = null) {
       if (!frameEl) return;
-      const top = Math.max(0, parseInt(insets?.top, 10) || 0);
-      const bottom = Math.max(0, parseInt(insets?.bottom, 10) || 0);
-      const left = Math.max(0, parseInt(insets?.left, 10) || 0);
-      const right = Math.max(0, parseInt(insets?.right, 10) || 0);
+      // 음수 인셋(확장)도 허용
+      const top = parseInt(insets?.top, 10) || 0;
+      const bottom = parseInt(insets?.bottom, 10) || 0;
+      const left = parseInt(insets?.left, 10) || 0;
+      const right = parseInt(insets?.right, 10) || 0;
+
+      // 1) 틀 통째 평행이동 offset
+      const offsetKey = (frameNum === 2) ? 'frame_offset_2' : 'frame_offset_1';
+      const offset = pageData?.[offsetKey] || (frameNum === 1 ? pageData?.frame_offset : null) || { x: 0, y: 0 };
+      const offX = parseInt(offset.x, 10) || 0;
+      const offY = parseInt(offset.y, 10) || 0;
 
       frameEl.style.position = 'absolute';
       frameEl.style.margin = '0';
+      frameEl.style.transform = `translate(${offX}px, ${offY}px)`;
 
       const parentW = 480;
       const parentH = 622;
       let refW = parentW;
       let refH = parentH;
+      if (layout === 'split_vertical' || layout === 'main_detail') {
+        refH = Math.floor((parentH - 8) / 2);
+      } else if (layout === 'split_horizontal') {
+        refW = Math.floor((parentW - 8) / 2);
+      }
+
+      // 2) 틀 여백 (frame_inset_1 / frame_inset_2, 0~50px) 독립 연동
+      const insetKey = (frameNum === 2) ? 'frame_inset_2' : 'frame_inset_1';
+      const baseInset = Math.max(0, parseInt(pageData?.[insetKey] !== undefined ? pageData[insetKey] : (pageData?.frame_inset || 0), 10));
+
+      // 3) 그림틀 크기 (frame_scale_1 / frame_scale_2, 10~100%) 독립 비율 축소 연동
+      const scaleKey = (frameNum === 2) ? 'frame_scale_2' : 'frame_scale_1';
+      const frameScale = Math.max(10, Math.min(100, parseInt(pageData?.[scaleKey] !== undefined ? pageData[scaleKey] : (pageData?.frame_scale !== undefined ? pageData.frame_scale : 100), 10)));
+      const scaleRatio = frameScale / 100.0;
+      const scaleMarginX = Math.round((refW * (1.0 - scaleRatio)) / 2);
+      const scaleMarginY = Math.round((refH * (1.0 - scaleRatio)) / 2);
+
+      const totalTop = top + baseInset + scaleMarginY;
+      const totalBottom = bottom + baseInset + scaleMarginY;
+      const totalLeft = left + baseInset + scaleMarginX;
+      const totalRight = right + baseInset + scaleMarginX;
+
+      // 최소 크기 엄격 보장 (높이 80px, 너비 90px)
+      const minFrameH = 80;
+      const minFrameW = 90;
+
+      let clampedTop = totalTop;
+      let clampedBottom = totalBottom;
+      let clampedLeft = totalLeft;
+      let clampedRight = totalRight;
+
+      if (clampedTop + clampedBottom > refH - minFrameH) {
+        const excess = (clampedTop + clampedBottom) - (refH - minFrameH);
+        const topRatio = (clampedTop > 0) ? (clampedTop / (clampedTop + clampedBottom)) : 0.5;
+        clampedTop = Math.round(clampedTop - excess * topRatio);
+        clampedBottom = Math.round(clampedBottom - excess * (1 - topRatio));
+      }
+
+      if (clampedLeft + clampedRight > refW - minFrameW) {
+        const excess = (clampedLeft + clampedRight) - (refW - minFrameW);
+        const leftRatio = (clampedLeft > 0) ? (clampedLeft / (clampedLeft + clampedRight)) : 0.5;
+        clampedLeft = Math.round(clampedLeft - excess * leftRatio);
+        clampedRight = Math.round(clampedRight - excess * (1 - leftRatio));
+      }
+
+      const baseZ = (frameNum === 2) ? 20 : 10;
+      frameEl.style.zIndex = `${baseZ}`;
 
       if (layout === 'single') {
-        frameEl.style.top = `${top}px`;
-        frameEl.style.bottom = `${bottom}px`;
-        frameEl.style.left = `${left}px`;
-        frameEl.style.right = `${right}px`;
-      } else if (layout === 'split_vertical' || layout === 'main_detail') {
-        refH = Math.floor((parentH - 10) / 2);
-        frameEl.style.left = `${left}px`;
-        frameEl.style.right = `${right}px`;
+        frameEl.style.top = `${clampedTop}px`;
+        frameEl.style.bottom = `${clampedBottom}px`;
+        frameEl.style.left = `${clampedLeft}px`;
+        frameEl.style.right = `${clampedRight}px`;
+      } else if (layout === 'overlay_collage') {
         if (frameNum === 1) {
-          frameEl.style.top = `${top}px`;
-          frameEl.style.bottom = `calc(50% + 5px + ${bottom}px)`;
+          frameEl.style.top = `${clampedTop}px`;
+          frameEl.style.bottom = `${clampedBottom}px`;
+          frameEl.style.left = `${clampedLeft}px`;
+          frameEl.style.right = `${clampedRight}px`;
         } else {
-          frameEl.style.top = `calc(50% + 5px + ${top}px)`;
-          frameEl.style.bottom = `${bottom}px`;
+          const defTop = (top === 0 && bottom === 0) ? Math.round(parentH * 0.40) : top;
+          const defLeft = (left === 0 && right === 0) ? Math.round(parentW * 0.38) : left;
+          const defRight = (left === 0 && right === 0) ? 15 : right;
+          const defBottom = (top === 0 && bottom === 0) ? 20 : bottom;
+
+          const collTop = defTop + baseInset + scaleMarginY;
+          const collBottom = defBottom + baseInset + scaleMarginY;
+          const collLeft = defLeft + baseInset + scaleMarginX;
+          const collRight = defRight + baseInset + scaleMarginX;
+
+          frameEl.style.top = `${collTop}px`;
+          frameEl.style.bottom = `${collBottom}px`;
+          frameEl.style.left = `${collLeft}px`;
+          frameEl.style.right = `${collRight}px`;
+          frameEl.style.zIndex = '20';
+          frameEl.style.borderRadius = '8px';
+          frameEl.style.boxShadow = '0 12px 32px rgba(35, 20, 10, 0.26), 0 2px 8px rgba(0, 0, 0, 0.10)';
+        }
+      } else if (layout === 'split_vertical' || layout === 'main_detail') {
+        frameEl.style.left = `${clampedLeft}px`;
+        frameEl.style.right = `${clampedRight}px`;
+        if (frameNum === 1) {
+          frameEl.style.top = `${clampedTop}px`;
+          frameEl.style.bottom = `calc(50% + 4px + ${clampedBottom}px)`;
+        } else {
+          frameEl.style.top = `calc(50% + 4px + ${clampedTop}px)`;
+          frameEl.style.bottom = `${clampedBottom}px`;
         }
       } else if (layout === 'split_horizontal') {
-        refW = Math.floor((parentW - 10) / 2);
-        frameEl.style.top = `${top}px`;
-        frameEl.style.bottom = `${bottom}px`;
+        frameEl.style.top = `${clampedTop}px`;
+        frameEl.style.bottom = `${clampedBottom}px`;
         if (frameNum === 1) {
-          frameEl.style.left = `${left}px`;
-          frameEl.style.right = `calc(50% + 5px + ${right}px)`;
+          frameEl.style.left = `${clampedLeft}px`;
+          frameEl.style.right = `calc(50% + 4px + ${clampedRight}px)`;
         } else {
-          frameEl.style.left = `calc(50% + 5px + ${left}px)`;
-          frameEl.style.right = `${right}px`;
+          frameEl.style.left = `calc(50% + 4px + ${clampedLeft}px)`;
+          frameEl.style.right = `${clampedRight}px`;
         }
       } else {
-        frameEl.style.top = `${top}px`;
-        frameEl.style.bottom = `${bottom}px`;
-        frameEl.style.left = `${left}px`;
-        frameEl.style.right = `${right}px`;
+        frameEl.style.top = `${clampedTop}px`;
+        frameEl.style.bottom = `${clampedBottom}px`;
+        frameEl.style.left = `${clampedLeft}px`;
+        frameEl.style.right = `${clampedRight}px`;
       }
 
       const img = frameEl.querySelector('img');
-      if (img && (top > 0 || bottom > 0 || left > 0 || right > 0)) {
+      if (img && (totalTop > 0 || totalBottom > 0 || totalLeft > 0 || totalRight > 0)) {
         img.style.position = 'absolute';
-        img.style.width = `${refW}px`;
-        img.style.height = `${refH}px`;
-        img.style.maxWidth = 'none';
-        img.style.maxHeight = 'none';
-        img.style.left = `${-left}px`;
-        img.style.top = `${-top}px`;
+        img.style.width = '100%';
+        img.style.height = '100%';
         img.style.objectFit = 'cover';
       }
     }
@@ -4063,14 +4694,21 @@
       else if (filter?.tone === 'vintage') fStr += `sepia(0.3) saturate(1.2) hue-rotate(-10deg) `;
       imgElem.style.filter = fStr.trim();
 
-      if (filter?.vignette > 0) {
-        const vigPct = 100 - (filter.vignette * 0.4);
-        const grad = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
-        imgElem.style.webkitMaskImage = grad;
-        imgElem.style.maskImage = grad;
-      } else {
-        imgElem.style.webkitMaskImage = 'none';
-        imgElem.style.maskImage = 'none';
+      // [개선]: 그림틀(.dtp-frame-crop)에 마스크 적용 (그림 이동 시에도 틀의 테두리 전체가 항상 페이드아웃)
+      imgElem.style.webkitMaskImage = 'none';
+      imgElem.style.maskImage = 'none';
+
+      const frameCrop = imgElem.closest('.dtp-frame-crop') || imgElem.parentElement;
+      if (frameCrop) {
+        if (filter?.vignette > 0) {
+          const vigPct = Math.max(20, 100 - (filter.vignette * 0.5));
+          const grad = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+          frameCrop.style.webkitMaskImage = grad;
+          frameCrop.style.maskImage = grad;
+        } else {
+          frameCrop.style.webkitMaskImage = 'none';
+          frameCrop.style.maskImage = 'none';
+        }
       }
     }
 
@@ -4081,8 +4719,7 @@
       if (!layerImage) return;
 
       layerImage.querySelectorAll('.dtp-image-frame').forEach(el => el.remove());
-      const insetVal = pageData.frame_inset || 0;
-      layerImage.style.padding = `${insetVal}px`;
+      layerImage.style.padding = '0';
 
       if (pageData.usage === 'text') {
         layerImage.style.display = 'none';
@@ -4119,7 +4756,7 @@
         frame1.setAttribute('data-sub-frame', '1');
         frame1.innerHTML = `<div class="dtp-frame-crop">${url1 ? `<img src="${url1}" alt="시화 삽화" draggable="false">` : ''}</div>`;
         const insets1 = pageData.frame_insets_1 || { top: 0, bottom: 0, left: 0, right: 0 };
-        applyFrameInsetsStyle(frame1, insets1, layout, 1);
+        applyFrameInsetsStyle(frame1, insets1, layout, 1, pageData);
         const img1 = frame1.querySelector('img');
         if (img1) {
           const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
@@ -4134,7 +4771,7 @@
         frame1.setAttribute('data-sub-frame', '1');
         frame1.innerHTML = `<div class="dtp-frame-crop">${url1 ? `<img src="${url1}" alt="1번 삽화" draggable="false">` : ''}</div>`;
         const insets1 = pageData.frame_insets_1 || { top: 0, bottom: 0, left: 0, right: 0 };
-        applyFrameInsetsStyle(frame1, insets1, layout, 1);
+        applyFrameInsetsStyle(frame1, insets1, layout, 1, pageData);
         const img1 = frame1.querySelector('img');
         if (img1) {
           const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
@@ -4148,7 +4785,7 @@
         frame2.setAttribute('data-sub-frame', '2');
         frame2.innerHTML = `<div class="dtp-frame-crop">${url2 ? `<img src="${url2}" alt="2번 삽화" draggable="false">` : ''}</div>`;
         const insets2 = pageData.frame_insets_2 || { top: 0, bottom: 0, left: 0, right: 0 };
-        applyFrameInsetsStyle(frame2, insets2, layout, 2);
+        applyFrameInsetsStyle(frame2, insets2, layout, 2, pageData);
         const img2 = frame2.querySelector('img');
         if (img2) {
           const p2 = pageData.image_pan_2 || { x: 0, y: 0 };
@@ -4233,6 +4870,104 @@
           }
         }
       });
+
+      // 제목 상자 가독성 동기화
+      const boxTitle = document.getElementById(`dtpBoxTitle${capSide}`);
+      const titleElem = document.getElementById(`dtpTitle${capSide}`);
+      const authorElem = document.getElementById(`dtpAuthor${capSide}`);
+      const titleDivider = boxTitle ? boxTitle.querySelector('.dtp-title-divider') : null;
+
+      if (boxTitle && (pageData.role === 'start' || pageData.role === 'title_only')) {
+        let isTitleOverImage = (pageData.usage === 'image_text');
+        const titleManualSetting = lineOverrides['title'];
+        let finalTitleColor = 'dark';
+        if (titleManualSetting === 'light') finalTitleColor = 'light';
+        else if (titleManualSetting === 'dark') finalTitleColor = 'dark';
+        else if (mode === 'light') finalTitleColor = 'light';
+        else if (mode === 'dark') finalTitleColor = 'dark';
+        else finalTitleColor = isTitleOverImage ? 'light' : 'dark';
+
+        boxTitle.classList.remove('hanji-backdrop');
+        boxTitle.style.removeProperty('background-color');
+        boxTitle.style.removeProperty('backdrop-filter');
+        boxTitle.style.removeProperty('-webkit-backdrop-filter');
+        boxTitle.style.removeProperty('border-radius');
+        boxTitle.style.removeProperty('box-shadow');
+
+        if (pageData.usage === 'image_text' && opacity > 0) {
+          const whiteAlpha = Math.min(0.96, 0.45 + (opacity * 0.5));
+          const darkAlpha = Math.min(0.85, 0.25 + (opacity * 0.45));
+          if (titleElem) {
+            titleElem.classList.add('title-hanji-backdrop');
+            titleElem.style.setProperty('display', 'inline-block', 'important');
+            titleElem.style.setProperty('padding', '3px 10px', 'important');
+            titleElem.style.setProperty('border-radius', '6px', 'important');
+            if (finalTitleColor === 'dark') {
+              titleElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+              titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(255, 254, 250, ${whiteAlpha})`, 'important');
+            } else {
+              titleElem.style.setProperty('background-color', `rgba(20, 15, 11, ${darkAlpha})`, 'important');
+              titleElem.style.setProperty('box-shadow', `0 0 14px 7px rgba(20, 15, 11, ${darkAlpha})`, 'important');
+            }
+            titleElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            titleElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
+          if (authorElem && authorElem.style.display !== 'none') {
+            authorElem.classList.add('author-hanji-backdrop');
+            authorElem.style.setProperty('display', 'inline-block', 'important');
+            authorElem.style.setProperty('padding', '2px 8px', 'important');
+            authorElem.style.setProperty('border-radius', '4px', 'important');
+            if (finalTitleColor === 'dark') {
+              authorElem.style.setProperty('background-color', `rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+              authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(255, 254, 250, ${whiteAlpha * 0.9})`, 'important');
+            } else {
+              authorElem.style.setProperty('background-color', `rgba(20, 15, 11, ${darkAlpha * 0.9})`, 'important');
+              authorElem.style.setProperty('box-shadow', `0 0 10px 5px rgba(20, 15, 11, ${darkAlpha * 0.9})`, 'important');
+            }
+            authorElem.style.setProperty('backdrop-filter', 'blur(4px)', 'important');
+            authorElem.style.setProperty('-webkit-backdrop-filter', 'blur(4px)', 'important');
+          }
+        } else {
+          if (titleElem) {
+            titleElem.classList.remove('title-hanji-backdrop');
+            titleElem.style.removeProperty('background-color');
+            titleElem.style.removeProperty('box-shadow');
+            titleElem.style.removeProperty('backdrop-filter');
+            titleElem.style.removeProperty('-webkit-backdrop-filter');
+          }
+          if (authorElem) {
+            authorElem.classList.remove('author-hanji-backdrop');
+            authorElem.style.removeProperty('background-color');
+            authorElem.style.removeProperty('box-shadow');
+            authorElem.style.removeProperty('backdrop-filter');
+            authorElem.style.removeProperty('-webkit-backdrop-filter');
+          }
+        }
+
+        if (titleElem) {
+          if (finalTitleColor === 'light') {
+            titleElem.style.setProperty('color', '#FFFFFF', 'important');
+            titleElem.style.setProperty('text-shadow', '0 2px 8px rgba(0, 0, 0, 0.85)', 'important');
+          } else {
+            titleElem.style.setProperty('color', '#1A120B', 'important');
+            titleElem.style.setProperty('text-shadow', '0 1px 3px rgba(255, 255, 255, 0.9)', 'important');
+          }
+        }
+        if (authorElem) {
+          if (finalTitleColor === 'light') {
+            authorElem.style.setProperty('color', 'rgba(255, 255, 255, 0.92)', 'important');
+          } else {
+            authorElem.style.setProperty('color', '#6E5340', 'important');
+          }
+        }
+        if (titleDivider) {
+          if (finalTitleColor === 'light') {
+            titleDivider.style.setProperty('background', 'rgba(255, 255, 255, 0.55)', 'important');
+          } else {
+            titleDivider.style.setProperty('background', '#D8C7B4', 'important');
+          }
+        }
+      }
     }
 
     function renderTextLayer(side, pageData, work, cfg, pageIdx, textFlowMap) {
@@ -4271,10 +5006,21 @@
       const isLightText = (cfg.text_color_mode === 'light' && pageData.usage === 'image_text');
       layerText.classList.toggle('text-color-light', isLightText);
 
-      // 1) 제목 상자
-      if (pageData.role === 'start') {
+      // 1) 제목 상자 (start: 제목+지은이+본문, title_only: 단독 표제면, continue: 플레이스홀더)
+      if (pageData.role === 'start' || pageData.role === 'title_only') {
         boxTitle.classList.remove('dtp-title-placeholder');
         boxTitle.style.display = 'block';
+
+        if (pageData.role === 'title_only') {
+          const titleTop = parseInt(pageData.top_offset, 10) || 0;
+          const titleLeft = parseInt(pageData.left_offset, 10) || 0;
+          boxTitle.style.marginTop = titleTop > 0 ? `${titleTop}px` : '0px';
+          boxTitle.style.marginLeft = titleLeft > 0 ? `${titleLeft}px` : '0px';
+        } else {
+          boxTitle.style.marginTop = '0px';
+          boxTitle.style.marginLeft = '0px';
+        }
+
         if (titleElem) titleElem.innerText = work.title || '무제';
         if (authorElem) {
           authorElem.style.display = 'none';
@@ -4282,10 +5028,20 @@
       } else if (pageData.role === 'continue') {
         boxTitle.classList.add('dtp-title-placeholder');
         boxTitle.style.display = 'block';
+        boxTitle.style.marginTop = '0px';
+        boxTitle.style.marginLeft = '0px';
         if (titleElem) titleElem.innerText = '';
       } else {
         boxTitle.classList.remove('dtp-title-placeholder');
         boxTitle.style.display = 'none';
+        boxTitle.style.marginTop = '0px';
+        boxTitle.style.marginLeft = '0px';
+      }
+
+      // 표제면(title_only)일 때는 본문 글상자 숨김
+      if (pageData.role === 'title_only') {
+        if (boxBody) boxBody.style.display = 'none';
+        return;
       }
 
       // 2) 본문 상자
@@ -4301,14 +5057,14 @@
         boxBody.style.marginRight = rightOffset > 0 ? `${rightOffset}px` : '0px';
         boxBody.style.width = (leftOffset > 0 || rightOffset > 0) ? `calc(100% - ${leftOffset + rightOffset}px)` : '100%';
 
-        const basePt = parseFloat(cfg.font_size_pt) || 13;
+        const basePt = parseFloat(cfg.font_size_pt) || 12;
         const effPt = Math.max(9, Math.min(22, basePt + readerFontDeltaPt));
         const lh = parseFloat(cfg.line_height_ratio) || 1.6;
+        const fontPx = (effPt / 12.0) * 15.2;
+        const linePx = fontPx * lh;
 
         if (pageData.max_lines) {
-          const fontPx = (basePt / 12.0) * 15.2;
-          const linePx = fontPx * lh;
-          const maxAllowedH = Math.max(80, 520 - 64 - 12 - topOffset);
+          const maxAllowedH = Math.max(80, 468 - topOffset);
           const customH = Math.min(maxAllowedH, Math.max(80, Math.round(pageData.max_lines * linePx + 28)));
           boxBody.style.height = `${customH}px`;
           boxBody.style.flex = 'none';
@@ -4317,11 +5073,12 @@
           boxBody.style.flex = '1 1 auto';
         }
 
-        const remSize = (effPt / 12.0) * 0.95;
-        bodyElem.style.fontSize = `${remSize.toFixed(2)}rem`;
-        bodyElem.style.lineHeight = `${lh}`;
+        bodyElem.style.fontSize = `${fontPx.toFixed(2)}px`;
+        bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
         const fontFam = cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif";
         bodyElem.style.setProperty('font-family', fontFam, 'important');
+
+        const lineStyle = `min-height:${linePx.toFixed(2)}px; line-height:${linePx.toFixed(2)}px; font-family:${fontFam};`;
 
         const align = cfg.text_align || 'left';
         bodyElem.classList.remove('text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify');
@@ -4330,7 +5087,7 @@
 
         if (pageData.role === 'independent') {
           const customTxt = pageData.custom_text || '';
-          bodyElem.innerHTML = customTxt.split('\n').map(line => `<p class="poem-line">${line || '&nbsp;'}</p>`).join('');
+          bodyElem.innerHTML = customTxt.split('\n').map(line => `<p class="poem-line" style="${lineStyle}">${line || '&nbsp;'}</p>`).join('');
         } else if (pageData.custom_html && pageData.custom_html.trim()) {
           bodyElem.innerHTML = pageData.custom_html;
         } else {
@@ -4339,9 +5096,12 @@
             bodyElem.innerHTML = lines.map((line, lIdx) => {
               const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trimEnd();
               if (!trimmed.trim()) {
-                return `<p class="poem-line empty-line" data-line-idx="${lIdx}"><br></p>`;
+                return `<p class="poem-line empty-line" data-line-idx="${lIdx}" style="${lineStyle}"><br></p>`;
               }
-              return `<p class="poem-line" data-line-idx="${lIdx}"><span class="line-text">${trimmed.trim()}</span></p>`;
+              const isHanging = /^["'“‘「『\(\<]/.test(trimmed.trim());
+              const hangClass = isHanging ? ' hang-quote' : '';
+              const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+              return `<p class="poem-line${hangClass}" data-line-idx="${lIdx}" style="${lineStyle} ${hangStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
             }).join('');
           } else {
             bodyElem.innerHTML = '';
@@ -4373,21 +5133,7 @@
 
       const contBadge = document.getElementById(`dtpContinue${capSide}`);
       if (contBadge) {
-        if (overflowFlags && overflowFlags[pageIdx]) {
-          const nextPageNum = pageNum + 1;
-          const nextPart = Math.ceil(nextPageNum / 2);
-          if (nextPart > currentSpreadPart) {
-            contBadge.textContent = `다음 면(${nextPageNum}면 · ${nextPart}부)으로 이어짐 ▶`;
-            contBadge.style.display = 'block';
-            contBadge.onclick = () => switchGallerySpreadPart(nextPart);
-          } else {
-            contBadge.textContent = `우측 ${nextPageNum}면으로 이어짐 ➔`;
-            contBadge.style.display = 'block';
-            contBadge.onclick = null;
-          }
-        } else {
-          contBadge.style.display = 'none';
-        }
+        contBadge.style.display = 'none';
       }
     }
 
@@ -4522,7 +5268,12 @@
           </div>`;
       }
 
-      document.getElementById('turnStatusLabel').textContent = `[${sec.group_label || '부속'}] ${sec.title}`;
+      const secLabel = `[${sec.group_label || '부속'}] ${sec.title}`;
+      const statusEl = document.getElementById('turnStatusLabel');
+      if (statusEl) {
+        statusEl.textContent = secLabel;
+        statusEl.title = secLabel;
+      }
       highlightActiveTocItem();
     }
 
@@ -4531,7 +5282,7 @@
     // --------------------------------------------------------
     function loadEpisode(index, spreadPart = 1) {
       if (index < 0 || index >= EPISODES.length) return;
-      const isSameEpisode = (currentIndex === index && currentSectionId === null);
+      const isSameEpisode = (currentIndex === index && currentSectionId === null && currentIndex !== -1);
       currentIndex = index;
       currentSectionId = null;
 
@@ -4556,14 +5307,19 @@
         if (matchSec && matchSec.start_page) baseStartPage = matchSec.start_page;
       }
 
-      // 상단 헤더 동기화
-      document.getElementById('poemBadge').innerText = data.ep;
-      document.getElementById('poemTitle').innerText = data.title;
-      const pStart = baseStartPage ? baseStartPage + (currentSpreadPart - 1) * 2 : (currentSpreadPart - 1) * 2 + 1;
-      const pEnd = pStart + 1;
-      document.getElementById('readerPageMeta').innerText = totalPages > 2
-        ? `(${totalPages}쪽 중 ${currentSpreadPart}부 · p.${pStart}~${pEnd})`
-        : `(p.${pStart}~${pEnd})`;
+      // 상단 헤더 동기화 (숨김 메타 태그 안전 갱신)
+      const elBadge = document.getElementById('poemBadge');
+      if (elBadge) elBadge.innerText = data.ep;
+      const elTitle = document.getElementById('poemTitle');
+      if (elTitle) elTitle.innerText = data.title;
+      const elMeta = document.getElementById('readerPageMeta');
+      if (elMeta) {
+        const pStart = baseStartPage ? baseStartPage + (currentSpreadPart - 1) * 2 : (currentSpreadPart - 1) * 2 + 1;
+        const pEnd = pStart + 1;
+        elMeta.innerText = totalPages > 2
+          ? `(${totalPages}쪽 중 ${currentSpreadPart}부 · p.${pStart}~${pEnd})`
+          : `(p.${pStart}~${pEnd})`;
+      }
 
       // 다면(4P/6P) 스위치 버튼 노출 제어
       const switcher = document.getElementById('spreadPartSwitcher');
@@ -4736,49 +5492,121 @@
       if (currentIndex < EPISODES.length - 1) loadEpisode(currentIndex + 1, 1);
     }
 
-    function navigateSpreadStep(delta) {
-      if (currentSectionId !== null) {
-        // 부속물 열람 중일 때: 전체 섹션 순서대로 이동
-        const secs = (BOOK_STRUCTURE && BOOK_STRUCTURE.sections) || [];
-        const curSecIdx = secs.findIndex(s => s.id === currentSectionId);
-        const nextSecIdx = curSecIdx + delta;
-        if (nextSecIdx >= 0 && nextSecIdx < secs.length) {
-          const target = secs[nextSecIdx];
-          if (target.section_type === 'poem' && target.episode_no) {
-            const epIdx = EPISODES.findIndex(e => e.ep === target.episode_no);
-            if (epIdx !== -1) loadEpisode(epIdx, 1);
-          } else {
-            renderMatterSection(target.id);
-          }
-        }
+    let isPageFlipping3D = false;
+
+    function animatePageFlip3D(delta, onPageChange) {
+      if (isPageFlipping3D) return;
+      const spread = document.getElementById('bookSpreadContainer');
+      const pageToFlip = delta > 0 ? document.getElementById('dtpPageRight') : document.getElementById('dtpPageLeft');
+      if (!spread || !pageToFlip) {
+        onPageChange();
         return;
       }
 
-      const data = EPISODES[currentIndex];
-      if (!data) return;
-      const cfg = getNormalizedConfig(data);
-      const flowResult = calculateTextFlowAndPages(data, cfg);
-      const totalPages = Math.max(cfg.page_count || 2, flowResult.requiredPages);
-      const maxParts = Math.max(1, Math.ceil(totalPages / 2));
+      isPageFlipping3D = true;
 
-      if (delta > 0) {
-        if (currentSpreadPart < maxParts) {
-          loadEpisode(currentIndex, currentSpreadPart + 1);
-        } else if (currentIndex < EPISODES.length - 1) {
-          loadEpisode(currentIndex + 1, 1);
+      // 1. 넘어가는 3D 잎사귀(Leaf) 생성
+      const leaf = document.createElement('div');
+      leaf.className = `flip-page-leaf ${delta > 0 ? 'flip-forward' : 'flip-backward'}`;
+
+      // 2. 앞면 (현재 페이지 복제 — 글과 그림이 그대로 들림)
+      const frontFace = document.createElement('div');
+      frontFace.className = 'flip-face flip-front';
+      const clonedContent = pageToFlip.cloneNode(true);
+      clonedContent.removeAttribute('id');
+      clonedContent.style.position = 'absolute';
+      clonedContent.style.inset = '0';
+      clonedContent.style.width = '100%';
+      clonedContent.style.height = '100%';
+      frontFace.appendChild(clonedContent);
+      leaf.appendChild(frontFace);
+
+      // 3. 뒷면 (은은한 한지 미색 질감과 책등 잔상)
+      const backFace = document.createElement('div');
+      backFace.className = 'flip-face flip-back';
+      const spineShadow = document.createElement('div');
+      spineShadow.className = 'flip-back-spine-shadow';
+      const watermark = document.createElement('div');
+      watermark.className = 'flip-back-watermark';
+      watermark.textContent = '❦';
+      backFace.appendChild(spineShadow);
+      backFace.appendChild(watermark);
+      leaf.appendChild(backFace);
+
+      // 4. 바닥 페이지에 드리우는 동적 그림자
+      const floorShadow = document.createElement('div');
+      floorShadow.className = `flip-floor-shadow ${delta > 0 ? 'left-shadow' : 'right-shadow'}`;
+
+      spread.appendChild(floorShadow);
+      spread.appendChild(leaf);
+
+      // 5. 회전의 중간 지점 (90도 수직, 260ms)에서 바닥 페이지 데이터 전환
+      setTimeout(() => {
+        try {
+          onPageChange();
+        } catch (e) {
+          console.error('[PageFlip Error]', e);
         }
-      } else {
-        if (currentSpreadPart > 1) {
-          loadEpisode(currentIndex, currentSpreadPart - 1);
-        } else if (currentIndex > 0) {
-          const prevData = EPISODES[currentIndex - 1];
-          const prevCfg = getNormalizedConfig(prevData);
-          const prevFlow = calculateTextFlowAndPages(prevData, prevCfg);
-          const prevTotal = Math.max(prevCfg.page_count || 2, prevFlow.requiredPages);
-          const prevMaxParts = Math.max(1, Math.ceil(prevTotal / 2));
-          loadEpisode(currentIndex - 1, prevMaxParts);
+      }, 260);
+
+      // 6. 180도 회전 완료 후 (530ms) 오버레이 청소 및 상태 잠금 해제
+      setTimeout(() => {
+        if (leaf.parentNode) leaf.parentNode.removeChild(leaf);
+        if (floorShadow.parentNode) floorShadow.parentNode.removeChild(floorShadow);
+        isPageFlipping3D = false;
+      }, 530);
+    }
+
+    function navigateSpreadStep(delta) {
+      if (isPageFlipping3D) return;
+
+      const performNavigation = () => {
+        if (currentSectionId !== null) {
+          // 부속물 열람 중일 때: 전체 섹션 순서대로 이동
+          const secs = (BOOK_STRUCTURE && BOOK_STRUCTURE.sections) || [];
+          const curSecIdx = secs.findIndex(s => s.id === currentSectionId);
+          const nextSecIdx = curSecIdx + delta;
+          if (nextSecIdx >= 0 && nextSecIdx < secs.length) {
+            const target = secs[nextSecIdx];
+            if (target.section_type === 'poem' && target.episode_no) {
+              const epIdx = EPISODES.findIndex(e => e.ep === target.episode_no);
+              if (epIdx !== -1) loadEpisode(epIdx, 1);
+            } else {
+              renderMatterSection(target.id);
+            }
+          }
+          return;
         }
-      }
+
+        const data = EPISODES[currentIndex];
+        if (!data) return;
+        const cfg = getNormalizedConfig(data);
+        const flowResult = calculateTextFlowAndPages(data, cfg);
+        const totalPages = Math.max(cfg.page_count || 2, flowResult.requiredPages);
+        const maxParts = Math.max(1, Math.ceil(totalPages / 2));
+
+        if (delta > 0) {
+          if (currentSpreadPart < maxParts) {
+            loadEpisode(currentIndex, currentSpreadPart + 1);
+          } else if (currentIndex < EPISODES.length - 1) {
+            loadEpisode(currentIndex + 1, 1);
+          }
+        } else {
+          if (currentSpreadPart > 1) {
+            loadEpisode(currentIndex, currentSpreadPart - 1);
+          } else if (currentIndex > 0) {
+            const prevData = EPISODES[currentIndex - 1];
+            const prevCfg = getNormalizedConfig(prevData);
+            const prevFlow = calculateTextFlowAndPages(prevData, prevCfg);
+            const prevTotal = Math.max(prevCfg.page_count || 2, prevFlow.requiredPages);
+            const prevMaxParts = Math.max(1, Math.ceil(prevTotal / 2));
+            loadEpisode(currentIndex - 1, prevMaxParts);
+          }
+        }
+      };
+
+      // 3D 책장 넘김 모션과 함께 실행!
+      animatePageFlip3D(delta, performNavigation);
     }
 
     // --------------------------------------------------------
@@ -4933,6 +5761,8 @@
       }
 
       const hasV = Boolean(galleryAvailableVideos.poem || galleryAvailableVideos.song);
+      const vidWrap = document.getElementById('bottomVideoWrap');
+      if (vidWrap) vidWrap.style.display = hasV ? 'inline-flex' : 'none';
       if (btnVideo) btnVideo.style.display = hasV ? 'inline-flex' : 'none';
       if (mediaBar) mediaBar.style.display = 'flex';
     }
@@ -5072,7 +5902,7 @@
         if (PROJECT_INFO && PROJECT_INFO.name) {
           document.title = `${PROJECT_INFO.name} — 그림과 노래가 되는 시`;
         }
-        currentIndex = 0;
+        currentIndex = -1;
         currentSpreadPart = 1;
         currentSectionId = null;
         renderTOC();
@@ -5146,7 +5976,21 @@
   // ==============================================================
   // 갤러리 공유 및 웹 배포 도구
   // ==============================================================
+  function isLocalEnvironment() {
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+    return proto === 'file:' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+  }
+
   function shareGalleryLink() {
+    if (isLocalEnvironment()) {
+      alert("⚠️ 현재는 내 컴퓨터(로컬)에서만 열리는 주소입니다!\n\n" +
+            "지인이나 가족, 카카오톡으로 공유하시려면,\n" +
+            "스토리북 스튜디오 [출판 데이터] ➔ [웹 배포용 ZIP]을\n" +
+            "무료 호스팅(Netlify 등)에 올려 공개 웹 주소를 만드신 후 공유해주세요. 😊");
+      return;
+    }
+
     const url = window.location.href;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(() => {
