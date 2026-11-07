@@ -140,17 +140,18 @@
       },
       right: {
         title: "노을빛 기억",
-        author: "임정환",
-        publisher_ceo: "한철환",
-        publisher: "부크크 (Bookk)",
-        reg_no: "제2014-000000호",
-        published_date: "2026년 11월 10일 초판 1쇄",
-        address: "서울특별시 구로구 디지털로33길 11, 에이스건설타워 8차 801호",
+        author: "임종훈",
+        publisher_ceo: "한건희",
+        publisher: "주식회사 부크크",
+        reg_no: "2014.07.15.(제2014-16호)",
+        published_date: "2026년   월   일",
+        address: "서울특별시 금천구 가산디지털1로 119 SK트윈타워 A동 305호",
         phone: "1670-8316",
+        email: "info@bookk.co.kr",
         homepage: "www.bookk.co.kr",
-        isbn: "979-11-XXXXX-X (03810)",
-        price: "15,000원",
-        copyright: "* 본 도서의 판권은 저작권자와 부크크에 있으며, 무단 전재와 복제를 금합니다.\n* 잘못 만들어진 책은 구입처에서 바꾸어 드립니다."
+        isbn: "",
+        price: "",
+        copyright: "본 책은 저작자의 지적 재산으로서 무단 전재와 복제를 금합니다.\n\n이 책의 글과 그림은 저자의 실제 경험과 선택을 바탕으로\n생성형 AI의 도움을 받아 제작·편집되었습니다."
       }
     }
   };
@@ -515,24 +516,43 @@
       `;
 
       // 우측 43면: 정식 출판 판권지 (Colophon)
+      const bookTitle = d.title || colPreset.title || "노을빛 기억";
+      const bookAuthor = d.author || colPreset.author || "임종훈";
+      const pubDate = d.publishedDate || colPreset.published_date || "2026년   월   일";
+      const pubCeo = colPreset.publisher_ceo || "한건희";
+      const pubCompany = d.publisher || colPreset.publisher || "주식회사 부크크";
+      const regNo = colPreset.reg_no || "2014.07.15.(제2014-16호)";
+      const addr = colPreset.address || "서울특별시 금천구 가산디지털1로 119 SK트윈타워 A동 305호";
+      const tel = colPreset.phone || "1670-8316";
+      const email = colPreset.email || "info@bookk.co.kr";
+      const site = colPreset.homepage || "www.bookk.co.kr";
+      const isbnVal = d.isbn || colPreset.isbn || "";
+      const copyNotice = colPreset.copyright || `본 책은 저작자의 지적 재산으로서 무단 전재와 복제를 금합니다.\n\n이 책의 글과 그림은 저자의 실제 경험과 선택을 바탕으로\n생성형 AI의 도움을 받아 제작·편집되었습니다.`;
+
       ovRight.innerHTML = `
-        <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:40px 30px 30px 30px; background:#FAF7F2; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.82rem; color:#4A3A2C; line-height:1.75; box-sizing:border-box;">
-          <h4 class="matter-editable" data-field="colophon_title" contenteditable="true" style="font-size:1.2rem; color:#2C1D11; margin:0 0 12px 0; font-weight:700;" title="도서명">
-            ${d.title || colPreset.title || "노을빛 기억"}
+        <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:45px 36px 36px 36px; background:#FAF7F2; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.83rem; color:#4A3A2C; line-height:1.8; box-sizing:border-box;">
+          <h4 class="matter-editable" data-field="colophon_title" contenteditable="true" style="font-size:1.3rem; color:#2C1D11; margin:0 0 6px 0; font-weight:700;" title="도서명">
+            ${bookTitle}
           </h4>
-          <div style="border-top:1.5px solid #2C1D11; padding-top:10px; margin-bottom:14px; font-size:0.8rem; line-height:1.8;">
-            <div><strong>지은이</strong> | <span class="matter-editable" data-field="colophon_author" contenteditable="true">${d.author || colPreset.author || "임종훈"}</span></div>
-            <div><strong>발행인</strong> | <span class="matter-editable" data-field="colophon_publisher_ceo" contenteditable="true">${colPreset.publisher_ceo || "한철환"}</span></div>
-            <div><strong>발행처</strong> | <span class="matter-editable" data-field="colophon_publisher" contenteditable="true">${d.publisher || colPreset.publisher || "부크크 (Bookk)"}</span></div>
-            <div><strong>출판등록</strong> | <span class="matter-editable" data-field="colophon_reg_no" contenteditable="true">${colPreset.reg_no || "제2014-000000호"}</span></div>
-            <div><strong>발행일</strong> | <span class="matter-editable" data-field="colophon_published_date" contenteditable="true">${d.publishedDate || colPreset.published_date || "2026년 11월 10일"}</span></div>
-            <div style="margin-top:6px;"><strong>주소</strong> | <span class="matter-editable" data-field="colophon_address" contenteditable="true">${colPreset.address || "서울특별시 구로구 디지털로33길 11, 에이스건설타워 8차 801호"}</span></div>
-            <div><strong>홈페이지</strong> | <span class="matter-editable" data-field="colophon_homepage" contenteditable="true">${colPreset.homepage || "www.bookk.co.kr"}</span></div>
-            <div style="margin-top:6px;"><strong>ISBN</strong> | <span class="matter-editable" data-field="colophon_isbn" contenteditable="true">${d.isbn || colPreset.isbn || "979-11-XXXXX-X (03810)"}</span></div>
-            <div><strong>정가</strong> | <span class="matter-editable" data-field="colophon_price" contenteditable="true">${d.price || colPreset.price || "15,000원"}</span></div>
+          <div style="font-size:0.9rem; color:#5A4A3A; margin-bottom:20px;">
+            지은이 &nbsp;<span class="matter-editable" data-field="colophon_author" contenteditable="true" style="font-weight:600;">${bookAuthor}</span>
           </div>
-          <div class="matter-editable" data-field="colophon_copyright" contenteditable="true" style="font-size:0.72rem; color:#8C7560; border-top:1px solid #D5C2B0; padding-top:8px; white-space:pre-line;" title="저작권 보호 문구">
-            ${colPreset.copyright || "* 본 도서의 판권은 저작권자와 부크크에 있으며, 무단 전재와 복제를 금합니다.\n* 잘못 만들어진 책은 구입처에서 바꾸어 드립니다."}
+
+          <div style="border-top:1.5px solid #2C1D11; padding-top:16px; margin-bottom:20px; font-size:0.82rem; line-height:1.9;">
+            <div>발 &nbsp; 행 &nbsp; <span class="matter-editable" data-field="colophon_published_date" contenteditable="true">${pubDate}</span></div>
+            <div>펴 낸 이 &nbsp; <span class="matter-editable" data-field="colophon_publisher_ceo" contenteditable="true">${pubCeo}</span></div>
+            <div>펴 낸 곳 &nbsp; <span class="matter-editable" data-field="colophon_publisher" contenteditable="true">${pubCompany}</span></div>
+            <div style="margin-top:8px;">출판사등록 &nbsp; <span class="matter-editable" data-field="colophon_reg_no" contenteditable="true">${regNo}</span></div>
+            <div>주 &nbsp; 소 &nbsp; <span class="matter-editable" data-field="colophon_address" contenteditable="true">${addr}</span></div>
+            <div>전 &nbsp; 화 &nbsp; <span class="matter-editable" data-field="colophon_phone" contenteditable="true">${tel}</span></div>
+            <div>이 메 일 &nbsp; <span class="matter-editable" data-field="colophon_email" contenteditable="true">${email}</span></div>
+            <div>ISBN &nbsp; &nbsp;<span class="matter-editable" data-field="colophon_isbn" contenteditable="true">${isbnVal}</span></div>
+            <div>${site}</div>
+            <div style="margin-top:8px; font-weight:600;">ⓒ[ ${bookAuthor} ] 2026</div>
+          </div>
+
+          <div class="matter-editable" data-field="colophon_copyright" contenteditable="true" style="font-size:0.75rem; color:#6E5D4E; border-top:1px solid #D5C2B0; padding-top:14px; white-space:pre-line; line-height:1.7;" title="저작권 및 생성형 AI 윤리 표기">
+${copyNotice}
           </div>
         </div>
       `;

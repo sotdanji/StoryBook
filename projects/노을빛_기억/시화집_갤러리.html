@@ -5258,17 +5258,28 @@
             <div style="text-align:right; font-family:var(--font-serif); font-size:0.88rem; color:#5A4A3A;">지은이 ${author}</div>
           </div>`;
         ovRight.innerHTML = `
-          <div style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:40px 32px 32px 32px; background:#FAF7F2; font-family:var(--font-serif); font-size:0.82rem; color:#4A3A2C; line-height:1.8;">
-            <h4 style="font-size:1.2rem; color:#2C1D11; margin:0 0 12px 0; font-weight:700;">${title}</h4>
-            <div style="border-top:1.5px solid #2C1D11; padding-top:10px; margin-bottom:14px;">
-              <div><strong>지은이</strong> | ${author}</div>
-              <div><strong>발행처</strong> | ${publisher}</div>
-              <div><strong>발행일</strong> | ${pubDate}</div>
-              <div><strong>ISBN</strong> | ${isbn}</div>
-              <div><strong>정가</strong> | ${price}</div>
+          <div style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:45px 36px 36px 36px; background:#FAF7F2; font-family:var(--font-serif); font-size:0.83rem; color:#4A3A2C; line-height:1.8; box-sizing:border-box;">
+            <h4 style="font-size:1.3rem; color:#2C1D11; margin:0 0 6px 0; font-weight:700;">${title}</h4>
+            <div style="font-size:0.9rem; color:#5A4A3A; margin-bottom:18px;">지은이 &nbsp;<span style="font-weight:600;">${author}</span></div>
+
+            <div style="border-top:1.5px solid #2C1D11; padding-top:14px; margin-bottom:16px; font-size:0.82rem; line-height:1.9;">
+              <div>발 &nbsp; 행 &nbsp; 2026년 &nbsp; 월 &nbsp; 일</div>
+              <div>펴 낸 이 &nbsp; 한건희</div>
+              <div>펴 낸 곳 &nbsp; 주식회사 부크크</div>
+              <div style="margin-top:6px;">출판사등록 &nbsp; 2014.07.15.(제2014-16호)</div>
+              <div>주 &nbsp; 소 &nbsp; 서울특별시 금천구 가산디지털1로 119 SK트윈타워 A동 305호</div>
+              <div>전 &nbsp; 화 &nbsp; 1670-8316</div>
+              <div>이 메 일 &nbsp; info@bookk.co.kr</div>
+              <div>ISBN &nbsp; &nbsp;${isbn || ''}</div>
+              <div>www.bookk.co.kr</div>
+              <div style="margin-top:6px; font-weight:600;">ⓒ[ ${author} ] 2026</div>
             </div>
-            <div style="font-size:0.72rem; color:#8C7560; border-top:1px solid #D5C2B0; padding-top:8px;">
-              * 본 도서의 판권은 저작권자와 발행처에 있으며, 무단 전재와 복제를 금합니다.
+
+            <div style="font-size:0.75rem; color:#6E5D4E; border-top:1px solid #D5C2B0; padding-top:12px; line-height:1.7; white-space:pre-line;">
+본 책은 저작자의 지적 재산으로서 무단 전재와 복제를 금합니다.
+
+이 책의 글과 그림은 저자의 실제 경험과 선택을 바탕으로
+생성형 AI의 도움을 받아 제작·편집되었습니다.
             </div>
           </div>`;
       } else {

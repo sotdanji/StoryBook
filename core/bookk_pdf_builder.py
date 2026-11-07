@@ -1086,50 +1086,60 @@ class BookkPDFBuilder:
         m_col = self.get_page_margins(current_page)
         self._draw_page_background(c)
 
-        col_box_y = m_col["bottom"] + 30
-        col_box_h = 200
+        col_box_y = m_col["bottom"] + 25
+        col_box_h = 245
         c.setStrokeColorRGB(0.82, 0.78, 0.72)
         c.setLineWidth(0.8)
         c.rect(m_col["left"], col_box_y, m_col["content_w"], col_box_h, fill=0, stroke=1)
 
         c.setFillColorRGB(0.2, 0.18, 0.17)
         c.setFont(FONT_BOLD_NAME, 13)
-        c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 28, project_info.name)
+        c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 26, project_info.name)
 
         if project_info.subtitle:
-            c.setFont(FONT_NAME, 9.0)
+            c.setFont(FONT_NAME, 8.8)
             c.setFillColorRGB(0.45, 0.42, 0.38)
-            c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 44, project_info.subtitle)
+            c.drawString(m_col["left"] + 20, col_box_y + col_box_h - 40, project_info.subtitle)
 
         c.setStrokeColorRGB(0.88, 0.85, 0.8)
-        c.line(m_col["left"] + 20, col_box_y + col_box_h - 52, m_col["left"] + m_col["content_w"] - 20, col_box_y + col_box_h - 52)
+        c.line(m_col["left"] + 20, col_box_y + col_box_h - 48, m_col["left"] + m_col["content_w"] - 20, col_box_y + col_box_h - 48)
 
-        c.setFont(FONT_NAME, 8.8)
-        c.setFillColorRGB(0.35, 0.32, 0.3)
+        c.setFont(FONT_NAME, 8.2)
+        c.setFillColorRGB(0.32, 0.29, 0.27)
         author_type = getattr(project_info, 'author_type', 'single')
         author_field_name = "엮 은 이" if author_type == "collab" else "지 은 이"
-        publisher_name = getattr(project_info, 'publisher', '부크크 (Bookk) 자가출판')
-        published_date = getattr(project_info, 'published_date', '2026년')
-        price_val = getattr(project_info, 'price', '13,000원')
+        published_date = getattr(project_info, 'published_date', '2026년   월   일')
         isbn_val = getattr(project_info, 'isbn', '').strip()
 
         col_lines = [
             f"{author_field_name} : {project_info.author}",
-            f"펴 낸 곳 : {publisher_name}",
-            f"초판발행 : {published_date}",
-            f"정    가 : {price_val}",
-            "제작지원 : StoryBook Studio 독립출판 엔진",
-            "출판형태 : POD (Publish On Demand) 주문형 종이책",
+            f"발   행 : {published_date}",
+            "펴 낸 이 : 한건희",
+            "펴 낸 곳 : 주식회사 부크크",
+            "출판사등록 : 2014.07.15.(제2014-16호)",
+            "주   소 : 서울특별시 금천구 가산디지털1로 119 SK트윈타워 A동 305호",
+            "전   화 : 1670-8316",
+            "이 메 일 : info@bookk.co.kr",
+            f"I S B N  : {isbn_val}" if isbn_val else "홈페이지 : www.bookk.co.kr",
+            f"ⓒ[{project_info.author}] 2026",
+            "",
+            "본 책은 저작자의 지적 재산으로서 무단 전재와 복제를 금합니다.",
+            "이 책의 글과 그림은 저자의 실제 경험과 선택을 바탕으로",
+            "생성형 AI의 도움을 받아 제작·편집되었습니다.",
         ]
-        if isbn_val:
-            col_lines.append(f"I S B N  : {isbn_val}")
-        col_lines.append("")
-        col_lines.append("ⓒ 저작권자와의 협의에 의해 본 도서의 무단 전재 및 복제를 금합니다.")
 
-        text_y = col_box_y + col_box_h - 70
+        text_y = col_box_y + col_box_h - 62
         for line in col_lines:
+            if "ⓒ" in line:
+                c.setFont(FONT_BOLD_NAME, 8.2)
+            elif "본 책은" in line or "생성형 AI" in line:
+                c.setFont(FONT_NAME, 7.5)
+                c.setFillColorRGB(0.45, 0.42, 0.38)
+            else:
+                c.setFont(FONT_NAME, 8.2)
+                c.setFillColorRGB(0.32, 0.29, 0.27)
             c.drawString(m_col["left"] + 20, text_y, line)
-            text_y -= 14
+            text_y -= 12.5
 
         c.showPage()
         total_pages = current_page
