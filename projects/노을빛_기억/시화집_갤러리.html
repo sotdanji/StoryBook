@@ -1311,8 +1311,8 @@
         <span>📖</span> 목차 구성
       </div>
       <div class="toc-mode-tabs">
-        <button type="button" class="toc-mode-btn active" id="btnTocModePoems" onclick="setTocMode('poems')">시화 작품</button>
-        <button type="button" class="toc-mode-btn" id="btnTocModeFull" onclick="setTocMode('full')">전권 구성</button>
+        <button type="button" class="toc-mode-btn" id="btnTocModePoems" onclick="setTocMode('poems')">시화 작품</button>
+        <button type="button" class="toc-mode-btn active" id="btnTocModeFull" onclick="setTocMode('full')">전권 구성</button>
       </div>
     </div>
 
@@ -4282,7 +4282,7 @@
     let currentIndex = -1;          // 현재 선택된 시화 작품 인덱스 (초기 로드 감지를 위해 -1로 시작)
     let currentSpreadPart = 1;      // 1 = 1·2면, 2 = 3·4면, 3 = 5·6면
     let currentSectionId = null;    // 부속물 열람 시 섹션 ID ('cover', 'half_title', 'prologue', 'toc', 'epilogue', 'colophon', 'back_cover', 'part_1' 등)
-    let tocMode = 'poems';          // 'poems' (시화 작품만) | 'full' (표지·서문·목차·간지·판권 포함 전권 구성)
+    let tocMode = 'full';           // 기본 '전권 구성' (표지·서문·목차·간지·시화·판권지 전권 완전 연동)
     let readerFontDeltaPt = parseInt(localStorage.getItem('storybook_reader_font_delta') || '0', 10);
 
     // --------------------------------------------------------
@@ -5167,7 +5167,32 @@
       document.getElementById('poemTitle').innerText = sec.title || '';
       document.getElementById('readerPageMeta').innerText = sec.start_page ? `(p.${sec.start_page}${sec.page_count > 1 ? '~' + sec.end_page : ''})` : '';
       document.getElementById('spreadPartSwitcher').style.display = 'none';
-      document.getElementById('galleryUnifiedMediaBar').style.display = 'none';
+
+      // 하단 연속 컨트롤 바 유지 및 부속 모드 맞춤 갱신
+      const mediaBar = document.getElementById('galleryUnifiedMediaBar');
+      if (mediaBar) {
+        mediaBar.style.display = 'flex';
+        const btnAudio = document.getElementById('btnGalleryAudioUnified');
+        if (btnAudio) btnAudio.style.display = 'none';
+        const wrapVideo = document.getElementById('bottomVideoWrap');
+        if (wrapVideo) wrapVideo.style.display = 'none';
+
+        const btnTurnPrev = document.getElementById('btnTurnPrev');
+        const btnTurnNext = document.getElementById('btnTurnNext');
+        if (btnTurnPrev) btnTurnPrev.disabled = (secId === 'cover');
+        if (btnTurnNext) btnTurnNext.disabled = (secId === 'back_cover');
+      }
+
+      // 사이드바 쪽수 인디케이터 및 버튼 갱신
+      const pInd = document.getElementById('pageIndicator');
+      if (pInd) {
+        pInd.innerText = sec.start_page !== undefined ? `p.${sec.start_page}${sec.page_count > 1 ? '~' + sec.end_page : ''}` : sec.title;
+      }
+      const bPrev = document.getElementById('btnPrev');
+      if (bPrev) bPrev.disabled = (secId === 'cover');
+      const bNext = document.getElementById('btnNext');
+      if (bNext) bNext.disabled = (secId === 'back_cover');
+
       closeAudioPlayer();
 
       const title = PROJECT_INFO.name || '노을빛 기억';
@@ -5367,8 +5392,15 @@
 
       // 사이드바 및 하단 인디케이터 갱신
       document.getElementById('pageIndicator').innerText = `${currentIndex + 1} / ${EPISODES.length}`;
-      document.getElementById('btnPrev').disabled = (currentIndex === 0);
-      document.getElementById('btnNext').disabled = (currentIndex === EPISODES.length - 1);
+      const bPrev = document.getElementById('btnPrev');
+      if (bPrev) bPrev.disabled = false;
+      const bNext = document.getElementById('btnNext');
+      if (bNext) bNext.disabled = false;
+
+      const btnTurnPrev = document.getElementById('btnTurnPrev');
+      if (btnTurnPrev) btnTurnPrev.disabled = false;
+      const btnTurnNext = document.getElementById('btnTurnNext');
+      if (btnTurnNext) btnTurnNext.disabled = false;
 
       const partSuffix = maxParts > 1 ? ` — ${currentSpreadPart}부 (${leftPageIdx + 1}·${rightPageIdx + 1}면)` : ' — 1·2면';
       document.getElementById('turnStatusLabel').textContent = `${data.ep} 「${data.title}」${partSuffix}`;
@@ -5497,22 +5529,38 @@
     }
 
     // --------------------------------------------------------
-    // 9. 네비게이션 (작품 단위 이동 & 펼침면 연속 이동)
+    // 9. 네비게이션 (작품 단위 이동 & 펼침면 전권 연속 이동)
     // --------------------------------------------------------
     function navigatePrevWork() {
       if (currentSectionId !== null) {
-        loadEpisode(0, 1);
+        const frontMatterIds = ['cover', 'half_title', 'prologue', 'toc'];
+        if (frontMatterIds.includes(currentSectionId)) {
+          return;
+        }
+        if (EPISODES.length > 0) loadEpisode(EPISODES.length - 1, 1);
         return;
       }
-      if (currentIndex > 0) loadEpisode(currentIndex - 1, 1);
+      if (currentIndex > 0) {
+        loadEpisode(currentIndex - 1, 1);
+      } else {
+        renderMatterSection('toc');
+      }
     }
 
     function navigateNextWork() {
       if (currentSectionId !== null) {
-        loadEpisode(0, 1);
+        const frontMatterIds = ['cover', 'half_title', 'prologue', 'toc'];
+        if (frontMatterIds.includes(currentSectionId)) {
+          if (EPISODES.length > 0) loadEpisode(0, 1);
+          return;
+        }
         return;
       }
-      if (currentIndex < EPISODES.length - 1) loadEpisode(currentIndex + 1, 1);
+      if (currentIndex < EPISODES.length - 1) {
+        loadEpisode(currentIndex + 1, 1);
+      } else {
+        renderMatterSection('epilogue');
+      }
     }
 
     let isPageFlipping3D = false;
@@ -5584,8 +5632,54 @@
       if (isPageFlipping3D) return;
 
       const performNavigation = () => {
+        // 1. 부속물 열람 중일 때
         if (currentSectionId !== null) {
-          // 부속물 열람 중일 때: 전체 섹션 순서대로 이동
+          const frontMatterIds = ['cover', 'half_title', 'prologue', 'toc'];
+          const backMatterIds = ['epilogue', 'colophon', 'back_cover'];
+
+          if (frontMatterIds.includes(currentSectionId)) {
+            const idx = frontMatterIds.indexOf(currentSectionId);
+            if (delta > 0) {
+              if (idx < frontMatterIds.length - 1) {
+                renderMatterSection(frontMatterIds[idx + 1]);
+              } else {
+                // toc 다음은 본문 첫 시화(0)의 1면!
+                if (EPISODES.length > 0) loadEpisode(0, 1);
+              }
+            } else {
+              if (idx > 0) {
+                renderMatterSection(frontMatterIds[idx - 1]);
+              }
+            }
+            return;
+          }
+
+          if (backMatterIds.includes(currentSectionId)) {
+            // epilogue와 colophon은 동일 펼침면(p.42~43)을 다룸
+            if (delta > 0) {
+              if (currentSectionId === 'epilogue' || currentSectionId === 'colophon') {
+                renderMatterSection('back_cover');
+              }
+            } else {
+              if (currentSectionId === 'back_cover') {
+                renderMatterSection('epilogue');
+              } else if (currentSectionId === 'epilogue' || currentSectionId === 'colophon') {
+                // 뒷부속 이전은 본문 마지막 시화의 마지막 파트!
+                if (EPISODES.length > 0) {
+                  const lastIdx = EPISODES.length - 1;
+                  const lastData = EPISODES[lastIdx];
+                  const lastCfg = getNormalizedConfig(lastData);
+                  const lastFlow = calculateTextFlowAndPages(lastData, lastCfg);
+                  const lastTotal = Math.max(lastCfg.page_count || 2, lastFlow.requiredPages);
+                  const lastMaxParts = Math.max(1, Math.ceil(lastTotal / 2));
+                  loadEpisode(lastIdx, lastMaxParts);
+                }
+              }
+            }
+            return;
+          }
+
+          // 기타 섹션인 경우 전체 sections 배열 순회
           const secs = (BOOK_STRUCTURE && BOOK_STRUCTURE.sections) || [];
           const curSecIdx = secs.findIndex(s => s.id === currentSectionId);
           const nextSecIdx = curSecIdx + delta;
@@ -5593,7 +5687,7 @@
             const target = secs[nextSecIdx];
             if (target.section_type === 'poem' && target.episode_no) {
               const epIdx = EPISODES.findIndex(e => e.ep === target.episode_no);
-              if (epIdx !== -1) loadEpisode(epIdx, 1);
+              if (epIdx !== -1) loadEpisode(epIdx, delta > 0 ? 1 : 99);
             } else {
               renderMatterSection(target.id);
             }
@@ -5601,6 +5695,7 @@
           return;
         }
 
+        // 2. 본문 시화 열람 중일 때
         const data = EPISODES[currentIndex];
         if (!data) return;
         const cfg = getNormalizedConfig(data);
@@ -5613,6 +5708,9 @@
             loadEpisode(currentIndex, currentSpreadPart + 1);
           } else if (currentIndex < EPISODES.length - 1) {
             loadEpisode(currentIndex + 1, 1);
+          } else {
+            // 본문 마지막 시화의 마지막 면에서 '다음 면'을 누르면 뒷부속(맺음말)으로 자연스럽게 진입!
+            renderMatterSection('epilogue');
           }
         } else {
           if (currentSpreadPart > 1) {
@@ -5624,6 +5722,9 @@
             const prevTotal = Math.max(prevCfg.page_count || 2, prevFlow.requiredPages);
             const prevMaxParts = Math.max(1, Math.ceil(prevTotal / 2));
             loadEpisode(currentIndex - 1, prevMaxParts);
+          } else {
+            // 본문 첫 번째 시화의 1면에서 '이전 면'을 누르면 앞부속(차례)으로 자연스럽게 복귀!
+            renderMatterSection('toc');
           }
         }
       };
