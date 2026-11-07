@@ -248,7 +248,7 @@
           bar = document.createElement("div");
           bar.id = "dtpMatterActionBar";
           bar.className = "matter-action-bar";
-          bar.style.cssText = "display: flex; align-items: center; gap: 6px; margin-right: 6px;";
+          bar.style.cssText = "display: flex; align-items: center; gap: 6px; margin-right: 6px; flex-shrink: 0;";
           exportGroup.insertBefore(bar, exportGroup.firstChild);
         }
       }
@@ -256,13 +256,13 @@
       if (bar) {
         bar.style.display = "flex";
         bar.innerHTML = `
-          <button type="button" class="btn-micro" onclick="dtpMatterEngine.saveCurrentMatter()" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFF; border: 1.5px solid #1E40AF; padding: 5px 11px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.25);" title="[부속물 저장] 수정한 텍스트 및 레이아웃을 책 구성에 영구 저장합니다.">
+          <button type="button" class="btn-micro" onclick="dtpMatterEngine.saveCurrentMatter()" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFF; border: 1.5px solid #1E40AF; padding: 5px 11px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.25); white-space: nowrap !important; flex-shrink: 0;" title="[부속물 저장] 수정한 텍스트 및 레이아웃을 책 구성에 영구 저장합니다.">
             <span>💾 부속물 저장</span>
           </button>
-          <button type="button" class="btn-micro" onclick="dtpMatterEngine.resetToDefaultPreset()" style="background: #FFF8F0; color: #9A3412; border: 1.5px solid #FDBA74; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="[기본 예시 불러오기] 편집 내용을 표준 예시 템플릿으로 원클릭 초기화합니다.">
+          <button type="button" class="btn-micro" onclick="dtpMatterEngine.resetToDefaultPreset()" style="background: #FFF8F0; color: #9A3412; border: 1.5px solid #FDBA74; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap !important; flex-shrink: 0;" title="[기본 예시 불러오기] 편집 내용을 표준 예시 템플릿으로 원클릭 초기화합니다.">
             <span>✨ 기본 예시 불러오기</span>
           </button>
-          <select id="selectMatterTheme" onchange="dtpMatterEngine.changeTheme(this.value)" style="padding: 4px 8px; font-size: 0.78rem; border: 1.5px solid #D5C2B0; border-radius: 6px; background: #FFF; color: #52361B; font-weight: 600; cursor: pointer;" title="[템플릿 스타일] 서정 수채화형, 정통 문학형, 모던 미니멀형 스타일을 전환합니다.">
+          <select id="selectMatterTheme" onchange="dtpMatterEngine.changeTheme(this.value)" style="padding: 4px 8px; font-size: 0.78rem; border: 1.5px solid #D5C2B0; border-radius: 6px; background: #FFF; color: #52361B; font-weight: 600; cursor: pointer; white-space: nowrap !important; flex-shrink: 0;" title="[템플릿 스타일] 서정 수채화형, 정통 문학형, 모던 미니멀형 스타일을 전환합니다.">
             <option value="lyrical" ${this.currentTheme === 'lyrical' ? 'selected' : ''}>🌸 서정 수채화형</option>
             <option value="classic" ${this.currentTheme === 'classic' ? 'selected' : ''}>📜 정통 문학형</option>
             <option value="modern" ${this.currentTheme === 'modern' ? 'selected' : ''}>✒️ 모던 미니멀형</option>
@@ -460,14 +460,17 @@
     // 5. 부 / 챕터 간지 (Part Divider) 렌더링
     // -------------------------------------------------------------
     renderPartDivider(sec, d, ovLeft, ovRight) {
+      const partLeft = (MATTER_PRESETS.part_divider && MATTER_PRESETS.part_divider.left) || {};
+      const partRight = (MATTER_PRESETS.part_divider && MATTER_PRESETS.part_divider.right) || {};
+
       ovLeft.innerHTML = `
         <div style="height:100%; background:#FAF7F2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#C4B29E; font-size:0.85rem; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; letter-spacing:2px;">
-          ${d.preset.part_divider.left.symbol}<br><span style="margin-top:8px; font-size:0.78rem;">${d.preset.part_divider.left.note}</span>
+          ${partLeft.symbol || "❦"}<br><span style="margin-top:8px; font-size:0.78rem;">${partLeft.note || "[ 여백의 장 ]"}</span>
         </div>
       `;
 
-      const partTitle = sec.title || d.preset.part_divider.right.part_title;
-      const partNo = sec.subtitle || d.preset.part_divider.right.part_no;
+      const partTitle = sec.title || partRight.part_title || "유년의 뜰, 어머니의 등불";
+      const partNo = sec.subtitle || partRight.part_no || "제 1 부";
 
       ovRight.innerHTML = `
         <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:55px 40px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
@@ -479,7 +482,7 @@
           </h2>
           <div style="width:36px; height:1.5px; background:#B89A7E; margin:0 auto 24px auto;"></div>
           <div class="matter-editable" data-field="part_desc" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.92rem; line-height:2.0; color:#5A4A3A; font-style:italic; white-space:pre-line;">
-            ${d.preset.part_divider.right.part_desc}
+            ${partRight.part_desc || ""}
           </div>
         </div>
       `;
@@ -489,20 +492,23 @@
     // 6 & 7. [출판 표준 뒷부속 완제 스프레드] 좌측(42p 맺음말) & 우측(43p 판권지)
     // -------------------------------------------------------------
     renderBackMatterSpread(sec, d, ovLeft, ovRight) {
+      const epPreset = (MATTER_PRESETS.epilogue && MATTER_PRESETS.epilogue.right) || {};
+      const colPreset = (MATTER_PRESETS.colophon && MATTER_PRESETS.colophon.right) || {};
+
       // 좌측 42면: 맺음말 (에필로그 / Epilogue)
       ovLeft.innerHTML = `
         <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:45px 35px 35px 35px; background:#FAF7F2; box-sizing:border-box;">
           <div>
             <h3 class="matter-editable" data-field="epilogue_title" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:1.45rem; color:#2C1D11; margin:0 0 20px 0; border-bottom:1.5px solid #C8B6A2; padding-bottom:8px; font-weight:700;">
-              ${d.preset.epilogue.right.title}
+              ${epPreset.title || "맺음말"}
             </h3>
             <div class="matter-editable" data-field="epilogue_content" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.95rem; line-height:2.05; color:#3A2E24; white-space:pre-line; padding:8px 0;" title="맺음말 본문을 클릭하거나 드래그하여 자유롭게 수정하세요.">
-              ${d.epilogueContent || d.preset.epilogue.right.content}
+              ${d.epilogueContent || epPreset.content || ""}
             </div>
           </div>
           <div style="text-align:right; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.9rem; color:#5A4A3A; line-height:1.7;">
             <div class="matter-editable" data-field="epilogue_date_author" contenteditable="true" style="white-space:pre-line; display:inline-block;" title="날짜 및 서명">
-              2026년 겨울의 문턱에서\n지은이 ${d.author} 지음
+              2026년 겨울의 문턱에서\n지은이 ${d.author || "임종훈"} 지음
             </div>
           </div>
         </div>
@@ -512,21 +518,21 @@
       ovRight.innerHTML = `
         <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:40px 30px 30px 30px; background:#FAF7F2; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.82rem; color:#4A3A2C; line-height:1.75; box-sizing:border-box;">
           <h4 class="matter-editable" data-field="colophon_title" contenteditable="true" style="font-size:1.2rem; color:#2C1D11; margin:0 0 12px 0; font-weight:700;" title="도서명">
-            ${d.title}
+            ${d.title || colPreset.title || "노을빛 기억"}
           </h4>
           <div style="border-top:1.5px solid #2C1D11; padding-top:10px; margin-bottom:14px; font-size:0.8rem; line-height:1.8;">
-            <div><strong>지은이</strong> | <span class="matter-editable" data-field="colophon_author" contenteditable="true">${d.author}</span></div>
-            <div><strong>발행인</strong> | <span class="matter-editable" data-field="colophon_publisher_ceo" contenteditable="true">${d.preset.colophon.right.publisher_ceo}</span></div>
-            <div><strong>발행처</strong> | <span class="matter-editable" data-field="colophon_publisher" contenteditable="true">${d.publisher}</span></div>
-            <div><strong>출판등록</strong> | <span class="matter-editable" data-field="colophon_reg_no" contenteditable="true">${d.preset.colophon.right.reg_no}</span></div>
-            <div><strong>발행일</strong> | <span class="matter-editable" data-field="colophon_published_date" contenteditable="true">${d.publishedDate}</span></div>
-            <div style="margin-top:6px;"><strong>주소</strong> | <span class="matter-editable" data-field="colophon_address" contenteditable="true">${d.preset.colophon.right.address}</span></div>
-            <div><strong>홈페이지</strong> | <span class="matter-editable" data-field="colophon_homepage" contenteditable="true">${d.preset.colophon.right.homepage}</span></div>
-            <div style="margin-top:6px;"><strong>ISBN</strong> | <span class="matter-editable" data-field="colophon_isbn" contenteditable="true">${d.isbn}</span></div>
-            <div><strong>정가</strong> | <span class="matter-editable" data-field="colophon_price" contenteditable="true">${d.price}</span></div>
+            <div><strong>지은이</strong> | <span class="matter-editable" data-field="colophon_author" contenteditable="true">${d.author || colPreset.author || "임종훈"}</span></div>
+            <div><strong>발행인</strong> | <span class="matter-editable" data-field="colophon_publisher_ceo" contenteditable="true">${colPreset.publisher_ceo || "한철환"}</span></div>
+            <div><strong>발행처</strong> | <span class="matter-editable" data-field="colophon_publisher" contenteditable="true">${d.publisher || colPreset.publisher || "부크크 (Bookk)"}</span></div>
+            <div><strong>출판등록</strong> | <span class="matter-editable" data-field="colophon_reg_no" contenteditable="true">${colPreset.reg_no || "제2014-000000호"}</span></div>
+            <div><strong>발행일</strong> | <span class="matter-editable" data-field="colophon_published_date" contenteditable="true">${d.publishedDate || colPreset.published_date || "2026년 11월 10일"}</span></div>
+            <div style="margin-top:6px;"><strong>주소</strong> | <span class="matter-editable" data-field="colophon_address" contenteditable="true">${colPreset.address || "서울특별시 구로구 디지털로33길 11, 에이스건설타워 8차 801호"}</span></div>
+            <div><strong>홈페이지</strong> | <span class="matter-editable" data-field="colophon_homepage" contenteditable="true">${colPreset.homepage || "www.bookk.co.kr"}</span></div>
+            <div style="margin-top:6px;"><strong>ISBN</strong> | <span class="matter-editable" data-field="colophon_isbn" contenteditable="true">${d.isbn || colPreset.isbn || "979-11-XXXXX-X (03810)"}</span></div>
+            <div><strong>정가</strong> | <span class="matter-editable" data-field="colophon_price" contenteditable="true">${d.price || colPreset.price || "15,000원"}</span></div>
           </div>
           <div class="matter-editable" data-field="colophon_copyright" contenteditable="true" style="font-size:0.72rem; color:#8C7560; border-top:1px solid #D5C2B0; padding-top:8px; white-space:pre-line;" title="저작권 보호 문구">
-            ${d.preset.colophon.right.copyright}
+            ${colPreset.copyright || "* 본 도서의 판권은 저작권자와 부크크에 있으며, 무단 전재와 복제를 금합니다.\n* 잘못 만들어진 책은 구입처에서 바꾸어 드립니다."}
           </div>
         </div>
       `;
