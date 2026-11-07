@@ -3,13 +3,16 @@
 // ============================================================================
 // 2. 시집 프로젝트 목록 로드 및 드롭다운 연동
 async function loadProjects() {
+  const select = document.getElementById("selectProjectDropdown");
+  if (!select) return;
+
   try {
     const res = await fetch("/api/projects");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     projectList = data.projects || [];
     const active = data.active_project;
 
-    const select = document.getElementById("selectProjectDropdown");
     select.innerHTML = "";
 
     projectList.forEach(proj => {
@@ -28,7 +31,22 @@ async function loadProjects() {
       if (exportProj) exportProj.textContent = active.name;
     }
   } catch (err) {
-    console.error("프로젝트 목록 로드 실패:", err);
+    console.warn("서버 API 부재: 웹 독립 실행 모드로 자동 폴백합니다.", err);
+    // [웹 독립 실행 모드] 기본 시집 자동 주입
+    projectList = [
+      { id: "sunset_memory", name: "노을빛 기억 (시범 시집)", is_active: true }
+    ];
+    select.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "sunset_memory";
+    opt.textContent = "노을빛 기억 (시범 시집)";
+    opt.selected = true;
+    select.appendChild(opt);
+
+    const bannerTitle = document.getElementById("bannerBookTitle");
+    if (bannerTitle) bannerTitle.textContent = "노을빛 기억";
+    const bannerAuthor = document.getElementById("bannerBookAuthor");
+    if (bannerAuthor) bannerAuthor.textContent = "김서정 시인 지음";
   }
 }
 
@@ -338,7 +356,11 @@ async function onDeleteCurrentProject() {
 // 5. 전체 상태 및 작품 목록 로드
 async function loadStatus() {
   try {
-    const res = await fetch("/api/status");
+    let res = await fetch("/api/status");
+    if (!res.ok) {
+      console.warn("웹 정적 클라이언트 모드: /studio/data/default_status.json에서 작품을 로드합니다.");
+      res = await fetch("/studio/data/default_status.json");
+    }
     currentStatus = await res.json();
     window.currentStatus = currentStatus;
 

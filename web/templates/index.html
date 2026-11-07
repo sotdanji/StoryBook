@@ -202,15 +202,17 @@
 
 
       <!-- 5. 사이드바 하단 바로가기 (큰 글씨 사용 설명서 & 독자용 시화 갤러리) -->
+      <!-- 5. 사이드바 하단 바로가기 (개인 미리보기 & 공용 모둠솥 갤러리) -->
       <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
-        <button type="button" class="btn-sidebar-gallery" onclick="window.open('/manual', '_blank')"
+        <button type="button" class="btn-sidebar-gallery" onclick="openPrivateBookPreview()"
           style="background: linear-gradient(135deg, #FFF8ED 0%, #F5E8D3 100%); border: 1.5px solid #D4A373; color: #643E19; font-weight: 700; box-shadow: 0 2px 5px rgba(212,163,115,0.2);"
-          title="[큰 글씨 사용 설명서] 복잡한 별표나 기호 없이, 돋보기 없이도 시원하게 읽으실 수 있는 친절한 공식 사용 설명서를 새 창으로 엽니다.">
-          <span>📖 큰 글씨 사용 설명서</span>
+          title="[내 시집 넘겨보기 (비공개)] 지금 편집 중인 내 시집 전체를 다른 사람에게 공개하지 않고 나 혼자 책장 넘기며 음성과 그림을 확인하는 전용 검토실입니다.">
+          <span>📖 내 시집 넘겨보기 (비공개)</span>
         </button>
-        <button type="button" class="btn-sidebar-gallery" onclick="openReaderGallery()"
-          title="[독자용 시화 갤러리 열기] 감성적인 배경음악과 부드러운 책장 넘김 효과가 적용된 독자 감상용 웹 갤러리를 새 창으로 엽니다.">
-          <span>🎨 독자용 시화 갤러리 열기</span>
+        <button type="button" class="btn-sidebar-gallery" onclick="window.open('/gallery', '_blank')"
+          style="background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%); border: 1.5px solid #C084FC; color: #581C87; font-weight: 700; box-shadow: 0 2px 5px rgba(192,132,252,0.2);"
+          title="[모둠솥 공용 갤러리] 전국의 작가님들이 정식으로 출품한 작품들을 둘러보고 감상하는 열린 공용 전시관입니다.">
+          <span>🌐 모둠솥 공용 갤러리 구경</span>
         </button>
         <button type="button" class="btn-sidebar-gallery"
           onclick="window.open('https://cafe.naver.com/eduaihub', '_blank')"
@@ -242,6 +244,16 @@
               style="border-color: #B8977E; color: #643E19; font-weight: 700; background: #FFFDF9;"
               title="[무료 Gemini API 키 설정] 구글 AI 스튜디오에서 100% 무료로 발급받은 API 키를 등록하여, 상투성을 깨부수는 진짜 AI 작시 엔진(Gemini 2.5 Flash)을 활성화합니다.">
               <span id="geminiKeyStatusBadge">🔑 무료 AI 키 설정</span>
+            </button>
+            <button type="button" class="btn-banner-action" onclick="openPrivateBookPreview()"
+              style="background: linear-gradient(135deg, #FFF8ED 0%, #F5E8D3 100%); border: 1.5px solid #D4A373; color: #643E19; font-weight: 700; box-shadow: 0 1px 3px rgba(212,163,115,0.2);"
+              title="[내 시집 넘겨보기 (비공개)] 지금 작성 중인 내 시집을 다른 사람에게 노출하지 않고, 나 혼자 책장 넘김 효과로 감상·검토하는 비공개 열람실을 엽니다.">
+              <span>📖 내 시집 넘겨보기 (비공개)</span>
+            </button>
+            <button type="button" class="btn-banner-action" onclick="publishToPublicGallery()"
+              style="background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%); border: 1.5px solid #5B21B6; color: #FFFFFF; font-weight: 700; box-shadow: 0 2px 6px rgba(109,40,217,0.35);"
+              title="[모둠솥 갤러리에 출품] 완성을 마친 시집을 전국의 독자들에게 선보이는 열린 공용 갤러리(모둠솥)에 정식으로 출품·발행합니다. (언제든 최신본으로 갱신 가능)">
+              <span>🚀 모둠솥 갤러리에 출품</span>
             </button>
             <button type="button" class="btn-banner-action btn-primary-action" onclick="openEditProjectModal()"
               title="[시집 정보 수정] 현재 시집의 제목, 부제, 시인(저자)명, 목표 권수 및 조판 형태(시화집/일반 시집)를 변경합니다.">⚙️ 시집 정보 수정</button>

@@ -551,7 +551,11 @@
     async ensureStatusLoaded() {
       if (this.getWorksList().length > 0) return true;
       try {
-        const res = await fetch("/api/status");
+        let res = await fetch("/api/status");
+        if (!res.ok) {
+          console.warn("[DTP Core] 웹 정적 모드: /studio/data/default_status.json에서 작품을 로드합니다.");
+          res = await fetch("/studio/data/default_status.json");
+        }
         if (res.ok) {
           const data = await res.json();
           window.currentStatus = data;
@@ -2542,9 +2546,18 @@
         hideElem(imgElem);
         hideElem(placeholder);
 
+        const resolveCleanImgPath = (file) => {
+          if (!file) return "";
+          let p = "/" + String(file).replace(/^(\.\/|\/)+/, '');
+          if (p.startsWith("/images/")) {
+            p = "/gallery" + p;
+          }
+          return p;
+        };
+
         if (layout === 'single') {
           // [1장 전체 레이아웃]: 글상자와 100% 동일한 4변 여백 리사이즈 핸들 지원
-          const cleanPath1 = imgFile1 ? ("/" + String(imgFile1).replace(/^(\.\/|\/)+/, '')) : "";
+          const cleanPath1 = resolveCleanImgPath(imgFile1);
           const frame1 = document.createElement("div");
           frame1.className = `dtp-image-frame is-selected`;
           frame1.setAttribute("data-sub-frame", "1");
@@ -2554,7 +2567,7 @@
 
           frame1.innerHTML = `
             <div class="dtp-frame-crop">
-              ${cleanPath1 ? `<img src="${cleanPath1}" alt="삽화" draggable="false">` : '<div style="color:#A89F91; font-size:0.78rem;">그림을 등록하세요</div>'}
+              ${cleanPath1 ? `<img src="${cleanPath1}" alt="삽화" draggable="false" onerror="if(!this.dataset.tried){this.dataset.tried=1; this.src='/images/'+this.src.split('/').pop();}">` : '<div style="color:#A89F91; font-size:0.78rem;">그림을 등록하세요</div>'}
             </div>
             <button type="button" class="btn-frame-change" onclick="event.stopPropagation(); dtpEditor.openSlotImageFrameManager('${side}', 1)">🎨 그림 변경</button>
           `;
@@ -2582,8 +2595,8 @@
           hideElem(placeholder);
           layerImage.classList.add(`layout-${layout}`);
 
-          const cleanPath1 = imgFile1 ? ("/" + String(imgFile1).replace(/^(\.\/|\/)+/, '')) : "";
-          const cleanPath2 = imgFile2 ? ("/" + String(imgFile2).replace(/^(\.\/|\/)+/, '')) : "";
+          const cleanPath1 = resolveCleanImgPath(imgFile1);
+          const cleanPath2 = resolveCleanImgPath(imgFile2);
 
           // 1번 프레임 생성 및 글상자 스타일 4변 여백 리사이즈 바인딩
           const frame1 = document.createElement("div");

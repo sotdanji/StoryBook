@@ -644,36 +644,10 @@ function closeSidebarMobile() {
 // 독자용 시화 갤러리 단일 윈도우 인스턴스 (중복 생성 방지)
 let readerGalleryWindow = null;
 
-// 독자용 시화 갤러리 열기 (단일 창 유지 및 포커스)
+// 독자용 시화 갤러리 열기 (모둠솥 갤러리 직통 연결)
 function openReaderGallery() {
-  const proj = (currentStatus && currentStatus.project) ? currentStatus.project : null;
-  let targetUrl = "/projects/노을빛_기억/시화집_갤러리.html";
-  
-  if (proj && proj.name) {
-    const safeName = proj.name.replace(/\s+/g, '_');
-    targetUrl = `/projects/${safeName}/시화집_갤러리.html`;
-  }
-
-  const windowName = "StoryBookReaderGallery";
-
-  // 1. 이미 열린 창이 존재하고 닫히지 않은 경우: 해당 창으로 포커스 이동 및 URL 갱신
-  if (readerGalleryWindow && !readerGalleryWindow.closed) {
-    try {
-      if (readerGalleryWindow.location && readerGalleryWindow.location.pathname !== targetUrl) {
-        readerGalleryWindow.location.href = targetUrl;
-      }
-      readerGalleryWindow.focus();
-      return;
-    } catch (e) {
-      // 크로스 도메인이거나 접근 제한 시 window.open 재사용 진행
-    }
-  }
-
-  // 2. 창이 없거나 닫힌 경우: 고유 윈도우 이름으로 열기 (브라우저 수준 중복 방지)
-  readerGalleryWindow = window.open(targetUrl, windowName);
-  if (readerGalleryWindow) {
-    readerGalleryWindow.focus();
-  }
+  const targetUrl = "/gallery";
+  window.open(targetUrl, "_blank");
 }
 
 // [글꼴·크기 단일화] 조판 편집기 '글 편집 도구상자' 속성을 집필실 본문창에 100% 동기화
@@ -2664,3 +2638,104 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// ========================================================
+// 갤러리 이원화: 개인 비공개 미리보기 vs 공용 모둠솥 갤러리 출품
+// ========================================================
+
+/**
+ * 1. [개인용] 내 시집 넘겨보기 (비공개 검토)
+ */
+function openPrivateBookPreview() {
+  try {
+    if (window.currentStatus) {
+      localStorage.setItem("storybook_private_preview_status", JSON.stringify(window.currentStatus));
+    }
+  } catch (e) {
+    console.warn("개인 미리보기 데이터 저장 경고:", e);
+  }
+  const previewUrl = "/gallery?mode=private_preview&t=" + Date.now();
+  window.open(previewUrl, "_blank");
+}
+window.openPrivateBookPreview = openPrivateBookPreview;
+
+/**
+ * 2. [공용] 모둠솥 갤러리에 정식 출품 (발행 및 최신본 갱신)
+ */
+function publishToPublicGallery() {
+  const bookTitle = document.getElementById("bannerBookTitle")?.textContent?.trim() || "노을빛 기억";
+  const bookAuthor = document.getElementById("bannerBookAuthor")?.textContent?.trim() || "김서정 시인 지음";
+
+  const confirmMsg = `【${bookTitle}】 시집을 모둠솥 공용 갤러리에 정식으로 출품하시겠습니까?\n\n`
+    + `• 출품 시 전국의 독자들이 모둠솥 갤러리에서 내 시집을 감상할 수 있습니다.\n`
+    + `• 미완성 상태이거나 수정 중인 원고는 [내 시집 넘겨보기(비공개)]에서만 보실 수 있습니다.\n`
+    + `• 출품 후 내용을 수정하셔도 언제든 이 버튼으로 최신본으로 갱신 교체됩니다.`;
+
+  if (typeof Swal !== "undefined") {
+    Swal.fire({
+      title: "🚀 모둠솥 갤러리에 출품",
+      html: `<div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #4B382A;">
+        <p style="margin-bottom: 8px;"><strong>「${bookTitle}」</strong> (${bookAuthor}) 시집을 전국의 독자들이 모인 <strong>[모둠솥 공용 갤러리]</strong>에 정식 출품합니다.</p>
+        <div style="background: #FFFDF7; border: 1.5px solid #F3DCB1; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; color: #78350F; margin-top: 10px;">
+          ✓ 출품 전 원고는 [내 시집 넘겨보기(비공개)]에서 나만 볼 수 있습니다.<br>
+          ✓ 출품 후 시나 그림을 수정하신 뒤 다시 누르시면 <strong>최종본으로 즉시 교체 갱신</strong>됩니다.
+        </div>
+      </div>`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#7C3AED",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "✨ 네, 공용 갤러리에 출품합니다",
+      cancelButtonText: "취소"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        doPublishProcess(bookTitle, bookAuthor);
+      }
+    });
+  } else {
+    if (confirm(confirmMsg)) {
+      doPublishProcess(bookTitle, bookAuthor);
+    }
+  }
+}
+window.publishToPublicGallery = publishToPublicGallery;
+
+function doPublishProcess(bookTitle, bookAuthor) {
+  try {
+    const publishedPayload = {
+      id: "published_" + Date.now(),
+      title: bookTitle,
+      author: bookAuthor,
+      published_at: new Date().toISOString(),
+      published_date: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" }),
+      status: window.currentStatus || null
+    };
+
+    localStorage.setItem("modumsot_published_book", JSON.stringify(publishedPayload));
+    localStorage.setItem("modumsot_has_published", "true");
+
+    if (typeof Swal !== "undefined") {
+      Swal.fire({
+        title: "🎉 정식 출품 완료!",
+        html: `<strong>「${bookTitle}」</strong>이(가) 모둠솥 공용 갤러리에 성공적으로 출품 등록되었습니다.<br><br>지금 공용 갤러리로 이동하여 확인하시겠습니까?`,
+        icon: "success",
+        showCancelButton: true,
+        confirmButtonColor: "#7C3AED",
+        cancelButtonColor: "#6B7280",
+        confirmButtonText: "🌐 모둠솥 공용 갤러리 보러가기",
+        cancelButtonText: "계속 편집하기"
+      }).then((res) => {
+        if (res.isConfirmed) {
+          window.open("/gallery", "_blank");
+        }
+      });
+    } else {
+      alert(`🎉 「${bookTitle}」이(가) 모둠솥 공용 갤러리에 정식 출품되었습니다!`);
+      window.open("/gallery", "_blank");
+    }
+  } catch (err) {
+    console.error("출품 저장 실패:", err);
+    alert("출품 저장 중 오류가 발생했습니다: " + err.message);
+  }
+}
+
