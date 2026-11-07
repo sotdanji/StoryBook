@@ -4353,21 +4353,33 @@
 
       const safeProj = (PROJECT_INFO.name || '노을빛_기억').replace(/\s+/g, '_');
 
-      if (window.location.protocol === 'file:') {
-        // file:/// 환경에서는 상대 경로(images/..., music/...)로 변환
-        p = p.replace(/^(\.\/|\/)+/, '');
-        if (p.startsWith(`projects/${safeProj}/`)) {
-          p = p.slice(`projects/${safeProj}/`.length);
-        }
-        return p;
-      } else {
-        // http:// 웹 서버 환경에서는 /projects/{safeProj}/... 경로 보장
-        p = p.replace(/^(\.\/|\/)+/, '');
-        if (p.startsWith('api/') || p.startsWith('projects/')) {
-          return '/' + p;
-        }
-        return `/projects/${safeProj}/${p}`;
+      // 앞단 슬래시 정리
+      p = p.replace(/^(\.\/|\/)+/, '');
+
+      // projects/{safeProj}/ 제거
+      if (p.startsWith(`projects/${safeProj}/`)) {
+        p = p.slice(`projects/${safeProj}/`.length);
       }
+      // gallery/ 접두어 중복 방지
+      if (p.startsWith('gallery/')) {
+        p = p.slice('gallery/'.length);
+      }
+
+      // 1) Vercel / EduAI Hub 배포 환경 (/gallery 경로) -> /gallery/... 절대 경로 보장
+      if (window.location.pathname.startsWith('/gallery')) {
+        return `/gallery/${p}`;
+      }
+
+      // 2) file:/// 오프라인 실행 환경 -> 상대 경로 (images/..., music/...)
+      if (window.location.protocol === 'file:') {
+        return p;
+      }
+
+      // 3) StoryBook 로컬 웹 서버 (http://localhost:5000/...) -> /projects/{safeProj}/...
+      if (p.startsWith('api/') || p.startsWith('projects/')) {
+        return '/' + p;
+      }
+      return `/projects/${safeProj}/${p}`;
     }
 
     // --------------------------------------------------------
