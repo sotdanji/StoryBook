@@ -3080,3 +3080,76 @@
   color: #7D6B5D;
   margin-top: 1px;
 }
+
+/* ========================================================
+   상·하 2단 분할 글상자 및 미니 툴바 (Split Body & Mini Toolbar)
+   ======================================================== */
+.dtp-box-body-sub {
+  border-style: dashed !important;
+  border-color: #D97706 !important; /* 호박색 점선 테두리로 1단과 시각적 구분 */
+}
+
+.dtp-box-toolbar {
+  position: absolute;
+  top: -30px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 253, 249, 0.96);
+  border: 1px solid #D1BBA2;
+  box-shadow: 0 3px 10px rgba(60, 40, 20, 0.16);
+  border-radius: 6px;
+  padding: 2px 6px;
+  z-index: 120 !important;
+  pointer-events: auto !important;
+  user-select: none;
+  font-family: var(--font-sans, -apple-system, sans-serif);
+  font-size: 11px;
+}
+
+.dtp-box-toolbar .btn-tb-tool {
+  border: 1px solid #D5C2AF;
+  background: #FFFDFC;
+  color: #4A3525;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.dtp-box-toolbar .btn-tb-tool:hover {
+  background: #F5EDE4;
+  border-color: #8C532B;
+  color: #8C532B;
+}
+
+.dtp-box-toolbar .btn-tb-tool.active {
+  background: #78350F;
+  border-color: #78350F;
+  color: #FFFFFF;
+}
+
+.dtp-box-toolbar .btn-tb-delete {
+  color: #DC2626 !important;
+  border-color: #FCA5A5 !important;
+  background: #FFF1F2 !important;
+}
+
+.dtp-box-toolbar .btn-tb-delete:hover {
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+}
+
+.dtp-box-caption-hint {
+  font-size: 0.85em;
+  color: #8C7355;
+  font-style: italic;
+  line-height: 1.6;
+}
+

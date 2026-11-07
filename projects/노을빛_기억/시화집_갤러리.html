@@ -848,6 +848,15 @@
       box-sizing: border-box;
       overflow: hidden;
     }
+    .dtp-box-body-sub {
+      position: relative;
+    }
+    .dtp-box-caption-hint {
+      font-size: 0.88em;
+      color: #6C5543;
+      font-style: italic;
+      line-height: 1.6;
+    }
     .dtp-body-text {
       flex: 1 1 auto;
       width: 100%;
@@ -1443,6 +1452,9 @@
               <div class="dtp-box-body" id="dtpBoxBodyLeft" style="display: none;">
                 <div class="dtp-body-text" id="dtpBodyLeft"></div>
               </div>
+              <div class="dtp-box-body dtp-box-body-sub" id="dtpBoxBody2Left" style="display: none;">
+                <div class="dtp-body-text" id="dtpBody2Left"></div>
+              </div>
             </div>
           </div>
 
@@ -1474,6 +1486,9 @@
               </div>
               <div class="dtp-box-body" id="dtpBoxBodyRight" style="display: none;">
                 <div class="dtp-body-text" id="dtpBodyRight"></div>
+              </div>
+              <div class="dtp-box-body dtp-box-body-sub" id="dtpBoxBody2Right" style="display: none;">
+                <div class="dtp-body-text" id="dtpBody2Right"></div>
               </div>
             </div>
           </div>
@@ -4465,6 +4480,7 @@
 
       const pool = cfg._all_pages_pool || cfg.pages;
       const textFlowMap = {};
+      const textFlowSplitMap = {};
       const overflowFlags = {};
       let cursor = 0;
 
@@ -4475,6 +4491,7 @@
 
         if (!acceptsPoemFlow) {
           textFlowMap[idx] = [];
+          textFlowSplitMap[idx] = { box1: [], box2: [], role1: 'poem', role2: 'poem' };
           overflowFlags[idx] = false;
           continue;
         }
@@ -4485,39 +4502,94 @@
           }
         }
 
-        if (cursor >= rawLines.length) {
+        if (cursor >= rawLines.length && !p.split_body) {
           textFlowMap[idx] = [];
+          textFlowSplitMap[idx] = { box1: [], box2: [], role1: p.body_role_1 || 'poem', role2: p.body_role_2 || 'poem' };
           overflowFlags[idx] = false;
           continue;
         }
 
         const topOffset = p.top_offset ? parseInt(p.top_offset, 10) : 0;
-        // 18행(468px) 수용 & 쪽수 위 여백 확보
-        const maxSafeHeight = Math.max(100, 468 - topOffset);
-        const availableHeight = Math.max(100, maxSafeHeight - 28);
-        const maxSafeLines = Math.max(3, Math.floor(availableHeight / linePx));
-        const customLines = p.max_lines ? parseInt(p.max_lines, 10) : 0;
-        const budget = (customLines > 0) ? Math.min(maxSafeLines, customLines) : maxSafeLines;
+        const minSingleH = Math.round(linePx + 28);
 
-        let usedVisual = 0;
-        const assigned = [];
+        if (p.split_body) {
+          const role1 = p.body_role_1 || 'poem';
+          const role2 = p.body_role_2 || 'poem';
 
-        while (cursor < rawLines.length) {
-          const line = rawLines[cursor];
-          const cost = getVisualLineCost(line, p);
-          if (usedVisual + cost > budget && assigned.length > 0) {
-            break;
+          const topOffset1 = topOffset;
+          const topOffset2 = p.top_offset_2 ? parseInt(p.top_offset_2, 10) : Math.max(minSingleH + 10, Math.round(468 / 2));
+
+          const box1MaxH = Math.max(minSingleH, topOffset2 - topOffset1 - 8);
+          const box1SafeLines = Math.max(1, Math.floor((box1MaxH - 28 + 2) / linePx));
+          const budget1 = p.max_lines ? Math.min(box1SafeLines, parseInt(p.max_lines, 10)) : box1SafeLines;
+
+          const box2MaxH = Math.max(minSingleH, 468 - topOffset2);
+          const box2SafeLines = Math.max(1, Math.floor((box2MaxH - 28 + 2) / linePx));
+          const budget2 = p.max_lines_2 ? Math.min(box2SafeLines, parseInt(p.max_lines_2, 10)) : box2SafeLines;
+
+          const assigned1 = [];
+          const assigned2 = [];
+
+          if (role1 === 'poem') {
+            let used1 = 0;
+            while (cursor < rawLines.length) {
+              const line = rawLines[cursor];
+              const cost = getVisualLineCost(line, p);
+              if (used1 + cost > budget1 && assigned1.length > 0) break;
+              assigned1.push(line);
+              used1 += cost;
+              cursor++;
+            }
           }
-          assigned.push(line);
-          usedVisual += cost;
-          cursor++;
-        }
 
-        while (assigned.length > 0 && assigned[assigned.length - 1].trim() === '') {
-          assigned.pop();
-        }
+          if (role2 === 'poem') {
+            let used2 = 0;
+            while (cursor < rawLines.length) {
+              const line = rawLines[cursor];
+              const cost = getVisualLineCost(line, p);
+              if (used2 + cost > budget2 && assigned2.length > 0) break;
+              assigned2.push(line);
+              used2 += cost;
+              cursor++;
+            }
+          }
 
-        textFlowMap[idx] = assigned;
+          textFlowMap[idx] = assigned1.concat(assigned2);
+          textFlowSplitMap[idx] = {
+            box1: assigned1,
+            box2: assigned2,
+            role1: role1,
+            role2: role2
+          };
+        } else {
+          // 18행(468px) 수용 & 쪽수 위 여백 확보
+          const maxSafeHeight = Math.max(100, 468 - topOffset);
+          const availableHeight = Math.max(100, maxSafeHeight - 28);
+          const maxSafeLines = Math.max(3, Math.floor(availableHeight / linePx));
+          const customLines = p.max_lines ? parseInt(p.max_lines, 10) : 0;
+          const budget = (customLines > 0) ? Math.min(maxSafeLines, customLines) : maxSafeLines;
+
+          let usedVisual = 0;
+          const assigned = [];
+
+          while (cursor < rawLines.length) {
+            const line = rawLines[cursor];
+            const cost = getVisualLineCost(line, p);
+            if (usedVisual + cost > budget && assigned.length > 0) {
+              break;
+            }
+            assigned.push(line);
+            usedVisual += cost;
+            cursor++;
+          }
+
+          while (assigned.length > 0 && assigned[assigned.length - 1].trim() === '') {
+            assigned.pop();
+          }
+
+          textFlowMap[idx] = assigned;
+          textFlowSplitMap[idx] = { box1: assigned, box2: [], role1: 'poem', role2: 'poem' };
+        }
 
         let hasMoreNonEmpty = false;
         for (let k = cursor; k < rawLines.length; k++) {
@@ -4548,7 +4620,7 @@
       if (hasContentOn56) requiredPages = Math.max(requiredPages, 6);
       else if (hasContentOn34) requiredPages = Math.max(requiredPages, 4);
 
-      return { textFlowMap, overflowFlags, requiredPages, pool };
+      return { textFlowMap, textFlowSplitMap, overflowFlags, requiredPages, pool };
     }
 
     // --------------------------------------------------------
@@ -4982,14 +5054,16 @@
       }
     }
 
-    function renderTextLayer(side, pageData, work, cfg, pageIdx, textFlowMap) {
+    function renderTextLayer(side, pageData, work, cfg, pageIdx, textFlowMap, textFlowSplitMap = null) {
       const capSide = (side === 'left') ? 'Left' : 'Right';
       const layerText = document.getElementById(`dtpLayerText${capSide}`);
       const boxTitle = document.getElementById(`dtpBoxTitle${capSide}`);
       const boxBody = document.getElementById(`dtpBoxBody${capSide}`);
+      const boxBody2 = document.getElementById(`dtpBoxBody2${capSide}`);
       const titleElem = document.getElementById(`dtpTitle${capSide}`);
       const authorElem = document.getElementById(`dtpAuthor${capSide}`);
       const bodyElem = document.getElementById(`dtpBody${capSide}`);
+      const body2Elem = document.getElementById(`dtpBody2${capSide}`);
 
       if (!layerText) return;
 
@@ -4997,6 +5071,7 @@
         layerText.style.display = 'none';
         if (boxTitle) boxTitle.style.display = 'none';
         if (boxBody) boxBody.style.display = 'none';
+        if (boxBody2) boxBody2.style.display = 'none';
         return;
       }
 
@@ -5053,8 +5128,11 @@
       // 표제면(title_only)일 때는 본문 글상자 숨김
       if (pageData.role === 'title_only') {
         if (boxBody) boxBody.style.display = 'none';
+        if (boxBody2) boxBody2.style.display = 'none';
         return;
       }
+
+      const splitInfo = (textFlowSplitMap && textFlowSplitMap[pageIdx]) ? textFlowSplitMap[pageIdx] : { box1: textFlowMap[pageIdx] || [], box2: [], role1: pageData.body_role_1 || 'poem', role2: pageData.body_role_2 || 'poem' };
 
       // 2) 본문 상자
       if (boxBody && bodyElem) {
@@ -5074,8 +5152,20 @@
         const lh = parseFloat(cfg.line_height_ratio) || 1.6;
         const fontPx = (effPt / 12.0) * 15.2;
         const linePx = fontPx * lh;
+        const fontFam = cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif";
+        const align = cfg.text_align || 'left';
+        const lineStyle = `min-height:${linePx.toFixed(2)}px; line-height:${linePx.toFixed(2)}px; font-family:${fontFam};`;
 
-        if (pageData.max_lines) {
+        if (pageData.split_body) {
+          const topOffset2 = pageData.top_offset_2 ? parseInt(pageData.top_offset_2, 10) : 260;
+          const minSingleLineH = Math.round(linePx + 28);
+          const box1MaxH = Math.max(minSingleLineH, topOffset2 - topOffset - 8);
+          const box1SafeLines = Math.max(1, Math.floor((box1MaxH - 28 + 2) / linePx));
+          const targetLines1 = pageData.max_lines ? Math.min(box1SafeLines, parseInt(pageData.max_lines, 10)) : box1SafeLines;
+          const targetH1 = Math.min(box1MaxH, Math.max(minSingleLineH, Math.round(targetLines1 * linePx + 28)));
+          boxBody.style.height = `${targetH1}px`;
+          boxBody.style.flex = 'none';
+        } else if (pageData.max_lines) {
           const maxAllowedH = Math.max(80, 468 - topOffset);
           const customH = Math.min(maxAllowedH, Math.max(80, Math.round(pageData.max_lines * linePx + 28)));
           boxBody.style.height = `${customH}px`;
@@ -5087,23 +5177,19 @@
 
         bodyElem.style.fontSize = `${fontPx.toFixed(2)}px`;
         bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
-        const fontFam = cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif";
         bodyElem.style.setProperty('font-family', fontFam, 'important');
-
-        const lineStyle = `min-height:${linePx.toFixed(2)}px; line-height:${linePx.toFixed(2)}px; font-family:${fontFam};`;
-
-        const align = cfg.text_align || 'left';
         bodyElem.classList.remove('text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify');
         bodyElem.classList.add(`text-align-${align}`);
         bodyElem.style.textAlign = align;
 
-        if (pageData.role === 'independent') {
-          const customTxt = pageData.custom_text || '';
-          bodyElem.innerHTML = customTxt.split('\n').map(line => `<p class="poem-line" style="${lineStyle}">${line || '&nbsp;'}</p>`).join('');
-        } else if (pageData.custom_html && pageData.custom_html.trim()) {
+        const role1 = pageData.split_body ? (pageData.body_role_1 || 'poem') : pageData.role;
+        if (role1 === 'independent' || (pageData.split_body && role1 === 'custom')) {
+          const customTxt = (pageData.split_body && pageData.custom_text_1 !== undefined) ? pageData.custom_text_1 : (pageData.custom_text || '');
+          bodyElem.innerHTML = customTxt.split('\n').map(line => `<p class="poem-line${pageData.split_body ? ' dtp-box-caption-hint' : ''}" style="${lineStyle}">${line || '&nbsp;'}</p>`).join('');
+        } else if (pageData.custom_html && pageData.custom_html.trim() && !pageData.split_body) {
           bodyElem.innerHTML = pageData.custom_html;
         } else {
-          const lines = textFlowMap[pageIdx] || [];
+          const lines = pageData.split_body ? (splitInfo.box1 || []) : (textFlowMap[pageIdx] || []);
           if (lines.length > 0) {
             bodyElem.innerHTML = lines.map((line, lIdx) => {
               const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trimEnd();
@@ -5120,11 +5206,63 @@
           }
         }
 
+        // 3) 2단 분할 상자 (Box 2) 렌더링
+        if (pageData.split_body && boxBody2 && body2Elem) {
+          boxBody2.style.display = 'flex';
+          const topOffset2 = pageData.top_offset_2 ? parseInt(pageData.top_offset_2, 10) : 260;
+          boxBody2.style.marginTop = `${topOffset2}px`;
+
+          const leftOffset2 = parseInt(pageData.left_offset_2, 10) || 0;
+          const rightOffset2 = parseInt(pageData.right_offset_2, 10) || 0;
+          boxBody2.style.marginLeft = leftOffset2 > 0 ? `${leftOffset2}px` : '0px';
+          boxBody2.style.marginRight = rightOffset2 > 0 ? `${rightOffset2}px` : '0px';
+          boxBody2.style.width = (leftOffset2 > 0 || rightOffset2 > 0) ? `calc(100% - ${leftOffset2 + rightOffset2}px)` : '100%';
+
+          const minSingleLineH = Math.round(linePx + 28);
+          const box2MaxH = Math.max(minSingleLineH, 468 - topOffset2);
+          const box2SafeLines = Math.max(1, Math.floor((box2MaxH - 28 + 2) / linePx));
+          const targetLines2 = pageData.max_lines_2 ? Math.min(box2SafeLines, parseInt(pageData.max_lines_2, 10)) : box2SafeLines;
+          const targetH2 = Math.min(box2MaxH, Math.max(minSingleLineH, Math.round(targetLines2 * linePx + 28)));
+          boxBody2.style.height = `${targetH2}px`;
+          boxBody2.style.flex = 'none';
+
+          body2Elem.style.fontSize = `${fontPx.toFixed(2)}px`;
+          body2Elem.style.lineHeight = `${linePx.toFixed(2)}px`;
+          body2Elem.style.setProperty('font-family', fontFam, 'important');
+          body2Elem.classList.remove('text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify');
+          body2Elem.classList.add(`text-align-${align}`);
+          body2Elem.style.textAlign = align;
+
+          const role2 = pageData.body_role_2 || 'poem';
+          if (role2 === 'custom') {
+            const customTxt2 = (pageData.custom_text_2 !== undefined) ? pageData.custom_text_2 : (pageData.custom_text || '');
+            body2Elem.innerHTML = customTxt2.split('\n').map(line => `<p class="poem-line dtp-box-caption-hint" style="${lineStyle}">${line || '&nbsp;'}</p>`).join('');
+          } else {
+            const lines2 = splitInfo.box2 || [];
+            if (lines2.length > 0) {
+              body2Elem.innerHTML = lines2.map((line, lIdx) => {
+                const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trimEnd();
+                if (!trimmed.trim()) {
+                  return `<p class="poem-line empty-line" data-line-idx="${lIdx}" style="${lineStyle}"><br></p>`;
+                }
+                const isHanging = /^["'“‘「『\(\<]/.test(trimmed.trim());
+                const hangClass = isHanging ? ' hang-quote' : '';
+                const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+                return `<p class="poem-line${hangClass}" data-line-idx="${lIdx}" style="${lineStyle} ${hangStyle}"><span class="line-text" style="font-family:${fontFam};">${trimmed.trim()}</span></p>`;
+              }).join('');
+            } else {
+              body2Elem.innerHTML = '';
+            }
+          }
+        } else if (boxBody2) {
+          boxBody2.style.display = 'none';
+        }
+
         setTimeout(() => detectAndApplyLineOverlap(side, pageData, cfg), 30);
       }
     }
 
-    function renderSinglePage(side, pageIdx, cfg, work, textFlowMap, overflowFlags, baseStartPage) {
+    function renderSinglePage(side, pageIdx, cfg, work, textFlowMap, overflowFlags, baseStartPage, textFlowSplitMap = null) {
       const pageData = cfg.pages[pageIdx] || { usage: 'text', role: 'continue', image_file: '' };
       const pageNum = pageIdx + 1;
       const bookFolioNum = baseStartPage ? (baseStartPage + pageIdx) : pageNum;
@@ -5141,7 +5279,7 @@
       }
 
       renderImageLayer(side, pageData, work, pageNum);
-      renderTextLayer(side, pageData, work, cfg, pageIdx, textFlowMap);
+      renderTextLayer(side, pageData, work, cfg, pageIdx, textFlowMap, textFlowSplitMap);
 
       const contBadge = document.getElementById(`dtpContinue${capSide}`);
       if (contBadge) {
@@ -5342,7 +5480,7 @@
 
       const cfg = getNormalizedConfig(data);
       const flowResult = calculateTextFlowAndPages(data, cfg);
-      const { textFlowMap, overflowFlags, requiredPages } = flowResult;
+      const { textFlowMap, textFlowSplitMap, overflowFlags, requiredPages } = flowResult;
       const totalPages = Math.max(cfg.page_count || 2, requiredPages);
       const maxParts = Math.max(1, Math.ceil(totalPages / 2));
 
@@ -5387,8 +5525,8 @@
       // 좌/우 페이지 렌더링
       const leftPageIdx = (currentSpreadPart - 1) * 2;
       const rightPageIdx = leftPageIdx + 1;
-      renderSinglePage('left', leftPageIdx, cfg, data, textFlowMap, overflowFlags, baseStartPage);
-      renderSinglePage('right', rightPageIdx, cfg, data, textFlowMap, overflowFlags, baseStartPage);
+      renderSinglePage('left', leftPageIdx, cfg, data, textFlowMap, overflowFlags, baseStartPage, textFlowSplitMap);
+      renderSinglePage('right', rightPageIdx, cfg, data, textFlowMap, overflowFlags, baseStartPage, textFlowSplitMap);
 
       // 사이드바 및 하단 인디케이터 갱신
       document.getElementById('pageIndicator').innerText = `${currentIndex + 1} / ${EPISODES.length}`;

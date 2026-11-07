@@ -414,6 +414,7 @@ class BookkPDFBuilder:
 
                 # DTP 코어와 동일한 순차 용량 기반 분할 (남는 행만 뒷면으로 이월)
                 chunks = []
+                slot_split_info = {}
                 cursor = 0
                 for t_i, s_idx in enumerate(text_slot_indices):
                     role_here = roles[s_idx]
@@ -430,12 +431,46 @@ class BookkPDFBuilder:
                         cap = 17 if role_here == "start" else 20
                     else:
                         cap = 20 if role_here == "start" else 23
-                    if is_last_slot:
-                        chunks.append(lines[cursor:])
-                        cursor = len(lines)
+
+                    if p_obj_here.get("split_body"):
+                        role1 = p_obj_here.get("body_role_1", "poem")
+                        role2 = p_obj_here.get("body_role_2", "poem")
+                        cap1 = int(p_obj_here.get("max_lines")) if p_obj_here.get("max_lines") else max(1, cap // 2)
+                        cap2 = int(p_obj_here.get("max_lines_2")) if p_obj_here.get("max_lines_2") else max(1, cap // 2)
+
+                        b1_lines = []
+                        if role1 == "poem":
+                            b1_lines = lines[cursor:cursor + cap1]
+                            cursor += len(b1_lines)
+
+                        b2_lines = []
+                        if role2 == "poem":
+                            if is_last_slot:
+                                b2_lines = lines[cursor:]
+                                cursor = len(lines)
+                            else:
+                                b2_lines = lines[cursor:cursor + cap2]
+                                cursor += len(b2_lines)
+
+                        slot_split_info[s_idx] = {
+                            "box1": b1_lines,
+                            "box2": b2_lines,
+                            "role1": role1,
+                            "role2": role2,
+                            "top_offset_2_pt": float(p_obj_here.get("top_offset_2", 260)) * 0.75,
+                            "left_offset_2_pt": float(p_obj_here.get("left_offset_2", 0)) * 0.75,
+                            "right_offset_2_pt": float(p_obj_here.get("right_offset_2", 0)) * 0.75,
+                            "custom_text_1": p_obj_here.get("custom_text_1", p_obj_here.get("custom_text", "")),
+                            "custom_text_2": p_obj_here.get("custom_text_2", p_obj_here.get("custom_text", ""))
+                        }
+                        chunks.append(b1_lines + b2_lines)
                     else:
-                        chunks.append(lines[cursor:cursor + cap])
-                        cursor += cap
+                        if is_last_slot:
+                            chunks.append(lines[cursor:])
+                            cursor = len(lines)
+                        else:
+                            chunks.append(lines[cursor:cursor + cap])
+                            cursor += cap
 
                 chunk_map = {slot_idx: i for i, slot_idx in enumerate(text_slot_indices)}
 
@@ -565,11 +600,51 @@ class BookkPDFBuilder:
                                 c.setFillColorRGB(0.24, 0.22, 0.21)
                             c.setFont(FONT_NAME, p_font_size)
                             box_avail_w = max(50.0, self.canvas_w_pt - m["right"] - right_offset_pt - body_x)
-                            for line in chunk_lines:
-                                if curr_y < m["bottom"] + 15:
-                                    break
-                                draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
-                                curr_y -= line_h
+
+                            if page_info.get("split_body") and slot_idx in slot_split_info:
+                                sp = slot_split_info[slot_idx]
+                                # 1단 상자 렌더링
+                                if sp["role1"] == "custom":
+                                    b1_render_lines = [l.rstrip() for l in (sp["custom_text_1"] or "").split("\n")]
+                                else:
+                                    b1_render_lines = sp["box1"]
+
+                                for line in b1_render_lines:
+                                    if curr_y < m["bottom"] + 15:
+                                        break
+                                    draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
+                                    curr_y -= line_h
+
+                                # 2단 상자 렌더링
+                                top_offset_2_pt = sp["top_offset_2_pt"]
+                                body2_x = m["left"] + sp["left_offset_2_pt"]
+                                box2_avail_w = max(50.0, self.canvas_w_pt - m["right"] - sp["right_offset_2_pt"] - body2_x)
+                                curr_y2 = top_y - 32 - top_offset_2_pt
+
+                                if sp["role2"] == "custom":
+                                    b2_render_lines = [l.rstrip() for l in (sp["custom_text_2"] or "").split("\n")]
+                                    c.setFillColorRGB(0.42, 0.35, 0.30)
+                                    caption_font_size = p_font_size * 0.92
+                                    c.setFont(FONT_NAME, caption_font_size)
+                                    line_h2 = caption_font_size * float(cfg.get("line_height_ratio", 1.6))
+                                    for line in b2_render_lines:
+                                        if curr_y2 < m["bottom"] + 15:
+                                            break
+                                        draw_aligned_text(c, line, body2_x, curr_y2, text_align, box2_avail_w, font_size_pt=caption_font_size)
+                                        curr_y2 -= line_h2
+                                else:
+                                    b2_render_lines = sp["box2"]
+                                    for line in b2_render_lines:
+                                        if curr_y2 < m["bottom"] + 15:
+                                            break
+                                        draw_aligned_text(c, line, body2_x, curr_y2, text_align, box2_avail_w, font_size_pt=p_font_size)
+                                        curr_y2 -= line_h
+                            else:
+                                for line in chunk_lines:
+                                    if curr_y < m["bottom"] + 15:
+                                        break
+                                    draw_aligned_text(c, line, body_x, curr_y, text_align, box_avail_w, font_size_pt=p_font_size)
+                                    curr_y -= line_h
 
                             if not is_last and len(chunk_lines) > 0:
                                 c.setFillColorRGB(0.55, 0.50, 0.45)
