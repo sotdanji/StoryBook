@@ -502,7 +502,8 @@ class BookkPDFBuilder:
                                 box_w = max(20.0, box_w - (base_inset + scale_margin_x) * 2)
                                 box_h = max(20.0, box_h - (base_inset + scale_margin_y) * 2)
 
-                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file)
+                                shape_1 = p_obj.get("frame_shape_1") or p_obj.get("frame_shape") or "rect"
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file, frame_shape=shape_1)
                             # 한지 가독성 필터 오버레이
                             c.saveState()
                             if hasattr(c, "setFillAlpha"):
@@ -791,20 +792,22 @@ class BookkPDFBuilder:
                             box_h = max(20.0, box_h - (base_inset + scale_margin_y) * 2)
                             img_layout = p_obj.get("image_layout", "single")
                             img_file_2 = p_obj.get("image_file_2") or getattr(work, "image_file_2", "") or img_file
+                            shape_1 = p_obj.get("frame_shape_1") or p_obj.get("frame_shape") or "rect"
+                            shape_2 = p_obj.get("frame_shape_2") or "rect"
 
                             if img_layout == "split_vertical":
                                 gap = 10
                                 half_h = (box_h - gap) / 2
-                                self._draw_artwork(c, work, images_dir, box_x, box_y + half_h + gap, box_w, half_h, img_override_file=img_file)
-                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, half_h, img_override_file=img_file_2)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y + half_h + gap, box_w, half_h, img_override_file=img_file, frame_shape=shape_1)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, half_h, img_override_file=img_file_2, frame_shape=shape_2)
                             elif img_layout == "split_horizontal":
                                 gap = 10
                                 half_w = (box_w - gap) / 2
-                                self._draw_artwork(c, work, images_dir, box_x, box_y, half_w, box_h, img_override_file=img_file)
-                                self._draw_artwork(c, work, images_dir, box_x + half_w + gap, box_y, half_w, box_h, img_override_file=img_file_2)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, half_w, box_h, img_override_file=img_file, frame_shape=shape_1)
+                                self._draw_artwork(c, work, images_dir, box_x + half_w + gap, box_y, half_w, box_h, img_override_file=img_file_2, frame_shape=shape_2)
                             elif img_layout == "overlay_collage":
                                 # 1) 1번 배경 메인 그림 렌더링
-                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file, frame_shape=shape_1)
 
                                 # 2) 2번 전경 꼴라주 프레임 (인디자인 소프트 섀도우 & 우측 하단 일부 걸침 삐져나옴)
                                 frame_scale_2 = float(p_obj.get("frame_scale_2", 100) or 100) / 100.0
@@ -822,17 +825,17 @@ class BookkPDFBuilder:
                                 c.restoreState()
 
                                 # 2번 그림 렌더링
-                                self._draw_artwork(c, work, images_dir, coll_x, coll_y, coll_w, coll_h, img_override_file=img_file_2)
+                                self._draw_artwork(c, work, images_dir, coll_x, coll_y, coll_w, coll_h, img_override_file=img_file_2, frame_shape=shape_2)
                             elif img_layout == "main_detail":
                                 gap = 10
                                 detail_h = (box_h - gap) * 0.30
                                 main_h = (box_h - gap) * 0.70
-                                self._draw_artwork(c, work, images_dir, box_x, box_y + detail_h + gap, box_w, main_h, img_override_file=img_file)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y + detail_h + gap, box_w, main_h, img_override_file=img_file, frame_shape=shape_1)
                                 detail_w = min(box_w, detail_h * 1.3)
                                 detail_x = box_x + (box_w - detail_w) / 2
-                                self._draw_artwork(c, work, images_dir, detail_x, box_y, detail_w, detail_h, img_override_file=img_file_2)
+                                self._draw_artwork(c, work, images_dir, detail_x, box_y, detail_w, detail_h, img_override_file=img_file_2, frame_shape=shape_2)
                             else:
-                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file)
+                                self._draw_artwork(c, work, images_dir, box_x, box_y, box_w, box_h, img_override_file=img_file, frame_shape=shape_1)
 
                         elif mode == "pure_blank":
                             pass
@@ -1469,9 +1472,10 @@ class BookkPDFBuilder:
         y: float,
         w: float,
         h: float,
-        img_override_file: Optional[str] = None
+        img_override_file: Optional[str] = None,
+        frame_shape: str = "rect"
     ):
-        """삽화 고화질(300DPI) 비율 유지 렌더링"""
+        """삽화 고화질(300DPI) 비율 유지 및 도형 틀(Shape Masking) 렌더링"""
         img_drawn = False
         target_file = img_override_file if img_override_file else work.image_file
         if target_file:
@@ -1495,7 +1499,40 @@ class BookkPDFBuilder:
                         target_h = orig_h * ratio
                         pos_x = x + (w - target_w) / 2
                         pos_y = y + (h - target_h) / 2
+
+                        c.saveState()
+                        if frame_shape == "circle":
+                            path = c.beginPath()
+                            path.ellipse(pos_x, pos_y, target_w, target_h)
+                            c.clipPath(path, stroke=0, fill=0)
+                        elif frame_shape == "hexagon":
+                            path = c.beginPath()
+                            pts = [
+                                (pos_x + target_w * 0.5, pos_y + target_h),
+                                (pos_x + target_w, pos_y + target_h * 0.75),
+                                (pos_x + target_w, pos_y + target_h * 0.25),
+                                (pos_x + target_w * 0.5, pos_y),
+                                (pos_x, pos_y + target_h * 0.25),
+                                (pos_x, pos_y + target_h * 0.75),
+                            ]
+                            path.moveTo(pts[0][0], pts[0][1])
+                            for pt in pts[1:]:
+                                path.lineTo(pt[0], pt[1])
+                            path.close()
+                            c.clipPath(path, stroke=0, fill=0)
+                        elif frame_shape == "arch":
+                            path = c.beginPath()
+                            arch_radius = target_w / 2
+                            arch_base_y = max(pos_y, pos_y + target_h - arch_radius)
+                            path.moveTo(pos_x, pos_y)
+                            path.lineTo(pos_x, arch_base_y)
+                            path.arc(pos_x, arch_base_y - arch_radius, pos_x + target_w, arch_base_y + arch_radius, startAngle=180, extent=-180)
+                            path.lineTo(pos_x + target_w, pos_y)
+                            path.close()
+                            c.clipPath(path, stroke=0, fill=0)
+
                         c.drawImage(str(cand), pos_x, pos_y, width=target_w, height=target_h)
+                        c.restoreState()
                         img_drawn = True
                         break
                     except Exception as e:

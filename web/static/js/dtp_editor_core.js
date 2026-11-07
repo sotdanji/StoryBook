@@ -2562,14 +2562,15 @@
             e.stopPropagation();
             this.setTargetPageSlot(side);
             this.setSelectedSubFrame(1);
-            this.switchToolboxTab('image');
+            this.switchToolboxTab('image1');
           };
           const img1 = frame1.querySelector('img');
           if (img1) {
             const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
-            const s1 = pageData.image_scale_1 || 100;
+            const sc1 = pageData.image_scale_1 || 100;
             const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
-            this.applyCustomImageStyle(img1, p1, s1, f1);
+            const s1 = pageData.frame_shape_1 || pageData.frame_shape || 'rect';
+            this.applyCustomImageStyle(img1, p1, sc1, f1, s1);
           }
           this.attachImagePanDrag(frame1, side, 1);
           this.attachFrame4WayResizeHandles(frame1, side, 1);
@@ -2603,14 +2604,15 @@
             e.stopPropagation();
             this.setTargetPageSlot(side);
             this.setSelectedSubFrame(1);
-            this.switchToolboxTab('image');
+            this.switchToolboxTab('image1');
           };
           const img1 = frame1.querySelector('img');
           if (img1) {
             const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
-            const s1 = pageData.image_scale_1 || 100;
+            const sc1 = pageData.image_scale_1 || 100;
             const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
-            this.applyCustomImageStyle(img1, p1, s1, f1);
+            const s1 = pageData.frame_shape_1 || pageData.frame_shape || 'rect';
+            this.applyCustomImageStyle(img1, p1, sc1, f1, s1);
           }
           this.attachImagePanDrag(frame1, side, 1);
           this.attachFrame4WayResizeHandles(frame1, side, 1);
@@ -2635,14 +2637,15 @@
             e.stopPropagation();
             this.setTargetPageSlot(side);
             this.setSelectedSubFrame(2);
-            this.switchToolboxTab('image');
+            this.switchToolboxTab('image1');
           };
           const img2 = frame2.querySelector('img');
           if (img2) {
             const p2 = pageData.image_pan_2 || { x: 0, y: 0 };
-            const s2 = pageData.image_scale_2 || 100;
+            const sc2 = pageData.image_scale_2 || 100;
             const f2 = pageData.image_filter_2 || { vignette: 0, blur: 0, tone: 'none' };
-            this.applyCustomImageStyle(img2, p2, s2, f2);
+            const s2 = pageData.frame_shape_2 || 'rect';
+            this.applyCustomImageStyle(img2, p2, sc2, f2, s2);
           }
           this.attachImagePanDrag(frame2, side, 2);
           this.attachFrame4WayResizeHandles(frame2, side, 2);
@@ -4588,16 +4591,21 @@
     }
 
     /**
-     * DTP 도구상자 탭 전환 ('text', 'image', 'ai')
+     * DTP 도구상자 5종 탭 전환 ('image1', 'image2', 'text1', 'text2', 'ai')
      */
     switchToolboxTab(tabKey) {
+      if (tabKey === 'text') tabKey = 'text1';
+      if (tabKey === 'image') tabKey = 'image1';
+
       this.currentToolboxTab = tabKey;
       const spread = document.getElementById("bookSpreadContainer");
       if (spread) {
-        spread.classList.remove("tab-mode-text", "tab-mode-image", "tab-mode-ai");
+        spread.classList.remove("tab-mode-text1", "tab-mode-text2", "tab-mode-image1", "tab-mode-image2", "tab-mode-ai", "tab-mode-text", "tab-mode-image");
         spread.classList.add(`tab-mode-${tabKey}`);
+        if (tabKey.startsWith('text')) spread.classList.add('tab-mode-text');
+        if (tabKey.startsWith('image')) spread.classList.add('tab-mode-image');
       }
-      const tabs = ['text', 'image', 'ai'];
+      const tabs = ['image1', 'image2', 'text1', 'text2', 'ai'];
       tabs.forEach(t => {
         const btn = document.getElementById(`btnTabDtp${t.charAt(0).toUpperCase() + t.slice(1)}`);
         const content = document.getElementById(`toolboxTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -4607,7 +4615,7 @@
           content.style.setProperty('display', t === tabKey ? 'flex' : 'none', 'important');
         }
       });
-      if (tabKey === 'image') {
+      if (tabKey === 'image1' || tabKey === 'image2') {
         this.syncToolboxImageTab();
       }
       if (tabKey === 'ai') {
@@ -5059,6 +5067,19 @@
       if (btnL) btnL.classList.toggle('active', slot === 'left');
       if (btnR) btnR.classList.toggle('active', slot === 'right');
 
+      const btnLEff = document.getElementById('btnTargetLeftEff');
+      const btnREff = document.getElementById('btnTargetRightEff');
+      if (btnLEff) btnLEff.classList.toggle('active', slot === 'left');
+      if (btnREff) btnREff.classList.toggle('active', slot === 'right');
+
+      // 1-2) 그림틀 형태(Shape Masking) 동기화
+      const shapeKey = (frameNum === 2) ? 'frame_shape_2' : 'frame_shape_1';
+      const shape = pageData[shapeKey] || (frameNum === 1 ? pageData.frame_shape : null) || 'rect';
+      ['Rect', 'Circle', 'Hexagon', 'Arch'].forEach(sName => {
+        const btn = document.getElementById(`btnShape${sName}`);
+        if (btn) btn.classList.toggle('active', sName.toLowerCase() === shape);
+      });
+
       // 2) 그림 분할 셀렉트 동기화
       const layout = pageData.image_layout || 'single';
       const selLayout = document.getElementById('selectTbImgLayout');
@@ -5174,9 +5195,40 @@
     }
 
     /**
-     * 그림 스타일(초점, 배율, 필터) 일괄 적용 헬퍼
+     * 그림틀 형태(Shape Masking) 지정 ('rect', 'circle', 'hexagon', 'arch')
      */
-    applyCustomImageStyle(imgElem, pan, scale, filter) {
+    setImageFrameShape(shape) {
+      const slot = this.targetPageSlot || 'left';
+      const frameNum = this.selectedSubFrame || 1;
+      const work = this.getCurrentWork();
+      if (!work) return;
+
+      const cfg = this.getNormalizedConfig(work);
+      const pageIdx = (this.currentSpreadPart - 1) * 2 + (slot === 'left' ? 0 : 1);
+      if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
+
+      const shapeKey = (frameNum === 2) ? 'frame_shape_2' : 'frame_shape_1';
+      cfg.pages[pageIdx][shapeKey] = shape;
+      if (frameNum === 1) {
+        cfg.pages[pageIdx].frame_shape = shape;
+      }
+      work.layout_config = cfg;
+
+      // 실시간 화면 갱신 및 저장
+      this.syncToolboxImageTab();
+      this.renderSpread(this.currentWorkIndex, this.currentSpreadPart, false);
+      this.pushUndoState();
+      this.saveLayoutConfigToServer(work.episode_no, cfg);
+      if (window.showToast) {
+        const shapeNames = { rect: '사각', circle: '원형 달맞이 창', hexagon: '육각 전통 꽃살창', arch: '서정 아치 문' };
+        window.showToast(`🎨 그림틀 형태가 [${shapeNames[shape] || shape}]으로 변경되었습니다.`, 'info');
+      }
+    }
+
+    /**
+     * 그림 스타일(초점, 배율, 필터, 형태) 일괄 적용 헬퍼
+     */
+    applyCustomImageStyle(imgElem, pan, scale, filter, shape = 'rect') {
       if (!imgElem) return;
       const panX = (pan && typeof pan.x === 'number') ? pan.x : 0;
       const panY = (pan && typeof pan.y === 'number') ? pan.y : 0;
@@ -5192,16 +5244,20 @@
       else if (filter?.tone === 'vintage') fStr += `sepia(0.3) saturate(1.2) hue-rotate(-10deg) `;
       imgElem.style.filter = fStr.trim();
 
-      // [개선]: 이미지 자체(imgElem)가 아닌 그림틀 크롭 컨테이너(.dtp-frame-crop)에 마스크 적용!
-      // 이렇게 하면 가로/세로 이동(Pan)이나 배율 확대 시에도 눈에 보이는 그림틀 사각 영역 전체가 종이 속으로 부드럽게 페이드아웃됨
       imgElem.style.webkitMaskImage = 'none';
       imgElem.style.maskImage = 'none';
 
       const frameCrop = imgElem.closest('.dtp-frame-crop') || imgElem.parentElement;
       if (frameCrop) {
+        // 형태 클래스 반영
+        frameCrop.classList.remove('shape-rect', 'shape-circle', 'shape-hexagon', 'shape-arch');
+        frameCrop.classList.add(`shape-${shape || 'rect'}`);
+
         if (filter?.vignette > 0) {
           const vigPct = Math.max(20, 100 - (filter.vignette * 0.5));
-          const maskVal = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+          const maskVal = (shape === 'circle')
+            ? `radial-gradient(circle at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`
+            : `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
           frameCrop.style.webkitMaskImage = maskVal;
           frameCrop.style.maskImage = maskVal;
         } else {
@@ -5668,11 +5724,13 @@
       const pan = cfg.pages[pageIdx][panKey] || cfg.pages[pageIdx].image_pan || { x: 0, y: 0 };
       const filterKey = (frameNum === 2) ? 'image_filter_2' : 'image_filter_1';
       const filter = cfg.pages[pageIdx][filterKey] || cfg.pages[pageIdx].image_filter || { vignette: 0, blur: 0, tone: 'none' };
+      const shapeKey = (frameNum === 2) ? 'frame_shape_2' : 'frame_shape_1';
+      const shape = cfg.pages[pageIdx][shapeKey] || (frameNum === 1 ? cfg.pages[pageIdx].frame_shape : null) || 'rect';
 
       // 실시간 화면 <img> 요소에 즉시 적용
       const img = this.getTargetImageElement(slot, frameNum);
       if (img) {
-        this.applyCustomImageStyle(img, pan, scaleVal, filter);
+        this.applyCustomImageStyle(img, pan, scaleVal, filter, shape);
       }
 
       const lbl = document.getElementById('lblTbScaleVal');
@@ -5796,11 +5854,13 @@
       const scaleVal = cfg.pages[pageIdx][scaleKey] || cfg.pages[pageIdx].image_scale || 100;
       const filterKey = (frameNum === 2) ? 'image_filter_2' : 'image_filter_1';
       const filter = cfg.pages[pageIdx][filterKey] || cfg.pages[pageIdx].image_filter || { vignette: 0, blur: 0, tone: 'none' };
+      const shapeKey = (frameNum === 2) ? 'frame_shape_2' : 'frame_shape_1';
+      const shape = cfg.pages[pageIdx][shapeKey] || (frameNum === 1 ? cfg.pages[pageIdx].frame_shape : null) || 'rect';
 
       // 실시간 화면 <img> 요소에 즉시 적용
       const img = this.getTargetImageElement(slot, frameNum);
       if (img) {
-        this.applyCustomImageStyle(img, pan, scaleVal, filter);
+        this.applyCustomImageStyle(img, pan, scaleVal, filter, shape);
       }
 
       const input = document.getElementById(axis === 'x' ? 'inputTbPanX' : 'inputTbPanY');
@@ -5857,11 +5917,13 @@
       const scaleVal = cfg.pages[pageIdx][scaleKey] || cfg.pages[pageIdx].image_scale || 100;
       const panKey = (frameNum === 2) ? 'image_pan_2' : 'image_pan_1';
       const pan = cfg.pages[pageIdx][panKey] || cfg.pages[pageIdx].image_pan || { x: 0, y: 0 };
+      const shapeKey = (frameNum === 2) ? 'frame_shape_2' : 'frame_shape_1';
+      const shape = cfg.pages[pageIdx][shapeKey] || (frameNum === 1 ? cfg.pages[pageIdx].frame_shape : null) || 'rect';
 
       // 실시간 화면 <img> 요소에 즉시 적용
       const img = this.getTargetImageElement(slot, frameNum);
       if (img) {
-        this.applyCustomImageStyle(img, pan, scaleVal, filter);
+        this.applyCustomImageStyle(img, pan, scaleVal, filter, shape);
       }
 
       if (filterType === 'vignette') {

@@ -3153,3 +3153,89 @@
   line-height: 1.6;
 }
 
+/* ========================================================
+   그림틀 형태(Shape Masking) 및 도구상자 5종 탭 스타일
+   ======================================================== */
+.dtp-tab-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 2px;
+  font-size: 0.73rem;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+
+.btn-shape-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  width: 100%;
+}
+
+.btn-shape-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  border: 1px solid #D6C7B2;
+  border-radius: 6px;
+  background: #FCFBF9;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-shape-opt:hover {
+  background: #F4EBE1;
+  border-color: #8C4B27;
+}
+
+.btn-shape-opt.active {
+  background: #8C3A14;
+  border-color: #8C3A14;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(140, 58, 20, 0.25);
+}
+
+.btn-shape-opt.active .shape-icon,
+.btn-shape-opt.active .shape-label {
+  color: #FFFFFF !important;
+}
+
+.btn-shape-opt .shape-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-bottom: 3px;
+  color: #553412;
+}
+
+.btn-shape-opt .shape-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #553412;
+}
+
+/* 그림틀 크롭 컨테이너 형태 변형 */
+.dtp-frame-crop.shape-rect {
+  clip-path: none !important;
+  border-radius: 6px !important;
+}
+
+.dtp-frame-crop.shape-circle {
+  clip-path: ellipse(50% 50% at 50% 50%) !important;
+  border-radius: 50% !important;
+}
+
+.dtp-frame-crop.shape-hexagon {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
+  border-radius: 0 !important;
+}
+
+.dtp-frame-crop.shape-arch {
+  clip-path: none !important;
+  border-top-left-radius: 50% 120px !important;
+  border-top-right-radius: 50% 120px !important;
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+}
+

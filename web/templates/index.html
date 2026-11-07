@@ -1526,26 +1526,34 @@
                 </button>
               </div>
 
-              <!-- 2. 3대 탭 스위처 -->
+              <!-- 2. 5대 탭 스위처 (그림 1·2 / 글 1·2 / AI) -->
               <div class="dtp-tab-bar">
-                <button type="button" class="dtp-tab-btn active" id="btnTabDtpText"
-                  onclick="dtpEditor.switchToolboxTab('text')" title="글 편집 (정렬, 서체, 크기, 줄간격)">
-                  <span>✍️</span> 글 편집
+                <button type="button" class="dtp-tab-btn active" id="btnTabDtpImage1"
+                  onclick="dtpEditor.switchToolboxTab('image1')" title="그림 1 (틀 형태, 분할, 위치, 크기, 배율)">
+                  <span>🎨</span> 그림 1
                 </button>
-                <button type="button" class="dtp-tab-btn" id="btnTabDtpImage"
-                  onclick="dtpEditor.switchToolboxTab('image')" title="그림 편집 (분할, 중심점, 필터)">
-                  <span>🎨</span> 그림 편집
+                <button type="button" class="dtp-tab-btn" id="btnTabDtpImage2"
+                  onclick="dtpEditor.switchToolboxTab('image2')" title="그림 2 (외곽 페이드, 블러, 색감 톤, 삽화)">
+                  <span>✨</span> 그림 2
+                </button>
+                <button type="button" class="dtp-tab-btn" id="btnTabDtpText1"
+                  onclick="dtpEditor.switchToolboxTab('text1')" title="글 1 (마스터 스타일, 글꼴, 크기, 정렬, 행간)">
+                  <span>✍️</span> 글 1
+                </button>
+                <button type="button" class="dtp-tab-btn" id="btnTabDtpText2"
+                  onclick="dtpEditor.switchToolboxTab('text2')" title="글 2 (상·하 2단 분할, 위치이동, 한지 가독성)">
+                  <span>📑</span> 글 2
                 </button>
                 <button type="button" class="dtp-tab-btn" id="btnTabDtpAi" onclick="dtpEditor.switchToolboxTab('ai')"
                   title="AI 창작 동반자 (안실장)">
-                  <span>🤖</span> AI 동반자
+                  <span>🤖</span> AI
                 </button>
               </div>
 
               <!-- 3. 패널 본문 영역 (스크롤) -->
               <div class="dtp-toolbox-body">
-                <!-- [탭 1: ✍️ 글 편집] 상하 배열 (Row Stack) -->
-                <div class="dtp-tab-content active" id="toolboxTabText">
+                <!-- [탭 1: ✍️ 글 1: 서체 & 정렬] -->
+                <div class="dtp-tab-content" id="toolboxTabText1">
                   <!-- [InDesign 명품 조판] 마스터 스타일 프리셋 3종 -->
                   <div style="margin-bottom: 10px;">
                     <div style="font-size: 0.74rem; font-weight: 700; color: #6E5340; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
@@ -1699,6 +1707,15 @@
                       <span class="tool-val-badge" id="lblTbLineHeightVal">160%</span>
                     </div>
                   </div>
+                </div>
+
+                <!-- [탭 2: 📑 글 2: 배치 & 2단] -->
+                <div class="dtp-tab-content" id="toolboxTabText2">
+                  <!-- 본문 글상자 2단 분할 안내 배너 -->
+                  <div style="background: #FFF9F5; border: 1px solid #FCD9C6; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.73rem; color: #8C3A14; line-height: 1.45;">
+                    💡 <strong>상·하 2단 글상자 분할</strong><br>
+                    본문 글상자 우상단의 <b>[➕ 2단 분할]</b> 버튼을 누르면 상·하 글상자로 즉시 분리되며, 각각 <b>[📖 시 본문]</b> 또는 <b>[✍️ 캡션/해설]</b>로 독립 배치할 수 있습니다.
+                  </div>
 
                   <!-- 4-2. 본문 글상자 통째 위치 이동 (크기 불변) -->
                   <div class="dtp-control-row"
@@ -1776,8 +1793,8 @@
                   </div>
                 </div>
 
-                <!-- [탭 2: 🎨 그림 편집] 상하 배열 (Row Stack) -->
-                <div class="dtp-tab-content" id="toolboxTabImage">
+                <!-- [탭 3: 🎨 그림 1: 틀 & 배치] -->
+                <div class="dtp-tab-content active" id="toolboxTabImage1">
                   <!-- 페이지 용도 비활성화 안내 배너 (글 전용 또는 여백일 때 표시) -->
                   <div id="rowImageTabDisabledNotice"
                     style="display: none; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.74rem; color: #92400E; line-height: 1.45;">
@@ -1793,6 +1810,31 @@
                           onclick="dtpEditor.setTargetPageSlot('left')">1면 (좌측면)</button>
                         <button type="button" class="btn-control-sub" id="btnTargetRight"
                           onclick="dtpEditor.setTargetPageSlot('right')">2면 (우측면)</button>
+                      </div>
+                    </div>
+
+                    <!-- 1-2. 그림틀 형태 (Shape Masking: 사각 / 원형 / 육각 / 아치) -->
+                    <div class="dtp-control-row" title="그림틀의 모양을 선택합니다. 사각형 원본 그림도 틀에 맞추어 즉시 변형됩니다.">
+                      <span class="dtp-row-label">틀 형태</span>
+                      <div class="dtp-row-control">
+                        <div class="btn-shape-group">
+                          <button type="button" class="btn-shape-opt active" id="btnShapeRect" onclick="dtpEditor.setImageFrameShape('rect')" title="정통 사각 프레임">
+                            <span class="shape-icon">▢</span>
+                            <span class="shape-label">사각</span>
+                          </button>
+                          <button type="button" class="btn-shape-opt" id="btnShapeCircle" onclick="dtpEditor.setImageFrameShape('circle')" title="달맞이 보름달 창 (원형 프레임)">
+                            <span class="shape-icon">◯</span>
+                            <span class="shape-label">원형</span>
+                          </button>
+                          <button type="button" class="btn-shape-opt" id="btnShapeHexagon" onclick="dtpEditor.setImageFrameShape('hexagon')" title="전통 꽃살 창 (육각형 프레임)">
+                            <span class="shape-icon">⬡</span>
+                            <span class="shape-label">육각</span>
+                          </button>
+                          <button type="button" class="btn-shape-opt" id="btnShapeArch" onclick="dtpEditor.setImageFrameShape('arch')" title="고풍 서정 아치 문 (상단 라운드)">
+                            <span class="shape-icon">⌒</span>
+                            <span class="shape-label">아치</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -1901,9 +1943,25 @@
                         <span class="tool-val-badge" id="lblTbFrameInsetVal">0px</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- [탭 4: ✨ 그림 2: 효과 & 톤] -->
+                <div class="dtp-tab-content" id="toolboxTabImage2">
+                  <div id="containerImageEffects">
+                    <!-- 1. 대상 면 -->
+                    <div class="dtp-control-row">
+                      <span class="dtp-row-label">대상 면</span>
+                      <div class="dtp-row-control">
+                        <button type="button" class="btn-control-sub active" id="btnTargetLeftEff"
+                          onclick="dtpEditor.setTargetPageSlot('left')">1면 (좌측면)</button>
+                        <button type="button" class="btn-control-sub" id="btnTargetRightEff"
+                          onclick="dtpEditor.setTargetPageSlot('right')">2면 (우측면)</button>
+                      </div>
+                    </div>
 
                     <!-- 7. 외곽 페이드 (비네팅) -->
-                    <div class="dtp-control-row">
+                    <div class="dtp-control-row" title="원형, 육각형, 사각형 등 선택된 틀의 외곽 테두리를 한지 결 속으로 부드럽게 페이드아웃시킵니다.">
                       <span class="dtp-row-label">외곽 페이드</span>
                       <div class="dtp-row-control">
                         <input type="range" id="inputTbVignette" min="0" max="100" value="0"
@@ -1913,7 +1971,7 @@
                     </div>
 
                     <!-- 8. 감성 블러 -->
-                    <div class="dtp-control-row">
+                    <div class="dtp-control-row" title="그림에 몽환적인 감성 블러를 주어 서정적인 아침 안개나 기억의 아련함을 연출합니다.">
                       <span class="dtp-row-label">감성 블러</span>
                       <div class="dtp-row-control">
                         <input type="range" id="inputTbBlur" min="0" max="10" value="0" step="0.5"
@@ -1923,7 +1981,7 @@
                     </div>
 
                     <!-- 9. 색감 톤 -->
-                    <div class="dtp-control-row">
+                    <div class="dtp-control-row" title="원하는 서정적 색감 톤을 원클릭으로 변경합니다.">
                       <span class="dtp-row-label">색감 톤</span>
                       <div class="dtp-row-control">
                         <select id="selectTbTone" onchange="dtpEditor.setImageFilter('tone', this.value)"
@@ -1947,7 +2005,7 @@
                   </div>
                 </div>
 
-                <!-- [탭 3: 🤖 AI 동반자] Canva풍 AI 어시스턴트 -->
+                <!-- [탭 5: 🤖 AI 동반자] Canva풍 AI 어시스턴트 -->
                 <div class="dtp-tab-content" id="toolboxTabAi">
                   <div class="dtp-canva-ai-container">
                     <!-- 상단 바: 현재 시 맥락 칩 + 새 대화 리셋 -->

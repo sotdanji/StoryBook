@@ -857,6 +857,26 @@
       font-style: italic;
       line-height: 1.6;
     }
+    /* 그림틀 형태(Shape Masking) */
+    .dtp-frame-crop.shape-rect {
+      clip-path: none !important;
+      border-radius: 6px !important;
+    }
+    .dtp-frame-crop.shape-circle {
+      clip-path: ellipse(50% 50% at 50% 50%) !important;
+      border-radius: 50% !important;
+    }
+    .dtp-frame-crop.shape-hexagon {
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
+      border-radius: 0 !important;
+    }
+    .dtp-frame-crop.shape-arch {
+      clip-path: none !important;
+      border-top-left-radius: 50% 120px !important;
+      border-top-right-radius: 50% 120px !important;
+      border-bottom-left-radius: 6px !important;
+      border-bottom-right-radius: 6px !important;
+    }
     .dtp-body-text {
       flex: 1 1 auto;
       width: 100%;
@@ -4762,7 +4782,7 @@
       }
     }
 
-    function applyCustomImageStyle(imgElem, pan, scale, filter) {
+    function applyCustomImageStyle(imgElem, pan, scale, filter, shape = 'rect') {
       if (!imgElem) return;
       const panX = (pan && typeof pan.x === 'number') ? pan.x : 0;
       const panY = (pan && typeof pan.y === 'number') ? pan.y : 0;
@@ -4784,9 +4804,14 @@
 
       const frameCrop = imgElem.closest('.dtp-frame-crop') || imgElem.parentElement;
       if (frameCrop) {
+        frameCrop.classList.remove('shape-rect', 'shape-circle', 'shape-hexagon', 'shape-arch');
+        frameCrop.classList.add(`shape-${shape || 'rect'}`);
+
         if (filter?.vignette > 0) {
           const vigPct = Math.max(20, 100 - (filter.vignette * 0.5));
-          const grad = `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
+          const grad = (shape === 'circle')
+            ? `radial-gradient(circle at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`
+            : `radial-gradient(ellipse at center, rgba(0,0,0,1) ${vigPct}%, rgba(0,0,0,0) 100%)`;
           frameCrop.style.webkitMaskImage = grad;
           frameCrop.style.maskImage = grad;
         } else {
@@ -4846,7 +4871,8 @@
           const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
           const s1 = pageData.image_scale_1 || pageData.image_scale || 100;
           const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
-          applyCustomImageStyle(img1, p1, s1, f1);
+          const sh1 = pageData.frame_shape_1 || pageData.frame_shape || 'rect';
+          applyCustomImageStyle(img1, p1, s1, f1, sh1);
         }
         layerImage.appendChild(frame1);
       } else {
@@ -4861,7 +4887,8 @@
           const p1 = pageData.image_pan_1 || pageData.image_pan || { x: 0, y: 0 };
           const s1 = pageData.image_scale_1 || 100;
           const f1 = pageData.image_filter_1 || pageData.image_filter || { vignette: 0, blur: 0, tone: 'none' };
-          applyCustomImageStyle(img1, p1, s1, f1);
+          const sh1 = pageData.frame_shape_1 || pageData.frame_shape || 'rect';
+          applyCustomImageStyle(img1, p1, s1, f1, sh1);
         }
 
         const frame2 = document.createElement('div');
@@ -4875,7 +4902,8 @@
           const p2 = pageData.image_pan_2 || { x: 0, y: 0 };
           const s2 = pageData.image_scale_2 || 100;
           const f2 = pageData.image_filter_2 || { vignette: 0, blur: 0, tone: 'none' };
-          applyCustomImageStyle(img2, p2, s2, f2);
+          const sh2 = pageData.frame_shape_2 || 'rect';
+          applyCustomImageStyle(img2, p2, s2, f2, sh2);
         }
 
         layerImage.appendChild(frame1);
