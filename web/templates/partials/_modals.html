@@ -1353,10 +1353,81 @@
               <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn-modal-cancel" onclick="closeInquiryModal()" style="padding: 10px 18px; font-size: 0.9rem; border-radius: 8px;">취소</button>
                 <button type="submit" id="btnSubmitInquiry" class="btn-primary" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; background: #8B4513; border: none; border-radius: 8px; color: #FFFFFF; cursor: pointer; box-shadow: 0 4px 10px rgba(139,69,19,0.3);">
-                  <span>✉️ 비밀 상담 요청 보내기</span>
+                  <span>🤖 AI 안실장에게 실시간 코칭 받기</span>
                 </button>
               </div>
             </form>
+          </div>
+
+          <!-- [탭 1-B: AI 안실장 1:1 실시간 맞춤 처방 결과 뷰] -->
+          <div id="inquiryAiResultPane" style="display: none;">
+            <div style="background: #FFFFFF; border: 1.5px solid #D4A373; border-radius: 12px; padding: 18px 20px; box-shadow: 0 4px 16px rgba(139,69,19,0.08); margin-bottom: 16px;">
+              <!-- 질문 요약 헤더 -->
+              <div style="border-bottom: 1px dashed #E5D7C5; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                <div>
+                  <span id="aiResultCategoryBadge" style="display: inline-block; font-size: 0.74rem; background: #FAF5ED; color: #8B4513; border: 1px solid #D9C8B5; padding: 2px 8px; border-radius: 12px; font-weight: 600; margin-bottom: 4px;">🎨 시화집 편집 코칭</span>
+                  <h4 id="aiResultTitle" style="margin: 0; font-size: 0.98rem; font-weight: 700; color: #33261C;">질문 제목</h4>
+                </div>
+                <span id="aiResultIdBadge" style="font-size: 0.72rem; color: #8C7D70; background: #EFEBE4; padding: 2px 6px; border-radius: 4px; font-family: monospace;">INQ-0000</span>
+              </div>
+
+              <!-- AI 안실장 말풍선 카드 -->
+              <div style="background: linear-gradient(180deg, #FBF8F3 0%, #F5EFEB 100%); border: 1px solid #E2D2C0; border-radius: 10px; padding: 16px 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #8B4513; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(139,69,19,0.25);">🤖</div>
+                    <div>
+                      <strong style="color: #4A2E18; font-size: 0.92rem; display: block;">AI 안실장 <span style="font-size: 0.76rem; font-weight: normal; color: #7B6858;">(1:1 실시간 출판 코칭 에이전트)</span></strong>
+                      <span id="aiResultAnsweredAt" style="font-size: 0.72rem; color: #9E8E80;">방금 전 작성됨</span>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.74rem; background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; padding: 2px 8px; border-radius: 10px; font-weight: 600;">✨ 즉시 처방 완료</span>
+                </div>
+                
+                <div id="aiResultContent" style="font-size: 0.9rem; line-height: 1.7; color: #2C241E; white-space: pre-wrap; padding: 4px 2px;">
+                  AI 안실장의 정성 어린 답변이 여기에 렌더링됩니다.
+                </div>
+              </div>
+
+              <!-- 추가 질문 입력 영역 (토글형) -->
+              <div id="inquiryFollowupBox" style="display: none; margin-top: 14px; background: #FAF5ED; border: 1.5px solid #D9C8B5; border-radius: 10px; padding: 12px 14px;">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #4A2E18; margin-bottom: 6px;">
+                  💬 AI 안실장에게 이어서 질문하기
+                </label>
+                <textarea id="inputInquiryFollowup" rows="3" placeholder="답변 내용 중 더 자세히 알고 싶은 점이나 추가 고민을 적어주세요." style="width: 100%; padding: 8px 10px; border: 1px solid #C8A882; border-radius: 6px; font-size: 0.86rem; line-height: 1.5; resize: vertical;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                  <button type="button" onclick="cancelInquiryFollowup()" style="padding: 6px 12px; font-size: 0.82rem; border: 1px solid #D9C8B5; background: #FFF; border-radius: 6px; cursor: pointer; color: #666;">취소</button>
+                  <button type="button" id="btnSubmitFollowup" onclick="submitInquiryFollowup()" style="padding: 6px 16px; font-size: 0.82rem; font-weight: 700; background: #8B4513; color: #FFF; border: none; border-radius: 6px; cursor: pointer;">✉️ 후속 질문 전송</button>
+                </div>
+              </div>
+
+              <!-- 3대 핵심 액션 버튼 영역 -->
+              <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #E5D7C5; display: flex; flex-direction: column; gap: 10px;">
+                <p style="margin: 0; font-size: 0.8rem; color: #7A695A; text-align: center;">
+                  AI 안실장의 답변이 도움이 되셨나요? 아래에서 원하시는 다음 단계를 선택하세요.
+                </p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <button type="button" id="btnActionResolve" onclick="handleInquiryResolveAction()" style="padding: 11px 14px; font-size: 0.88rem; font-weight: 700; background: #2E7D32; color: #FFFFFF; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(46,125,50,0.25); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <span>✨ 궁금증이 잘 해결되었어요!</span>
+                  </button>
+                  <button type="button" id="btnActionFollowup" onclick="toggleInquiryFollowupBox()" style="padding: 11px 14px; font-size: 0.88rem; font-weight: 600; background: #FAF5ED; color: #5C4330; border: 1.5px solid #C8A882; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <span>💬 추가 질문하기</span>
+                  </button>
+                </div>
+
+                <button type="button" id="btnActionEscalate" onclick="handleInquiryEscalateAction()" style="padding: 10px 14px; font-size: 0.84rem; font-weight: 600; background: #FFF8E7; color: #8A5A00; border: 1.5px solid #FFD54F; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                  <span>👤 대표님(인간 작가)께 직접 검토 요청하기 (특별 지원)</span>
+                </button>
+              </div>
+
+              <!-- 하단 돌아가기 버튼 -->
+              <div style="margin-top: 14px; text-align: center;">
+                <button type="button" onclick="resetInquiryFormToNew()" style="background: none; border: none; font-size: 0.82rem; color: #8C7D70; text-decoration: underline; cursor: pointer;">
+                  ↩️ 새로운 다른 상담 작성하기
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- [탭 2: 내 문의 내역 및 답변 확인] -->

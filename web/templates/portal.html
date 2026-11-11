@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduAI Hub & 글솥(Story Book) | 기억 기반 시화집·자서전 통합 출판 포털</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=MaruBuri:wght@300;400;600;700&family=Pretendard:wght@400;500;600;700;800&family=Nanum+Myeongjo:wght@400;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    :root {
+      --portal-bg: #FBF8F3;
+      --portal-card-bg: #FFFFFF;
+      --portal-primary: #8B4513;
+      --portal-primary-hover: #6E3209;
+      --portal-accent: #C84B31;
+      --portal-text: #2D241E;
+      --portal-text-muted: #7A6B5F;
+      --portal-border: #E8DEC8;
+    }
+
+    body {
+      background-color: var(--portal-bg);
+      color: var(--portal-text);
+      font-family: 'Pretendard', sans-serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+    }
+
+    /* 상단 네비게이션 */
+    .portal-nav {
+      background: rgba(253, 251, 247, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1.5px solid var(--portal-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0.8rem 2rem;
+    }
+
+    .portal-nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .portal-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--portal-primary);
+    }
+
+    .portal-brand-logo {
+      font-size: 1.8rem;
+    }
+
+    .portal-brand-title {
+      font-family: 'MaruBuri', serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #5C381E;
+    }
+
+    .portal-brand-badge {
+      font-size: 0.72rem;
+      background: #EFE4D6;
+      color: #7A4B23;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .portal-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .portal-nav-btn {
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .portal-nav-btn.text {
+      color: #634B35;
+    }
+
+    .portal-nav-btn.text:hover {
+      color: var(--portal-primary);
+      background: #F4ECE1;
+    }
+
+    .portal-nav-btn.primary {
+      background: var(--portal-primary);
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(139, 69, 19, 0.25);
+    }
+
+    .portal-nav-btn.primary:hover {
+      background: var(--portal-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    /* 히어로 섹션 */
+    .portal-hero {
+      max-width: 1100px;
+      margin: 3.5rem auto 2.5rem;
+      padding: 0 1.5rem;
+      text-align: center;
+    }
+
+    .portal-hero-tag {
+      display: inline-block;
+      background: #FFF1E6;
+      color: #A34E24;
+      border: 1px solid #F0D5C0;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+    }
+
+    .portal-hero-title {
+      font-family: 'MaruBuri', serif;
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: #3C2415;
+      line-height: 1.35;
+      margin-bottom: 1.2rem;
+      letter-spacing: -1px;
+    }
+
+    .portal-hero-title span {
+      color: var(--portal-primary);
+      position: relative;
+    }
+
+    .portal-hero-desc {
+      font-size: 1.15rem;
+      color: var(--portal-text-muted);
+      max-width: 720px;
+      margin: 0 auto 2.2rem;
+      line-height: 1.7;
+    }
+
+    /* 3대 핵심 공방 쇼케이스 카드 그리드 */
+    .portal-grid {
+      max-width: 1200px;
+      margin: 0 auto 4rem;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .portal-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .portal-hero-title {
+        font-size: 2rem;
+      }
+    }
+
+    .portal-card {
+      background: var(--portal-card-bg);
+      border: 1.5px solid var(--portal-border);
+      border-radius: 16px;
+      padding: 2rem 1.6rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 6px 18px rgba(92, 56, 30, 0.05);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .portal-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(92, 56, 30, 0.12);
+      border-color: #D4B99B;
+    }
+
+    .portal-card.highlight {
+      border: 2px solid var(--portal-primary);
+      background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF9 100%);
+    }
+
+    .portal-card-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+
+    .badge-primary {
+      background: #8B4513;
+      color: #FFFFFF;
+    }
+
+    .badge-teal {
+      background: #0F766E;
+      color: #FFFFFF;
+    }
+
+    .badge-gray {
+      background: #ECE5DC;
+      color: #6E5B4B;
+    }
+
+    .portal-card-icon {
+      font-size: 2.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .portal-card-title {
+      font-family: 'MaruBuri', serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #3C2415;
+      margin-bottom: 0.6rem;
+    }
+
+    .portal-card-desc {
+      font-size: 0.94rem;
+      color: var(--portal-text-muted);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      flex: 1;
+    }
+
+    .portal-card-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      font-size: 0.85rem;
+      color: #554436;
+    }
+
+    .portal-card-features li {
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .portal-card-btn {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      padding: 11px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+
+    .portal-card-btn.primary {
+      background: var(--portal-primary);
+      color: #FFFFFF;
+      box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+    }
+
+    .portal-card-btn.primary:hover {
+      background: var(--portal-primary-hover);
+    }
+
+    .portal-card-btn.secondary {
+      background: #F3ECE1;
+      color: #643E19;
+      border: 1px solid #D8C7B5;
+    }
+
+    .portal-card-btn.secondary:hover {
+      background: #E8DCCF;
+    }
+
+    /* 자율 무료 선언 & 안심 배너 */
+    .portal-banner-free {
+      max-width: 1200px;
+      margin: 0 auto 3.5rem;
+      padding: 0 1.5rem;
+    }
+
+    .portal-banner-box {
+      background: linear-gradient(135deg, #FFF9F2 0%, #FFF2E5 100%);
+      border: 1.5px solid #F0D5BD;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      box-shadow: 0 4px 14px rgba(139, 69, 19, 0.06);
+    }
+
+    @media (max-width: 768px) {
+      .portal-banner-box {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .portal-banner-text h3 {
+      font-family: 'MaruBuri', serif;
+      font-size: 1.4rem;
+      color: #7A3E16;
+      margin: 0 0 0.5rem;
+    }
+
+    .portal-banner-text p {
+      margin: 0;
+      color: #6E533F;
+      font-size: 0.96rem;
+      line-height: 1.6;
+    }
+
+    /* 3단계 안심 지원 & 프리미엄 코칭 섹션 */
+    .portal-support-section {
+      background: #F4EFE6;
+      border-top: 1px solid #E5D9C8;
+      border-bottom: 1px solid #E5D9C8;
+      padding: 3.5rem 1.5rem;
+    }
+
+    .portal-support-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .support-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .support-header h2 {
+      font-family: 'MaruBuri', serif;
+      font-size: 1.8rem;
+      color: #3C2415;
+      margin-bottom: 0.5rem;
+    }
+
+    .support-header p {
+      color: var(--portal-text-muted);
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .support-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .support-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .support-card {
+      background: #FFFFFF;
+      border: 1px solid #E2D5C3;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: left;
+    }
+
+    .support-step-num {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      background: #8B4513;
+      color: #FFFFFF;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 0.8rem;
+    }
+
+    .support-card h4 {
+      font-size: 1.15rem;
+      color: #3C2415;
+      margin: 0 0 0.5rem;
+    }
+
+    .support-card p {
+      font-size: 0.88rem;
+      color: #6C5B4E;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    /* 프리미엄 1:1 맞춤 출판 코칭 카드 */
+    .premium-coaching-box {
+      background: linear-gradient(135deg, #2D241E 0%, #1A1410 100%);
+      color: #FFFFFF;
+      border-radius: 14px;
+      padding: 2rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 768px) {
+      .premium-coaching-box {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .premium-text h3 {
+      font-family: 'MaruBuri', serif;
+      font-size: 1.35rem;
+      color: #F8D7A8;
+      margin: 0 0 0.5rem;
+    }
+
+    .premium-text p {
+      color: #CDBEAF;
+      font-size: 0.92rem;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .premium-btn {
+      background: linear-gradient(135deg, #F3BA75 0%, #DF9848 100%);
+      color: #2D1A0A;
+      text-decoration: none;
+      font-weight: 800;
+      padding: 12px 24px;
+      border-radius: 10px;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(243, 186, 117, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .premium-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(243, 186, 117, 0.5);
+    }
+
+    /* 푸터 */
+    .portal-footer {
+      background: #251B14;
+      color: #A8988B;
+      padding: 2.5rem 1.5rem;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .portal-footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .portal-footer-links a {
+      color: #C4B3A3;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .portal-footer-links a:hover {
+      color: #FFFFFF;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 1. 상단 네비게이션 -->
+  <header class="portal-nav">
+    <div class="portal-nav-inner">
+      <a href="/" class="portal-brand">
+        <span class="portal-brand-logo">📖</span>
+        <span class="portal-brand-title">글솥 <span style="font-size:0.9rem; font-weight:400; color:#8C6D53;">Story Book</span></span>
+        <span class="portal-brand-badge">EduAI Hub 공식</span>
+      </a>
+      <nav class="portal-nav-links">
+        <a href="/gallery" class="portal-nav-btn text" target="_blank">🏛️ 모둠솥 서가</a>
+        <a href="/manual" class="portal-nav-btn text">📖 큰 글씨 설명서</a>
+        <a href="https://cafe.naver.com" class="portal-nav-btn text" target="_blank">☕ 네이버 카페</a>
+        <a href="/studio" class="portal-nav-btn primary">✍️ 집필실 입장</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 2. 히어로 배너 -->
+  <section class="portal-hero">
+    <div class="portal-hero-tag">🌸 기억 하나가 시와 노래, 아름다운 책이 되는 공방</div>
+    <h1 class="portal-hero-title">
+      삶의 고운 기억을<br>
+      <span>세상에 단 하나뿐인 책</span>으로 빚어냅니다
+    </h1>
+    <p class="portal-hero-desc">
+      컴퓨터가 낯설어도, 타자가 서툴러도 괜찮습니다.<br>
+      들려주신 옛이야기를 고운 서정시와 물빛 수채화, 맑은 노래로 빚어 진짜 종이책과 온라인 갤러리로 출판해 드립니다.
+    </p>
+  </section>
+
+  <!-- 3. 3대 핵심 공방 쇼케이스 그리드 -->
+  <section class="portal-grid">
+
+    <!-- 카드 1: 감성 시화집 '글솥' -->
+    <div class="portal-card highlight">
+      <span class="portal-card-badge badge-primary">대표 플래그십</span>
+      <div>
+        <div class="portal-card-icon">✍️</div>
+        <h3 class="portal-card-title">감성 시화집 「글솥」</h3>
+        <p class="portal-card-desc">
+          지나온 삶의 순간을 정갈한 시로 빚고 5대 전통 감성 화풍 삽화와 Suno AI 노래, 시화 영상까지 한 번에 완성하는 디지털 시화 공방.
+        </p>
+        <ul class="portal-card-features">
+          <li>✓ 1.글쓰기실 ➔ 2.삽화실 ➔ 3.음악실 ➔ 4.영상실</li>
+          <li>✓ InDesign급 2-Layer A5 출판 조판 엔진</li>
+          <li>✓ 300 DPI 부크크(Bookk) 인쇄 완제본 PDF 자동 생성</li>
+        </ul>
+      </div>
+      <a href="/studio" class="portal-card-btn primary">✍️ 시화집 집필실 입장하기</a>
+    </div>
+
+    <!-- 카드 2: 온 세대 자서전 'TogetherStory' -->
+    <div class="portal-card">
+      <span class="portal-card-badge badge-gray">연계 공방</span>
+      <div>
+        <div class="portal-card-icon">📖</div>
+        <h3 class="portal-card-title">온 세대 자서전</h3>
+        <p class="portal-card-desc">
+          마이크에 대고 편안하게 들려주시는 음성을 바탕으로 부모님의 일대기와 가족의 역사를 한 편의 장엄한 자서전으로 기록합니다.
+        </p>
+        <ul class="portal-card-features">
+          <li>✓ 생생한 음성 구술 녹취 & AI 맞춤 챕터 정리</li>
+          <li>✓ 가족 앨범 사진 복원 및 연대기별 배치</li>
+          <li>✓ 가문과 후손에게 전하는 영구 소장본 제본</li>
+        </ul>
+      </div>
+      <a href="/studio" class="portal-card-btn secondary">📖 자서전 공방 둘러보기</a>
+    </div>
+
+    <!-- 카드 3: 모둠솥 공용 서가 -->
+    <div class="portal-card">
+      <span class="portal-card-badge badge-teal">열린 문학관</span>
+      <div>
+        <div class="portal-card-icon">🏛️</div>
+        <h3 class="portal-card-title">모둠솥 공용 서가</h3>
+        <p class="portal-card-desc">
+          전국의 작가님들이 마음을 다해 출품하신 시화집들을 사르륵 넘어가는 3D 전자책 뷰어로 함께 읽고 온기를 나누는 온라인 문학관.
+        </p>
+        <ul class="portal-card-features">
+          <li>✓ 실제 책장을 넘기듯 읽는 3D 인터랙티브 뷰어</li>
+          <li>✓ 시낭송과 노래를 들으며 감상하는 오디오 플레이어</li>
+          <li>✓ 인터넷 링크로 자녀와 지인들에게 원클릭 자랑</li>
+        </ul>
+      </div>
+      <a href="/gallery" class="portal-card-btn secondary" target="_blank">🏛️ 모둠솥 서가 구경하기</a>
+    </div>
+
+  </section>
+
+  <!-- 4. 자율 창작 100% 무료 선언 배너 -->
+  <section class="portal-banner-free">
+    <div class="portal-banner-box">
+      <div class="portal-banner-text">
+        <h3>✨ 자율 창작은 평생 100% 완전 무료입니다</h3>
+        <p>
+          시를 쓰고, AI 수채화 그림을 그리고, 노래를 짓고, 300 DPI 출판용 인쇄 파일(PDF)을 다운받는 전 과정이<br>
+          단 1원의 비용도 없이 완전 무료로 제공됩니다. 부담 없이 마음껏 당신만의 책을 지어보세요.
+        </p>
+      </div>
+      <a href="/studio" class="portal-nav-btn primary" style="font-size:1rem; padding:12px 24px; white-space:nowrap;">
+        🚀 무료로 책 만들기 시작
+      </a>
+    </div>
+  </section>
+
+  <!-- 5. 3단계 안심 지원 & 프리미엄 맞춤 코칭 -->
+  <section class="portal-support-section">
+    <div class="portal-support-inner">
+      <div class="support-header">
+        <h2>어르신도, 초보자도 안심하는 3단계 지원</h2>
+        <p>글을 쓰시다가 막히거나 궁금한 점이 생겨도 걱정하지 마세요. 다정한 안전망이 준비되어 있습니다.</p>
+      </div>
+
+      <div class="support-grid">
+        <!-- 1단계 -->
+        <div class="support-card">
+          <span class="support-step-num">1단계 : 혼자서 척척</span>
+          <h4>📖 큰 글씨 사용설명서 & FAQ</h4>
+          <p>
+            눈이 침침한 어르신을 위해 돋보기처럼 시원하게 제작된 설명서와 13가지 자주 묻는 질문으로 궁금증을 90% 스스로 해결합니다.
+          </p>
+          <div style="margin-top: 1rem;">
+            <a href="/manual" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">설명서 보러가기 ➔</a>
+          </div>
+        </div>
+
+        <!-- 2단계 -->
+        <div class="support-card">
+          <span class="support-step-num">2단계 : 함께 나누기</span>
+          <h4>☕ 전국 작가 네이버 카페</h4>
+          <p>
+            먼저 책을 내신 선배 작가님들과 출판 노하우를 나누고, 완성된 종이책 인증샷과 갤러리 링크를 자랑하며 응원을 주고받는 사랑방입니다.
+          </p>
+          <div style="margin-top: 1rem;">
+            <a href="https://cafe.naver.com" target="_blank" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">공식 카페 입장하기 ➔</a>
+          </div>
+        </div>
+
+        <!-- 3단계 -->
+        <div class="support-card">
+          <span class="support-step-num">3단계 : 기술 AS 우체통</span>
+          <h4>💬 1인 공방 비동기 1:1 상담실</h4>
+          <p>
+            조판 여백이 삐뚤어질 때 시집 데이터를 버튼 하나로 첨부해 질문하시면, 관리자가 정성껏 검토 후 차례대로 친절히 안내해 드립니다.
+          </p>
+          <div style="margin-top: 1rem;">
+            <span style="font-size:0.8rem; color:#8A7563;">※ 평일 기준 순차 회신</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 프리미엄 1:1 맞춤 출판 코칭 안내 (선택형 유료) -->
+      <div class="premium-coaching-box">
+        <div class="premium-text">
+          <h3>👑 전문가의 깊은 손길이 필요하신가요? (프리미엄 1:1 맞춤 출판 코칭)</h3>
+          <p>
+            <em>"혼자서 조판하기 눈이 침침하시거나, 완벽한 문학적 퇴고와 종이책 출판 등록 대행을 원하시는 작가님께"</em><br>
+            프로그램은 평생 무료이지만, 장인의 정성 어린 수작업 교정과 인쇄소 규격 완제본 대행은 1:1 밀착 유료 코칭으로 정성껏 모십니다.
+          </p>
+        </div>
+        <a href="/studio?open_inquiry=true" class="premium-btn">
+          ✨ 1:1 출판 코칭 문의하기
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 6. 푸터 -->
+  <footer class="portal-footer">
+    <div class="portal-footer-links">
+      <a href="/">홈(대문)</a>
+      <a href="/studio">시화집 공방</a>
+      <a href="/gallery" target="_blank">모둠솥 공용 서가</a>
+      <a href="/manual">사용 설명서</a>
+      <a href="https://cafe.naver.com" target="_blank">네이버 카페</a>
+      <a href="/admin">관리자 센터</a>
+    </div>
+    <p style="margin: 0; color: #8C7867;">
+      &copy; 2026 EduAI Hub &amp; 글솥(Story Book) Studio. All rights reserved.<br>
+      배움과 창작의 갈증을 가진 모든 이에게 꿈을 드립니다.
+    </p>
+  </footer>
+
+</body>
+
+</html>
+

@@ -110,9 +110,21 @@ async def turso_native_login(req: TursoLoginRequest, response: Response):
         raise HTTPException(status_code=500, detail=f"로그인 처리 실패: {str(e)}")
 
 @router.get("/", response_class=HTMLResponse)
+async def portal_home_page(request: Request):
+    """EduAI Hub & 글솥 통합 포털 대문 페이지"""
+    current_user = auth_manager.get_current_user()
+    return templates.TemplateResponse(
+        request=request,
+        name="portal.html",
+        context={
+            "current_user": current_user,
+            "is_admin": auth_manager.is_current_user_admin() if current_user else False
+        }
+    )
+
 @router.get("/studio", response_class=HTMLResponse)
 async def studio_page(request: Request):
-    """스튜디오 메인 집필실 및 2-Layer 조판실 (루트 진입 시 바로 집필실 표시)"""
+    """스튜디오 메인 집필실 및 2-Layer 조판실 (로그인 확인 후 집필실 표시)"""
     is_guest = request.query_params.get("guest") == "true"
     current_user = auth_manager.get_current_user()
 

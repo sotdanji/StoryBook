@@ -35,10 +35,14 @@ class InquiryItem:
     attachment_type: str = "none"   # "full_zip" | "csv" | "custom_file" | "none"
     attachment_path: str = ""       # 상대 저장 경로
     attachment_filename: str = ""   # 원본 파일명
-    status: str = "pending"         # "pending" (접수 대기) | "reviewing" (검토 중) | "answered" (답변 완료)
-    reply_content: str = ""         # 작가/관리자의 코칭 답변
+    status: str = "pending"         # "pending" | "ai_answered" | "resolved" | "escalated" | "answered"
+    reply_content: str = ""         # 사람 관리자의 코칭 답변
+    ai_reply: str = ""              # AI 안실장의 실시간 자동 코칭 답변
+    ai_answered_at: Optional[str] = "" # AI 답변 일시
+    project_context: Optional[Dict[str, Any]] = field(default_factory=dict) # 질문 당시 시집 상태 스냅샷
+    satisfaction: int = 0           # 만족도 (1~5)
     created_at: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    answered_at: Optional[str] = "" # 답변 완료 일시
+    answered_at: Optional[str] = "" # 사람 관리자 답변 완료 일시
 
 
 CATEGORY_MAP = {
@@ -193,7 +197,7 @@ class InquiryManager:
             return []
 
     def reply_inquiry(self, inquiry_id: str, reply_content: str, status: str = "answered") -> Optional[InquiryItem]:
-        """관리자 답변 등록 및 상태 갱신 (Turso DB 연동)"""
+        """사람 관리자 답변 등록 및 상태 갱신 (Turso DB 연동)"""
         existing = self.get_inquiry(inquiry_id)
         if not existing:
             return None
@@ -212,6 +216,74 @@ class InquiryManager:
             )
             return InquiryItem(**data)
         except Exception:
+            return None
+
+    def save_ai_reply(self, inquiry_id: str, ai_reply: str, project_context: Optional[Dict[str, Any]] = None) -> Optional[InquiryItem]:
+        """AI 안실장의 자동 코칭 답변 저장 및 상태를 'ai_answered'로 전환"""
+        existing = self.get_inquiry(inquiry_id)
+        if not existing:
+            return None
+        try:
+            data = asdict(existing)
+            data["ai_reply"] = ai_reply.strip()
+            data["status"] = "ai_answered"
+            data["ai_answered_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if project_context:
+                data["project_context"] = project_context
+            from core.db_manager import db_manager
+            db_manager.save_inquiry(
+                inquiry_id=inquiry_id,
+                user_id=data.get("user_id", ""),
+                author_email=data.get("author_email", ""),
+                project_id=data.get("project_id", ""),
+                data_dict=data
+            )
+            return InquiryItem(**data)
+        except Exception as e:
+            print(f"[InquiryManager] AI 답변 저장 실패: {e}")
+            return None
+
+    def escalate_inquiry(self, inquiry_id: str) -> Optional[InquiryItem]:
+        """작가가 사람 전문가(대표님) 직접 검토를 요청함 ('escalated' 상태로 승격)"""
+        existing = self.get_inquiry(inquiry_id)
+        if not existing:
+            return None
+        try:
+            data = asdict(existing)
+            data["status"] = "escalated"
+            from core.db_manager import db_manager
+            db_manager.save_inquiry(
+                inquiry_id=inquiry_id,
+                user_id=data.get("user_id", ""),
+                author_email=data.get("author_email", ""),
+                project_id=data.get("project_id", ""),
+                data_dict=data
+            )
+            return InquiryItem(**data)
+        except Exception as e:
+            print(f"[InquiryManager] 에스컬레이션 실패: {e}")
+            return None
+
+    def resolve_inquiry(self, inquiry_id: str, satisfaction: int = 5) -> Optional[InquiryItem]:
+        """작가가 AI 안실장 답변에 만족하여 자율 종결함 ('resolved' 상태)"""
+        existing = self.get_inquiry(inquiry_id)
+        if not existing:
+            return None
+        try:
+            data = asdict(existing)
+            data["status"] = "resolved"
+            data["satisfaction"] = max(1, min(5, satisfaction))
+            from core.db_manager import db_manager
+            db_manager.save_inquiry(
+                inquiry_id=inquiry_id,
+                user_id=data.get("user_id", ""),
+                author_email=data.get("author_email", ""),
+                project_id=data.get("project_id", ""),
+                data_dict=data
+            )
+            return InquiryItem(**data)
+        except Exception as e:
+            print(f"[InquiryManager] 자율 종결 실패: {e}")
             return None
 
     def get_attachment_abs_path(self, inquiry_id: str) -> Optional[Path]:
