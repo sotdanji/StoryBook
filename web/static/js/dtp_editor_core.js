@@ -41,6 +41,13 @@
       this.targetPageSlot = 'left';
       this.currentToolboxTab = 'text';
       this.selectedSubFrame = 1;
+      this.isMatterMode = false;
+      this.currentMatterWork = null;
+
+      // 🌟 [무지연 프리페치 캐시 엔진]
+      this.prefetchedImageUrls = new Set();
+      this.prefetchedImageObjects = new Map();
+      this._prefetchTimer = null;
 
       this.defaultConfig = {
         page_count: 2,
@@ -55,6 +62,121 @@
           { page_num: 2, usage: "text", role: "start", image_file: "" }
         ]
       };
+    }
+
+    /**
+     * 미디어 파일 경로 정규화 (로컬/갤러리/R2 통일)
+     */
+    resolveMediaUrl(file) {
+      if (!file) return "";
+      let p = "/" + String(file).replace(/^(\.\/|\/)+/, '');
+      if (p.startsWith("/images/")) {
+        p = "/gallery" + p;
+      }
+      return p;
+    }
+
+    /**
+     * 🌟 [단일 이미지 무지연 프리페치] 비동기 디코딩으로 GPU/RAM에 미리 상주
+     */
+    prefetchImageUrl(rawPath) {
+      if (!rawPath) return;
+      const url = this.resolveMediaUrl(rawPath);
+      if (!url || this.prefetchedImageUrls.has(url)) return;
+
+      this.prefetchedImageUrls.add(url);
+
+      try {
+        const img = new Image();
+        img.decoding = 'async'; // 백그라운드 스레드에서 디코딩하여 메인 렌더링 랙 0
+        img.onload = () => {
+          if (this.prefetchedImageObjects.size > 60) {
+            const firstKey = this.prefetchedImageObjects.keys().next().value;
+            this.prefetchedImageObjects.delete(firstKey);
+          }
+          this.prefetchedImageObjects.set(url, img);
+        };
+        img.onerror = () => {
+          // 폴백: /images/ 파일명 단독 경로로 2차 시도
+          const fallback = '/images/' + url.split('/').pop();
+          if (fallback !== url && !this.prefetchedImageUrls.has(fallback)) {
+            this.prefetchedImageUrls.add(fallback);
+            const fbImg = new Image();
+            fbImg.decoding = 'async';
+            fbImg.src = fallback;
+          }
+        };
+        img.src = url;
+      } catch (err) {}
+    }
+
+    /**
+     * 🌟 [앞뒤 3페이지 지능형 프리페치 스케줄러]
+     * 사용자 렌더링이 완료된 직후 브라우저 유휴 시간(requestIdleCallback)에 비동기 실행
+     */
+    schedulePrefetch(workIndex) {
+      if (this._prefetchTimer) {
+        clearTimeout(this._prefetchTimer);
+      }
+      const idleRunner = (typeof window.requestIdleCallback === 'function')
+        ? window.requestIdleCallback
+        : ((cb) => setTimeout(cb, 60));
+
+      this._prefetchTimer = setTimeout(() => {
+        idleRunner(() => {
+          this.prefetchAdjacentSpreads(workIndex, 3);
+        });
+      }, 50);
+    }
+
+    /**
+     * 🌟 [앞뒤 3페이지 무지연 프리페치 본체]
+     * 본문 시화 및 앞부속/뒷부속의 삽화/표지 이미지를 선제적으로 캐싱
+     */
+    prefetchAdjacentSpreads(workIndex, range = 3) {
+      const allWorks = this.getWorksList();
+      const urlsToFetch = [];
+
+      // 1. 현재 작품 기준 다음 3개 (+1, +2, +3) 및 이전 3개 (-1, -2, -3)
+      const offsets = [1, 2, 3, -1, -2, -3];
+      offsets.forEach(offset => {
+        const targetIdx = workIndex + offset;
+        if (targetIdx >= 0 && targetIdx < allWorks.length) {
+          const w = allWorks[targetIdx];
+          if (!w) return;
+          if (w.image_file) urlsToFetch.push(w.image_file);
+          if (w.image) urlsToFetch.push(w.image);
+          if (w.image_file_2) urlsToFetch.push(w.image_file_2);
+          if (w.image2) urlsToFetch.push(w.image2);
+          if (w.layout_config && Array.isArray(w.layout_config.pages)) {
+            w.layout_config.pages.forEach(p => {
+              if (p.image_file) urlsToFetch.push(p.image_file);
+              if (p.image_file_b) urlsToFetch.push(p.image_file_b);
+            });
+          }
+        }
+      });
+
+      // 2. 책 전체 구조(sections)의 인접 부속지(앞표지, 뒤표지, 서문 등) 이미지도 프리페치
+      const struct = window.bookStructureData;
+      if (struct && Array.isArray(struct.sections)) {
+        const sections = struct.sections;
+        let curSecIdx = -1;
+        const targetId = (this.currentSectionId || '').replace(/^sec_/, '');
+        if (targetId) {
+          curSecIdx = sections.findIndex(s => s.id === targetId || s.id === this.currentSectionId);
+        }
+        if (curSecIdx !== -1) {
+          [1, 2, 3, -1, -2, -3].forEach(offset => {
+            const sec = sections[curSecIdx + offset];
+            if (sec && sec.image_file) urlsToFetch.push(sec.image_file);
+          });
+        }
+      }
+
+      // 3. 중복 제거 후 순차 프리페치
+      const uniqueUrls = Array.from(new Set(urlsToFetch.filter(Boolean)));
+      uniqueUrls.forEach(url => this.prefetchImageUrl(url));
     }
 
     /**
@@ -74,41 +196,62 @@
       this.currentSectionId = sec.id;
 
       // 본문 시화인 경우 (episode_no가 있는 poem)
-      if (sec.category === 'poem' && sec.episode_no) {
+      const isPoemSec = (sec.section_type === 'poem' || sec.category === 'poem') && Boolean(sec.episode_no);
+      if (isPoemSec) {
+        this.isMatterMode = false;
+        this.currentMatterWork = null;
+        const btnReset = document.getElementById("btnResetMatterTemplate");
+        if (btnReset) btnReset.style.display = "none";
         const works = this.getWorksList();
         const idx = works.findIndex(w => w.episode_no === sec.episode_no);
         if (idx !== -1) {
-          this.renderSpread(idx, 1, false, options);
+          const spreadPart = options.spreadPart || 1;
+          this.renderSpread(idx, spreadPart, false, options);
           return;
         }
       }
       // 그 외 모든 부속물(앞표지, 속표지, 서문, 목차, 부간지, 맺음말, 판권지, 뒤표지)
-      this.renderMatterSpread(sec);
+      this.loadMatterSection(sec, options);
     }
 
     /**
-     * [Full Book Architecture] 앞부속(Front Matter) & 뒷부속(Back Matter) 전용 조판 펼침면 렌더링
+     * [Full Book Architecture] 앞부속 & 뒷부속 섹션을 2-Layer 통합 DTP 캔버스로 로드
      */
-    renderMatterSpread(sec) {
+    loadMatterSection(sec, options = {}) {
       if (!sec) return;
+      this.isMatterMode = true;
       this.currentSectionId = sec.id;
+      this.currentWorkIndex = -1;
 
-      // 1) 상단 툴바 상태 동기화
+      // 부속물 2-Layer 통합 워크 생성 또는 복원
+      const matterWork = this.getMatterWork(sec);
+      this.currentMatterWork = matterWork;
+
+      // 상단 드롭다운 및 툴바 활성화
+      ['Left', 'Right'].forEach(side => {
+        const selU = document.getElementById(`selectPageUsage${side}`);
+        const selR = document.getElementById(`selectPageRole${side}`);
+        if (selU) { selU.disabled = false; selU.style.opacity = '1.0'; }
+        if (selR) { selR.disabled = false; selR.style.opacity = '1.0'; }
+      });
+
+      // 기본 템플릿 복원 버튼 표시
+      const btnReset = document.getElementById("btnResetMatterTemplate");
+      if (btnReset) btnReset.style.display = "inline-flex";
+
+      // 상단 상태 배지 및 쪽수 표시 동기화
       const statusBadge = document.getElementById("layoutStatusBadge");
       const statusText = document.getElementById("layoutStatusText");
       if (statusBadge && statusText) {
         statusBadge.className = "layout-badge badge-ok";
-        statusText.textContent = `📖 [${sec.group_label || '부속물'}] ${sec.title}`;
+        statusText.textContent = `📖 [${matterWork.group_label || '부속지'}] ${matterWork.title}`;
       }
 
       const lblTotalPages = document.getElementById("lblTotalPagesBadge");
       if (lblTotalPages) {
         const pRange = sec.page_count > 1 ? `p.${sec.start_page}~${sec.end_page}` : `p.${sec.start_page}`;
-        lblTotalPages.textContent = `📄 ${sec.page_count}쪽 조판 (${pRange})`;
+        lblTotalPages.textContent = `📄 ${sec.page_count || 2}쪽 조판 (${pRange})`;
       }
-
-      const partNav = document.getElementById("spreadPartNavGroup");
-      if (partNav) hideElem(partNav);
 
       const navText = document.getElementById("navWorkIndexText");
       if (navText && window.bookStructureData && window.bookStructureData.sections) {
@@ -123,289 +266,457 @@
         selectWork.value = `sec_${sec.id}`;
       }
 
-      // 하단 책장 넘기기 인디케이터 및 트리 활성화 동기화
       const turnIndicator = document.getElementById("pageTurnIndicator");
       if (turnIndicator) {
         const pRange = sec.page_count > 1 ? `p.${sec.start_page}~${sec.end_page}` : `p.${sec.start_page}`;
-        turnIndicator.textContent = `[${sec.group_label || '부속물'}] ${sec.title} — ${pRange}`;
+        turnIndicator.textContent = `[${matterWork.group_label || '부속지'}] ${matterWork.title} — ${pRange}`;
       }
+
+      const partNav = document.getElementById("spreadPartNavGroup");
+      if (partNav) hideElem(partNav);
+
       if (typeof window.updateBookTreeActiveItem === 'function') {
         window.updateBookTreeActiveItem(sec.id);
       }
-      this.currentSpreadPart = 1;
+      const spreadPart = options.spreadPart || 1;
+      this.currentSpreadPart = spreadPart;
 
-      // 2) 페이지 헤더/면 번호/폴리오 동기화
-      const lblLeftNum = document.getElementById("lblPageLeftNum");
-      const lblRightNum = document.getElementById("lblPageRightNum");
-      const lblFolioLeft = document.getElementById("lblBookFolioLeft");
-      const lblFolioRight = document.getElementById("lblBookFolioRight");
+      // 네이티브 2-Layer 캔버스 렌더링 호출!
+      this.renderSpread(-1, spreadPart, false, { sec: sec, matterWork: matterWork });
+    }
 
-      if (sec.id === 'epilogue' || sec.id === 'colophon') {
-        if (lblLeftNum) lblLeftNum.textContent = "42면 (맺음말)";
-        if (lblRightNum) lblRightNum.textContent = "43면 (판권지)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "42";
-        if (lblFolioRight) lblFolioRight.textContent = "43";
-        if (turnIndicator) turnIndicator.textContent = `[뒷부속] 맺음말 & 판권지 — p.42~43`;
-        if (statusText) statusText.textContent = `📖 [뒷부속] 맺음말 & 판권지`;
-        if (lblTotalPages) lblTotalPages.textContent = `📄 2쪽 조판 (p.42~43)`;
-      } else if (sec.id === 'back_cover') {
-        if (lblLeftNum) lblLeftNum.textContent = "뒤표지 (추천사·바코드)";
-        if (lblRightNum) lblRightNum.textContent = "앞표지 (표제·저자·일러스트)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "";
-        if (lblFolioRight) lblFolioRight.textContent = "";
-        if (turnIndicator) turnIndicator.textContent = `[뒷부속] 뒤표지 (겉표지 펼침면)`;
-        if (statusText) statusText.textContent = `📖 [뒷부속] 뒤표지 (겉표지 전개도)`;
-      } else if (sec.id === 'cover') {
-        if (lblLeftNum) lblLeftNum.textContent = "뒤표지 (추천사·바코드)";
-        if (lblRightNum) lblRightNum.textContent = "앞표지 (표제·저자·일러스트)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "";
-        if (lblFolioRight) lblFolioRight.textContent = "";
-      } else if (sec.id === 'half_title') {
-        if (lblLeftNum) lblLeftNum.textContent = "면지 (백면)";
-        if (lblRightNum) lblRightNum.textContent = "1면 (속표지)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "";
-        if (lblFolioRight) lblFolioRight.textContent = "1";
-      } else if (sec.id === 'prologue' || sec.id === 'preface') {
-        if (lblLeftNum) lblLeftNum.textContent = "2면 (백면)";
-        if (lblRightNum) lblRightNum.textContent = "3면 (시인의 말)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "2";
-        if (lblFolioRight) lblFolioRight.textContent = "3";
-      } else if (sec.id === 'toc') {
-        if (lblLeftNum) lblLeftNum.textContent = "4면 (차례)";
-        if (lblRightNum) lblRightNum.textContent = "5면 (제1부)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "4";
-        if (lblFolioRight) lblFolioRight.textContent = "5";
+    renderMatterSpread(sec) {
+      this.loadMatterSection(sec);
+    }
+
+    /**
+     * 특정 부속물의 표준 기본 2-Layer 워크 빌드
+     */
+    buildDefaultMatterWork(secOrId) {
+      let sec = secOrId;
+      if (typeof secOrId === 'string') {
+        const struct = window.bookStructureData;
+        if (struct && struct.sections) {
+          const cleanId = secOrId.replace(/^sec_/, '');
+          sec = struct.sections.find(s => s.id === cleanId || s.id === secOrId);
+        }
       }
-
-      // 3) 부속물 전용 양면 오버레이 컨테이너 취득 및 노출
-      const ovLeft = document.getElementById("dtpMatterOverlayLeft");
-      const ovRight = document.getElementById("dtpMatterOverlayRight");
-      if (ovLeft) ovLeft.style.display = "block";
-      if (ovRight) ovRight.style.display = "block";
-
-      // 하단 오버플로우 배지 숨기기 및 상단 셀렉트 비활성화
-      const ofLeft = document.getElementById("dtpOverflowLeft");
-      const ofRight = document.getElementById("dtpOverflowRight");
-      if (ofLeft) hideElem(ofLeft);
-      if (ofRight) hideElem(ofRight);
-
-      ['Left', 'Right'].forEach(side => {
-        const selU = document.getElementById(`selectPageUsage${side}`);
-        const selR = document.getElementById(`selectPageRole${side}`);
-        if (selU) { selU.disabled = true; selU.style.opacity = '0.5'; }
-        if (selR) { selR.disabled = true; selR.style.opacity = '0.5'; }
-      });
-
-      // [신규] DTP 부속물 완성형 표준 템플릿 & 인라인 편집 엔진 위임
-      if (window.dtpMatterEngine && typeof window.dtpMatterEngine.renderSpread === 'function') {
-        window.dtpMatterEngine.renderSpread(sec, ovLeft, ovRight);
-        return;
-      }
+      if (!sec) sec = { id: 'half_title', title: '속표지', group: 'front_matter' };
 
       const project = (window.currentStatus && window.currentStatus.project) || {};
       const projTitle = project.name || "시집 제목";
       const projSubtitle = project.subtitle || "";
       const projAuthor = project.author || "시인";
       const projCover = project.cover_image || "";
-      const projPub = project.publisher || "부크크(Bookk) 자가출판";
-      const projDate = project.publish_date || "2026년";
+      const projPub = project.publisher || "부크크 (Bookk) 자가출판";
+      const projDate = project.published_date || "2026년";
+      const projPrice = project.price || "13,000원";
+      const projIsbn = project.isbn || "979-11-XXXXX-X";
 
-      // 4) 섹션별 좌우 양면 완벽 렌더링
-      if (sec.id === 'cover' || sec.category === 'cover') {
-        if (lblLeftNum) lblLeftNum.textContent = "뒤표지 (추천사·바코드)";
-        if (lblRightNum) lblRightNum.textContent = "앞표지 (표제·저자·일러스트)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "";
-        if (lblFolioRight) lblFolioRight.textContent = "";
+      let defaultPages = [
+        { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+        { page_num: 2, usage: 'text', role: 'matter_template', image_file: '', custom_text: '' }
+      ];
+      let pageLabels = [`${sec.start_page || 1}면(좌)`, `${sec.end_page || 2}면(우)`];
+      let folios = [`${sec.start_page || ''}`, `${sec.end_page || ''}`];
+      let workTitle = sec.title || "부속지";
+      let workAuthor = projAuthor;
+      let workImage = "";
 
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:35px 25px; background:#FAF7F2; color:#5A4A3A; text-align:center; box-sizing:border-box;">
-              <div style="font-size:0.8rem; color:#8C7560; letter-spacing:1px; font-weight:600;">뒤표지 (Back Cover)</div>
-              <div style="font-family:'KoPub Batang', serif; font-size:1.02rem; line-height:1.9; color:#3A2E24; font-style:italic; padding:20px 10px;">
-                "기억의 서랍에서 꺼내 올린<br>따스한 삶의 무늬와 시의 노래"
-              </div>
-              <div style="border-top:1px solid #D8C7B5; padding-top:14px; display:flex; justify-content:space-between; align-items:flex-end; font-size:0.75rem; color:#8C7560;">
-                <div style="text-align:left;">정가 15,000원<br>ISBN 979-11-XXXXX-X</div>
-                <div style="font-weight:700; color:#553412;">${projPub}</div>
-              </div>
-            </div>
-          `;
-        }
-        if (ovRight) {
-          const coverImgTag = projCover ? `<img src="${projCover}" style="max-height:190px; object-fit:contain; border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,0.12); margin-bottom:15px;" />` : `<div style="height:160px; width:65%; border:2px dashed #C8B6A2; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#A08872; margin-bottom:15px; font-size:0.85rem;">표지 일러스트 아트웍</div>`;
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:40px 25px 25px 25px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-              <div style="font-size:0.78rem; letter-spacing:2px; color:#8C6A4F; font-weight:700;">STORYBOOK COLLECTION</div>
-              <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
-                <h1 style="font-family:'KoPub Batang', serif; font-size:1.85rem; color:#2C1D11; margin:0 0 8px 0; font-weight:700; letter-spacing:-0.5px;">${projTitle}</h1>
-                ${projSubtitle ? `<div style="font-size:0.88rem; color:#8C6A4F; margin-bottom:6px;">${projSubtitle}</div>` : ''}
-                <div style="font-size:0.95rem; color:#6C4E36; margin-bottom:18px; font-weight:500;">${projAuthor} 시화집</div>
-                ${coverImgTag}
-              </div>
-              <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                <div style="font-size:0.88rem; font-weight:700; color:#4A3220; letter-spacing:1px;">${projPub}</div>
-                <button type="button" class="btn-micro" onclick="if(typeof openPublishExportModal==='function')openPublishExportModal();" style="background:#8C3B14; color:#fff; padding:5px 12px; border-radius:4px; font-size:0.75rem; cursor:pointer; border:none;">🎨 표지 데이터 편집</button>
-              </div>
-            </div>
-          `;
-        }
-      } else if (sec.id === 'half_title') {
-        // [스프레드 1: 속표지] 좌측: 0면(면지 백면) | 우측: 1면(속표지 표제/저자)
-        if (lblLeftNum) lblLeftNum.textContent = "면지 (백면)";
-        if (lblRightNum) lblRightNum.textContent = "1면 (속표지)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "";
-        if (lblFolioRight) lblFolioRight.textContent = "1";
-
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; background:#FAF7F2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#C4B29E; font-size:0.85rem; font-family:'KoPub Batang', serif; letter-spacing:2px;">
-              ❦<br><span style="margin-top:8px; font-size:0.78rem;">[ 면지 / 백면 ]</span>
-            </div>
-          `;
-        }
-        if (ovRight) {
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px 30px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-              <div style="margin-top:-40px;">
-                <h2 style="font-family:'KoPub Batang', serif; font-size:1.75rem; color:#2C1D11; margin-bottom:12px; font-weight:700; letter-spacing:-0.5px;">${projTitle}</h2>
-                ${projSubtitle ? `<div style="font-size:0.9rem; color:#8C6A4F; margin-bottom:20px;">${projSubtitle}</div>` : ''}
-                <div style="font-size:0.95rem; color:#6C4E36; margin-bottom:35px; font-weight:500;">${projAuthor} 지음</div>
-                <div style="width:36px; height:1.5px; background:#B89A7E; margin:0 auto 35px auto;"></div>
-                <div style="font-size:0.85rem; color:#8C7560; font-weight:600;">${projPub}</div>
-              </div>
-            </div>
-          `;
-        }
-      } else if (sec.id === 'prologue' || sec.id === 'preface') {
-        // [스프레드 2: 서문] 좌측: 2면(백면) | 우측: 3면(시인의 말)
-        if (lblLeftNum) lblLeftNum.textContent = "2면 (백면)";
-        if (lblRightNum) lblRightNum.textContent = "3면 (시인의 말)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "2";
-        if (lblFolioRight) lblFolioRight.textContent = "3";
-
-        const prefaceText = project.preface || project.prologue || "한 생을 살아오며 마음에 고여 있던 기억들이 시가 되고 그림이 되었습니다.\n소중한 순간들을 이 책에 담아 전합니다.";
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; background:#FAF7F2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#C4B29E; font-size:0.85rem; font-family:'KoPub Batang', serif; letter-spacing:2px;">
-              ❦<br><span style="margin-top:8px; font-size:0.78rem;">[ 2p / 여백 ]</span>
-            </div>
-          `;
-        }
-        if (ovRight) {
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:45px 35px; background:#FAF7F2; box-sizing:border-box;">
-              <div>
-                <h3 style="font-family:'KoPub Batang', serif; font-size:1.35rem; color:#2C1D11; margin:0 0 20px 0; border-bottom:1.5px solid #C8B6A2; padding-bottom:8px;">시인의 말</h3>
-                <div style="font-family:'KoPub Batang', serif; font-size:0.92rem; line-height:2.0; color:#3A2E24; white-space:pre-line;">${prefaceText}</div>
-              </div>
-              <div style="text-align:right; font-family:'KoPub Batang', serif; font-size:0.88rem; color:#5A4A3A;">
-                <div>${projDate} 계절의 길목에서</div>
-                <div style="font-weight:700; margin-top:4px;">${projAuthor} 배상</div>
-                <div style="margin-top:14px;"><button type="button" class="btn-micro" onclick="if(typeof openPublishExportModal==='function')openPublishExportModal();" style="background:#FAF2EB; color:#8C3B14; border:1px solid #D5C2B0; padding:4px 10px; border-radius:4px; font-size:0.75rem; cursor:pointer;">✏️ 서문 내용 수정</button></div>
-              </div>
-            </div>
-          `;
-        }
-      } else if (sec.id === 'toc') {
-        // [스프레드 3: 차례] 좌측: 4면(목차 리스트) | 우측: 5면(1부 챕터 간지)
-        if (lblLeftNum) lblLeftNum.textContent = "4면 (차례)";
-        if (lblRightNum) lblRightNum.textContent = "5면 (제1부)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "4";
-        if (lblFolioRight) lblFolioRight.textContent = "5";
-
+      const secId = sec.id;
+      if (secId === 'cover') {
+        pageLabels = ["뒤표지 (추천사·바코드)", "앞표지 (표제·저자·일러스트)"];
+        folios = ["", ""];
+        workTitle = projTitle;
+        workImage = projCover;
+        const defaultBlurb = project.back_cover_blurb ||
+          `기억의 서랍에서 꺼내 올린\n따스한 삶의 무늬와 시의 노래.\n\n지나간 시절의 아련한 온기가\n오늘을 살아가는 당신에게\n작은 위로의 등불이 되기를 바랍니다.`;
+        defaultPages = [
+          {
+            page_num: 1,
+            usage: 'text',
+            role: 'matter_template',
+            matter_type: 'cover_back',
+            text_align: 'center',
+            top_offset: 40,
+            image_file: '',
+            custom_text: `STORYBOOK POETRY COLLECTION\n\n${defaultBlurb}\n\n정가 ${projPrice}\nISBN ${projIsbn}\n${projPub}`
+          },
+          {
+            page_num: 2,
+            usage: 'image_text',
+            role: 'matter_template',
+            matter_type: 'cover_front',
+            image_file: projCover,
+            frame_scale: 65,
+            frame_inset: 15,
+            image_mask_mode: 'rounded',
+            text_align: 'center',
+            top_offset: 14,
+            custom_text: `STORYBOOK POETRY COLLECTION\n\n${projTitle}\n\n${projSubtitle ? projSubtitle + '\n\n' : ''}${projAuthor} 시화집\n\n${projPub}`
+          }
+        ];
+      } else if (secId === 'half_title') {
+        pageLabels = ["면지 (백면)", "1면 (속표지)"];
+        folios = ["", "1"];
+        workTitle = projTitle;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          {
+            page_num: 2,
+            usage: 'text',
+            role: 'title_only',
+            top_offset: 140,
+            image_file: '',
+            custom_text: `${projTitle}\n\n${projSubtitle ? projSubtitle + '\n' : ''}\n\n${projAuthor} 지음\n\n${projPub}`
+          }
+        ];
+      } else if (secId === 'prologue' || secId === 'preface') {
+        const sPage = sec.start_page || 2;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (여백)`, `${ePage}면 (시인의 말)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = "시인의 말";
+        const defaultPrologue = project.prologue || `가장 개인적인 기억이 가장 깊은 문학이자 예술이 된다.\n\n살아가며 마주했던 수많은 순간들,\n그 속에서 건져 올린 작고 소중한 이야기들을\n한 편 한 편 시로 빚어 올립니다.\n\n지나온 시간의 따스한 온기가\n이 책을 펼치는 모든 분들의 마음에\n작은 위로와 평온으로 가 닿기를 소망합니다.\n\n- 시인 ${projAuthor}`;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'prologue', top_offset: 20, image_file: '', custom_text: defaultPrologue }
+        ];
+      } else if (secId === 'toc') {
+        const startP = sec.page_start || 4;
+        const pageCount = sec.page_count || 2;
+        const sPage = startP;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (차례 1부)`, `${ePage}면 (차례 2부)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = "차 례";
+        workAuthor = "Table of Contents";
         const works = this.getWorksList();
-        let tocRows = '';
-        works.forEach(w => {
-          const chap = w.chapter ? `<span style="color:#8C6A4F; font-size:0.75rem; margin-right:5px;">[${w.chapter}]</span>` : '';
-          const ep = w.episode_no ? `${w.episode_no}화. ` : '';
-          const pStart = w.start_page || (w.layout_config && w.layout_config.start_page) || '';
-          tocRows += `
-            <div style="display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; border-bottom:1px dotted #E2D5C5; font-size:0.83rem; color:#3A2E24;">
-              <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;">
-                ${chap}<strong>${ep}${w.title}</strong>
-              </div>
-              <div style="font-family:monospace; color:#8C6A4F; font-size:0.78rem; flex-shrink:0;">${pStart ? 'p.' + pStart : ''}</div>
-            </div>
-          `;
-        });
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; padding:40px 30px; background:#FAF7F2; box-sizing:border-box;">
-              <h3 style="font-family:'KoPub Batang', serif; font-size:1.35rem; color:#2C1D11; margin:0 0 16px 0; border-bottom:1.5px solid #C8B6A2; padding-bottom:8px;">차 례</h3>
-              <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2px; scrollbar-width:thin;">
-                ${tocRows}
-              </div>
-            </div>
-          `;
-        }
-        if (ovRight) {
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px 30px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-              <div style="font-size:0.9rem; color:#8C6A4F; letter-spacing:2px; margin-bottom:10px; font-weight:700;">제 1 부</div>
-              <h2 style="font-family:'KoPub Batang', serif; font-size:1.45rem; color:#2C1D11; margin:0 0 14px 0;">유년의 뜰, 어머니의 등불</h2>
-              <div style="font-size:0.84rem; color:#6C5542; font-style:italic;">본문 시화가 시작되는 장(Chapter)입니다.</div>
-            </div>
-          `;
-        }
-      } else if (sec.id === 'colophon') {
-        // [스프레드: 판권지] 좌측: 56면(에필로그 또는 백면) | 우측: 57면(판권지)
-        if (lblLeftNum) lblLeftNum.textContent = "56면 (맺음말)";
-        if (lblRightNum) lblRightNum.textContent = "57면 (판권지)";
-        if (lblFolioLeft) lblFolioLeft.textContent = "56";
-        if (lblFolioRight) lblFolioRight.textContent = "57";
 
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; background:#FAF7F2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#C4B29E; font-size:0.85rem; font-family:'KoPub Batang', serif; letter-spacing:2px;">
-              ❦<br><span style="margin-top:8px; font-size:0.78rem;">[ 56p / 에필로그 또는 여백 ]</span>
-            </div>
-          `;
+        // 작품별 실제 시작 페이지 맵핑
+        const epPageMap = {};
+        if (window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+          window.bookStructureData.sections.forEach(s => {
+            if (s.episode_no) epPageMap[s.episode_no] = s.page_start;
+          });
         }
-        if (ovRight) {
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:40px 30px; background:#FAF7F2; font-family:'KoPub Batang', serif; font-size:0.8rem; color:#4A3A2C; line-height:1.7; box-sizing:border-box;">
-              <h4 style="font-size:1.1rem; color:#2C1D11; margin:0 0 12px 0; font-weight:700;">${projTitle}</h4>
-              <div style="border-top:1.5px solid #2C1D11; padding-top:10px; margin-bottom:14px;">
-                <div><strong>지은이</strong> | ${projAuthor}</div>
-                <div><strong>발행인</strong> | 한철환</div>
-                <div><strong>발행처</strong> | ${projPub}</div>
-                <div><strong>출판등록</strong> | 제2014-000000호</div>
-                <div><strong>발행일</strong> | ${projDate}</div>
-                <div style="margin-top:6px;"><strong>주소</strong> | 서울특별시 구로구 디지털로33길 11, 에이스건설타워 8차 801호</div>
-                <div><strong>홈페이지</strong> | www.bookk.co.kr</div>
-                <div style="margin-top:6px;"><strong>ISBN</strong> | 979-11-XXXXX-X (03810)</div>
-                <div><strong>정가</strong> | 15,000원</div>
-              </div>
-              <div style="font-size:0.72rem; color:#8C7560; border-top:1px solid #D5C2B0; padding-top:6px;">
-                * 본 도서의 판권은 저작권자와 부크크에 있으며, 무단 전재와 복제를 금합니다.<br>
-                * 잘못 만들어진 책은 구입처에서 바꾸어 드립니다.
-              </div>
-              <div style="margin-top:10px;"><button type="button" class="btn-micro" onclick="if(typeof openPublishExportModal==='function')openPublishExportModal();" style="background:#FAF2EB; color:#8C3B14; border:1px solid #D5C2B0; padding:4px 10px; border-radius:4px; font-size:0.75rem; cursor:pointer;">✏️ 판권 정보 수정</button></div>
-            </div>
-          `;
-        }
-      } else {
-        if (lblLeftNum) lblLeftNum.textContent = `${sec.start_page}면(좌)`;
-        if (lblRightNum) lblRightNum.textContent = `${sec.end_page}면(우)`;
-        if (lblFolioLeft) lblFolioLeft.textContent = `${sec.start_page}`;
-        if (lblFolioRight) lblFolioRight.textContent = `${sec.end_page}`;
+        const getWorkPage = (w, idx, fallbackBase) => {
+          if (w.episode_no && epPageMap[w.episode_no]) return epPageMap[w.episode_no];
+          return fallbackBase + (idx * 2);
+        };
 
-        if (ovLeft) {
-          ovLeft.innerHTML = `
-            <div style="height:100%; background:#FAF7F2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#C4B29E; font-size:0.85rem; font-family:'KoPub Batang', serif; letter-spacing:2px;">
-              ❦<br><span style="margin-top:8px; font-size:0.78rem;">[ ${sec.start_page}p ]</span>
-            </div>
-          `;
+        const baseStart = startP + pageCount;
+
+        if (pageCount >= 4) {
+          // 4페이지 확장 모드: 4분할
+          const chunk = Math.max(1, Math.ceil(works.length / 4));
+          defaultPages = [];
+          for (let pi = 0; pi < 4; pi++) {
+            const subWorks = works.slice(pi * chunk, (pi + 1) * chunk);
+            const partHeader = `[ 제${pi + 1}부 ]\n`;
+            const lines = subWorks.map((w, idx) => {
+              const ep = w.episode_no || (pi * chunk + idx + 1);
+              const pNo = getWorkPage(w, pi * chunk + idx, baseStart);
+              return `${ep}화. ${w.title || '작품'} ......... ${pNo}`;
+            });
+            const content = (pi === 0 ? "차 례\n\n" : "") + partHeader + lines.join('\n');
+            defaultPages.push({
+              page_num: pi + 1,
+              usage: 'text',
+              role: 'matter_template',
+              matter_type: 'toc',
+              top_offset: 10,
+              image_file: '',
+              custom_text: content
+            });
+          }
+        } else {
+          // 2페이지 기본 모드: 좌우 2분할 (1부 / 2부)
+          const half = Math.ceil(works.length / 2);
+          const toc1Lines = works.slice(0, half).map((w, idx) => {
+            const ep = w.episode_no || (idx + 1);
+            const pNo = getWorkPage(w, idx, baseStart);
+            return `${ep}화. ${w.title || '작품'} ......... ${pNo}`;
+          });
+          const toc2Lines = works.slice(half).map((w, idx) => {
+            const ep = w.episode_no || (half + idx + 1);
+            const pNo = getWorkPage(w, half + idx, baseStart);
+            return `${ep}화. ${w.title || '작품'} ......... ${pNo}`;
+          });
+          const toc1 = "차 례\n\n[ 제1부 ]\n" + toc1Lines.join('\n');
+          const toc2 = "[ 제2부 ]\n" + toc2Lines.join('\n');
+          defaultPages = [
+            { page_num: 1, usage: 'text', role: 'matter_template', matter_type: 'toc', top_offset: 10, image_file: '', custom_text: toc1 },
+            { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'toc', top_offset: 10, image_file: '', custom_text: toc2 }
+          ];
         }
-        if (ovRight) {
-          ovRight.innerHTML = `
-            <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:40px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-              <h3 style="font-family:'KoPub Batang', serif; font-size:1.3rem; color:#2C1D11; margin-bottom:14px;">${sec.title}</h3>
-              <div style="font-size:0.88rem; color:#6C5542; line-height:1.8;">${sec.content_preview || '섹션 내용이 준비 중입니다.'}</div>
-            </div>
-          `;
+      } else if (secId.startsWith('part_') || sec.section_type === 'part_divider') {
+        pageLabels = [`${sec.start_page || ''}면 (간지 여백)`, `${sec.end_page || ''}면 (${sec.title || '부 간지'})`];
+        folios = [`${sec.start_page || ''}`, `${sec.end_page || ''}`];
+        workTitle = sec.title || "부 간지";
+
+        const rawTitle = (sec.title || '').replace(/^\[[^\]]+\]\s*/, '').trim();
+        let partNo = "제 1 부";
+        let partTitle = "솜꽃의 전설";
+
+        const mPart = rawTitle.match(/^(제\s*\d+\s*부|특별부|외전)\s*[:|-]?\s*(.*)$/);
+        if (mPart) {
+          partNo = mPart[1].trim();
+          partTitle = mPart[2].trim() || (sec.data && sec.data.part_title) || "";
+        } else if (rawTitle) {
+          partTitle = rawTitle;
+        }
+        if (!partTitle) partTitle = (sec.data && sec.data.part_title) || "솜꽃의 전설";
+
+        const authorName = (sec.author || projAuthor || "임종훈").replace(/^지은이\s*[:|]?\s*/, '').trim();
+        const partDesc = sec.description || sec.part_desc || (sec.data && sec.data.description) || "어스름 내리는 저녁,\n부엌에서 흘러나오던 구수한 된장찌개 냄새와\n마당 귀퉁이를 비추던 어머니의 작은 등불.";
+
+        const partLines = [
+          partNo,
+          partTitle,
+          `지은이 | ${authorName}`,
+          "——",
+          partDesc
+        ];
+        const partText = partLines.filter(Boolean).join("\n\n");
+
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          {
+            page_num: 2,
+            usage: 'text',
+            role: 'matter_template',
+            matter_type: 'part_divider',
+            text_align: 'center',
+            top_offset: 130,
+            image_file: '',
+            custom_text: partText
+          }
+        ];
+      } else if (secId === 'epilogue') {
+        const sPage = sec.start_page || 26;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (여백)`, `${ePage}면 (맺음말)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = "맺음말";
+        const defaultEpilogue = project.epilogue || `시의 마지막 장을 덮으며,\n이 작은 책이 당신의 하루 끝에\n따뜻한 노을빛 같은 쉼표가 되었기를 바랍니다.\n\n함께해 주신 모든 분께 감사드립니다.\n\n- ${projAuthor}`;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'epilogue', top_offset: 20, image_file: '', custom_text: defaultEpilogue }
+        ];
+      } else if (secId === 'recommendation') {
+        const sPage = sec.start_page || 24;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (간지 여백)`, `${ePage}면 (추천의 글)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = sec.title || project.recommendation_title || "추천의 글";
+        const recAuthor = sec.author || project.recommendation_author || "문학평론가 OOO";
+        const recContent = (sec.data && sec.data.content) || project.recommendation_content ||
+          `맑고 따뜻한 시선이 머무는 자리.\n\n이 시화집은 삶의 가장 진솔한 기억 조각들을\n따스한 시어와 붓끝으로 건져 올린 귀한 기록입니다.\n\n페이지를 넘길 때마다 피어나는 정갈한 감동이\n독자들의 마음속에 오래도록 잔잔한 등불이 되어줄 것입니다.\n\n- ${recAuthor}`;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'recommendation', top_offset: 20, image_file: '', custom_text: recContent }
+        ];
+      } else if (secId === 'commentary') {
+        const sPage = sec.start_page || 26;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (간지 여백)`, `${ePage}면 (작품 해설)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = sec.title || project.commentary_title || "작품 해설";
+        const comAuthor = sec.author || project.commentary_author || "문학평론가 OOO";
+        const comContent = (sec.data && sec.data.content) || project.commentary_content ||
+          `기억의 서사와 흙의 서정 미학.\n\n시인의 언어는 화려한 수사 대신 진솔한 삶의 체취를 담고 있습니다.\n유년의 뜰에서 마주했던 순수한 온기와 어머니의 품 같은 서정은\n오늘날 각박한 시대를 살아가는 우리 모두에게\n근원적인 위로와 평온을 선사합니다.\n\n- ${comAuthor}`;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'commentary', top_offset: 20, image_file: '', custom_text: comContent }
+        ];
+      } else if (secId === 'colophon') {
+        const sPage = sec.start_page || 28;
+        const ePage = (sec.end_page && sec.end_page > sPage) ? sec.end_page : (sPage + 1);
+        pageLabels = [`${sPage}면 (여백)`, `${ePage}면 (판권지)`];
+        folios = [`${sPage}`, `${ePage}`];
+        workTitle = "정식 출판 판권지";
+        const colophonText = `[도서 판권 정보]\n\n도서명: ${projTitle}\n지은이: ${projAuthor}\n발행처: ${projPub}\n발행일: ${projDate}\n정가: ${projPrice}\nISBN: ${projIsbn}\n\n* 본 도서의 판권은 저작권자와 부크크에 있으며, 무단 전재와 복제를 금합니다.\n* 잘못 만들어진 책은 구입처에서 바꾸어 드립니다.`;
+        defaultPages = [
+          { page_num: 1, usage: 'blank', role: 'none', image_file: '', custom_text: '' },
+          { page_num: 2, usage: 'text', role: 'matter_template', matter_type: 'colophon', top_offset: 30, image_file: '', custom_text: colophonText }
+        ];
+      } else if (secId === 'back_cover') {
+        pageLabels = ["뒤표지 (책 소개 & 바코드)", "면지 (백면)"];
+        folios = ["", ""];
+        workTitle = "뒤표지";
+        defaultPages = [
+          {
+            page_num: 1,
+            usage: 'text',
+            role: 'matter_template',
+            top_offset: 40,
+            image_file: '',
+            custom_text: (project.back_cover_blurb || "기억의 서랍에서 꺼내 올린 따스한 삶의 무늬...") + `\n\n\n정가 ${projPrice}\nISBN ${projIsbn}\n${projPub}`
+          },
+          { page_num: 2, usage: 'blank', role: 'none', image_file: '', custom_text: '' }
+        ];
+      }
+
+      return {
+        episode_no: `sec_${sec.id}`,
+        section_id: sec.id,
+        title: workTitle,
+        author: workAuthor,
+        is_matter: true,
+        page_labels: pageLabels,
+        folios: folios,
+        group_label: sec.group_label || (sec.group === 'front_matter' ? '앞부속' : (sec.group === 'back_matter' ? '뒷부속' : '부속물')),
+        image_file: workImage,
+        layout_config: {
+          page_count: 2,
+          font_family: "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif",
+          font_size_pt: 12.0,
+          line_height_ratio: 1.6,
+          text_align: (secId.startsWith('part_') || sec.section_type === 'part_divider' || secId === 'half_title') ? "center" : "left",
+          slots: [defaultPages[0].usage, defaultPages[1].usage],
+          page_roles: [defaultPages[0].role, defaultPages[1].role],
+          pages: defaultPages
+        }
+      };
+    }
+
+    /**
+     * 부속물 워크 반환 (저장된 설정 병합)
+     */
+    getMatterWork(secOrId) {
+      let sec = secOrId;
+      if (typeof secOrId === 'string') {
+        const struct = window.bookStructureData;
+        if (struct && struct.sections) {
+          const cleanId = secOrId.replace(/^sec_/, '');
+          sec = struct.sections.find(s => s.id === cleanId || s.id === secOrId);
         }
       }
+      const defaultWork = this.buildDefaultMatterWork(sec);
+      if (!sec) return defaultWork;
+
+      if (sec.layout_config && Array.isArray(sec.layout_config.pages) && sec.layout_config.pages.length >= 2) {
+        defaultWork.layout_config = JSON.parse(JSON.stringify(sec.layout_config));
+      }
+      return defaultWork;
+    }
+
+    /**
+     * 부속물 기본 템플릿으로 원상 복원
+     */
+    resetMatterTemplate() {
+      if (!this.isMatterMode || !this.currentMatterWork) return;
+      const secId = this.currentMatterWork.section_id || this.currentSectionId;
+      const defaultWork = this.buildDefaultMatterWork(secId);
+      this.currentMatterWork = defaultWork;
+      this.renderSpread(-1, 1, false, { sec: defaultWork, matterWork: defaultWork });
+      this.saveLayoutConfigToServer(defaultWork.episode_no || secId, defaultWork.layout_config);
+      if (window.showToast) {
+        window.showToast("✨ 부속지 기본 템플릿으로 원상 복원되었습니다.", "info");
+      }
+    }
+
+    /**
+     * 서문(시인의 말) 및 맺음말(에필로그) 양면 펼침(Spread) / 단면(Single) 하이브리드 토글
+     */
+    toggleMatterSpreadMode(targetMode = null) {
+      const work = this.getCurrentWork();
+      if (!work || !work.is_matter) return;
+      const checkSecId = (work.section_id || this.currentSectionId || '').replace(/^sec_/, '');
+      if (!['prologue', 'preface', 'epilogue', 'recommendation', 'commentary', 'toc'].includes(checkSecId)) return;
+
+      const cfg = this.getNormalizedConfig(work);
+      if (!cfg.pages || cfg.pages.length < 2) return;
+
+      const pLeft = cfg.pages[0];
+      const pRight = cfg.pages[1];
+      const isCurrentlySpread = (pLeft.usage === 'text' || pLeft.usage === 'image_text') && pLeft.role !== 'none';
+
+      const shouldSpread = targetMode ? (targetMode === 'spread') : !isCurrentlySpread;
+
+      // 전체 서문/에필로그/추천사/평설/차례 원문 가져오기
+      let fullText = "";
+      if (pRight.custom_text && pLeft.custom_text) {
+        fullText = `${pLeft.custom_text}\n\n${pRight.custom_text}`.trim();
+      } else {
+        fullText = (pRight.custom_text || pLeft.custom_text || work.content || "").trim();
+      }
+
+      const secNameMap = {
+        prologue: "서문",
+        preface: "머리말",
+        epilogue: "맺음말",
+        recommendation: "추천의 글",
+        commentary: "작품 해설",
+        toc: "차례"
+      };
+      const secName = secNameMap[checkSecId] || "부속지";
+
+      if (shouldSpread) {
+        pLeft.usage = 'text';
+        pLeft.role = 'start';
+        pLeft.top_offset = (checkSecId === 'toc') ? 10 : 20;
+
+        pRight.usage = 'text';
+        pRight.role = 'continue';
+        pRight.top_offset = (checkSecId === 'toc') ? 10 : 20;
+
+        // 본문을 지능적으로 연 단위 또는 부([ 제2부 ]) 단위로 절반 분할
+        const lines = fullText.split('\n');
+        let splitIdx = -1;
+        if (checkSecId === 'toc') {
+          // [ 제2부 ] 가 시작되는 라인을 찾아서 분할
+          for (let i = 1; i < lines.length; i++) {
+            if (lines[i].match(/^\[\s*제\s*2\s*부/i)) {
+              splitIdx = i;
+              break;
+            }
+          }
+        }
+        if (splitIdx === -1) {
+          splitIdx = Math.ceil(lines.length / 2);
+        }
+
+        let leftText = lines.slice(0, splitIdx).join('\n').trim();
+        let rightText = lines.slice(splitIdx).join('\n').trim();
+
+        if (checkSecId === 'toc' && !leftText.includes('차 례') && !leftText.includes('차례')) {
+          leftText = '차 례\n\n' + leftText;
+        }
+
+        pLeft.custom_text = leftText;
+        pRight.custom_text = rightText;
+
+        if (window.showToast) {
+          window.showToast(`📖 ${secName}이 [2면 양면 펼침]으로 전환되었습니다. (총 페이지 수 변동 없음)`, "info");
+        }
+      } else {
+        pLeft.usage = 'blank';
+        pLeft.role = 'none';
+        pLeft.custom_text = '';
+
+        pRight.usage = 'text';
+        pRight.role = 'matter_template';
+        pRight.top_offset = (checkSecId === 'toc') ? 10 : 20;
+
+        if (checkSecId === 'toc' && !fullText.includes('차 례') && !fullText.includes('차례')) {
+          fullText = '차 례\n\n' + fullText;
+        }
+        pRight.custom_text = fullText;
+
+        if (window.showToast) {
+          window.showToast(`🕊️ ${secName}이 [우측 단면(여백)] 모드로 복원되었습니다.`, "info");
+        }
+      }
+
+      cfg.slots[0] = pLeft.usage;
+      cfg.slots[1] = pRight.usage;
+      cfg.page_roles[0] = pLeft.role;
+      cfg.page_roles[1] = pRight.role;
+
+      this.renderSpread(-1, 1, false, { sec: work, matterWork: work });
+      this.saveLayoutConfigToServer(work.episode_no || checkSecId, cfg);
     }
 
     init() {
@@ -543,6 +854,9 @@
     }
 
     getCurrentWork() {
+      if (this.isMatterMode && this.currentMatterWork) {
+        return this.currentMatterWork;
+      }
       const works = this.getWorksList();
       if (works.length === 0) return null;
       return works[this.currentWorkIndex] || works[0] || null;
@@ -889,15 +1203,6 @@
      * 🌟 2쪽 대칭 스프레드 메인 렌더러
      */
     renderSpread(workIndex, spreadPart = null, notifyAutoPageChange = false, options = {}) {
-      // 본문 시화 렌더링 시 부속물 오버레이 및 전용 툴바 확실하게 숨기기
-      const ovL = document.getElementById("dtpMatterOverlayLeft");
-      const ovR = document.getElementById("dtpMatterOverlayRight");
-      if (ovL) ovL.style.display = "none";
-      if (ovR) ovR.style.display = "none";
-      if (window.dtpMatterEngine && typeof window.dtpMatterEngine.hideMatterToolbar === 'function') {
-        window.dtpMatterEngine.hideMatterToolbar();
-      }
-
       ['Left', 'Right'].forEach(side => {
         const selU = document.getElementById(`selectPageUsage${side}`);
         const selR = document.getElementById(`selectPageRole${side}`);
@@ -906,7 +1211,7 @@
       });
 
       const works = this.getWorksList();
-      if (works.length === 0) {
+      if (!this.isMatterMode && works.length === 0) {
         this.ensureStatusLoaded().then(loaded => {
           if (loaded) this.renderSpread(workIndex, spreadPart, notifyAutoPageChange);
         });
@@ -915,10 +1220,12 @@
 
       const prevWorkIndex = this.currentWorkIndex;
       if (workIndex !== undefined && workIndex !== null && !isNaN(workIndex)) {
-        this.currentWorkIndex = Math.max(0, Math.min(works.length - 1, parseInt(workIndex, 10)));
-        window.currentWorkIndex = this.currentWorkIndex;
-        if (typeof currentWorkIndex !== 'undefined') {
-          currentWorkIndex = this.currentWorkIndex;
+        if (!this.isMatterMode || workIndex >= 0) {
+          this.currentWorkIndex = Math.max(0, Math.min(works.length - 1, parseInt(workIndex, 10)));
+          window.currentWorkIndex = this.currentWorkIndex;
+          if (typeof currentWorkIndex !== 'undefined') {
+            currentWorkIndex = this.currentWorkIndex;
+          }
         }
       }
 
@@ -934,30 +1241,55 @@
       const work = this.getCurrentWork();
       if (!work) return;
 
-      this.currentSectionId = `poem_${work.episode_no}`;
+      const btnResetTpl = document.getElementById('btnResetMatterTemplate');
+      if (btnResetTpl) {
+        btnResetTpl.style.display = work.is_matter ? 'inline-flex' : 'none';
+      }
 
-      if (!options.isInitialLoad && window._hasUserSelectedWork) {
-        if (typeof window.updateBookTreeActiveItem === 'function') {
-          window.updateBookTreeActiveItem(`poem_${work.episode_no}`);
-        }
-        if (window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
-          const matchingSec = window.bookStructureData.sections.find(s => s.episode_no === work.episode_no);
-          if (matchingSec) {
-            this.currentSectionId = matchingSec.id;
-            if (typeof window.updateBookTreeActiveItem === 'function') {
-              window.updateBookTreeActiveItem(matchingSec.id);
-            }
+      const btnToggleSpread = document.getElementById('btnToggleMatterSpread');
+      const lblToggleSpread = document.getElementById('lblToggleMatterSpread');
+      const checkSpreadSecId = (work.section_id || this.currentSectionId || '').replace(/^sec_/, '');
+      const isPrologueOrEpilogue = Boolean(work.is_matter && ['prologue', 'preface', 'epilogue', 'recommendation', 'commentary', 'toc'].includes(checkSpreadSecId));
+      if (btnToggleSpread) {
+        if (isPrologueOrEpilogue) {
+          btnToggleSpread.style.display = 'inline-flex';
+          const pLeft = work.layout_config?.pages?.[0];
+          const isSpreadNow = pLeft && (pLeft.usage === 'text' || pLeft.usage === 'image_text') && pLeft.role !== 'none';
+          if (lblToggleSpread) {
+            lblToggleSpread.textContent = isSpreadNow ? '🕊️ 우측 단면(여백) 집중' : '📖 2면 양면 펼침';
           }
+        } else {
+          btnToggleSpread.style.display = 'none';
         }
-        // 조판 편집기에서 작품을 선택/이동한 경우 집필실(시 제목/본문/회차 드롭다운)도 자동 연동!
-        if (!options.skipStudioSync && typeof window.loadWorkIntoEditor === 'function') {
-          if (typeof currentEditingEpisode === 'undefined' || currentEditingEpisode !== work.episode_no) {
-            window.loadWorkIntoEditor(work.episode_no, { fromDtpOrTree: true });
-          }
+      }
+
+      if (work.is_matter) {
+        this.currentSectionId = work.section_id || this.currentSectionId;
+        if (typeof window.updateBookTreeActiveItem === 'function' && this.currentSectionId) {
+          window.updateBookTreeActiveItem(this.currentSectionId);
         }
       } else {
-        // 초기 구동 시에는 집필실의 [새 작품 집필] 상태를 보존하기 위해 트리 강제 하이라이트 생략
-        document.querySelectorAll('.book-tree-item').forEach(el => el.classList.remove('active'));
+        this.currentSectionId = `poem_${work.episode_no}`;
+        if (!options.isInitialLoad && window._hasUserSelectedWork) {
+          if (window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+            const matchingSec = window.bookStructureData.sections.find(s => s.episode_no && s.episode_no === work.episode_no);
+            if (matchingSec) {
+              this.currentSectionId = matchingSec.id;
+            }
+          }
+          if (typeof window.updateBookTreeActiveItem === 'function') {
+            window.updateBookTreeActiveItem(this.currentSectionId);
+          }
+          // 조판 편집기에서 작품을 선택/이동한 경우 집필실(시 제목/본문/회차 드롭다운)도 자동 연동!
+          if (!options.skipStudioSync && typeof window.loadWorkIntoEditor === 'function') {
+            if (typeof currentEditingEpisode === 'undefined' || currentEditingEpisode !== work.episode_no) {
+              window.loadWorkIntoEditor(work.episode_no, { fromDtpOrTree: true });
+            }
+          }
+        } else {
+          // 초기 구동 시에는 집필실의 [새 작품 집필] 상태를 보존하기 위해 트리 강제 하이라이트 생략
+          document.querySelectorAll('.book-tree-item').forEach(el => el.classList.remove('active'));
+        }
       }
 
       const cfg = this.getNormalizedConfig(work);
@@ -1001,8 +1333,42 @@
       this.renderSinglePage("left", leftPageIdx, cfg, work, textFlowMap, overflowFlags, flowResult.textFlowSplitMap);
       this.renderSinglePage("right", rightPageIdx, cfg, work, textFlowMap, overflowFlags, flowResult.textFlowSplitMap);
 
+      // [출판 표지 일체형 책등(Spine) 동기화]
+      const spineBar = document.getElementById("dtpSpineBar");
+      const spreadView = document.querySelector(".dtp-spread-view");
+      const isCover = Boolean(work.is_matter && (work.section_id === 'cover' || this.currentSectionId === 'cover'));
+      if (spineBar) {
+        if (isCover) {
+          showElem(spineBar, 'flex');
+          if (spreadView) spreadView.classList.add('is-cover-spread');
+
+          const proj = (window.currentStatus && window.currentStatus.project) || {};
+          const spineTitle = document.getElementById("dtpSpineTitle");
+          const spineAuthor = document.getElementById("dtpSpineAuthor");
+          const spinePub = document.getElementById("dtpSpinePublisher");
+          const spineBadge = document.getElementById("dtpSpineBadge");
+
+          if (spineTitle) spineTitle.innerText = proj.name || work.title || "시집 제목";
+          if (spineAuthor) spineAuthor.innerText = (proj.author || "시인") + " 지음";
+          if (spinePub) {
+            const rawPub = proj.publisher || "부크크";
+            spinePub.innerText = rawPub.replace(/\s*\(Bookk\)\s*자가출판/, '').trim() || "부크크";
+          }
+
+          const totalPages = (window.bookStructureData && window.bookStructureData.total_pages) || 80;
+          const spineMm = (totalPages * 0.055 + 1.8).toFixed(1);
+          if (spineBadge) spineBadge.textContent = `책등 ${spineMm}mm`;
+        } else {
+          hideElem(spineBar);
+          if (spreadView) spreadView.classList.remove('is-cover-spread');
+        }
+      }
+
       // 5) 가이드선 가시성 반영
       this.applyGuidesVisibility();
+
+      // 6) 🌟 [무지연 프리페치] 앞뒤 3페이지의 300 DPI 삽화/표지를 브라우저 유휴 시간에 선제 캐싱
+      this.schedulePrefetch(this.currentWorkIndex);
     }
 
     /**
@@ -2171,10 +2537,22 @@
 
       // 1) 면 번호 표시
       const lblNum = document.getElementById(`lblPage${capSide}Num`);
-      if (lblNum) lblNum.textContent = `${pageNum}면(${side === 'left' ? '좌' : '우'})`;
+      if (lblNum) {
+        if (work.is_matter && work.page_labels && work.page_labels[pageIdx]) {
+          lblNum.textContent = work.page_labels[pageIdx];
+        } else {
+          lblNum.textContent = `${pageNum}면(${side === 'left' ? '좌' : '우'})`;
+        }
+      }
 
       const lblFolio = document.getElementById(`lblBookFolio${capSide}`);
-      if (lblFolio) lblFolio.textContent = `${pageNum}`;
+      if (lblFolio) {
+        if (work.is_matter && work.folios) {
+          lblFolio.textContent = work.folios[pageIdx] || "";
+        } else {
+          lblFolio.textContent = `${pageNum}`;
+        }
+      }
 
       // 2) 드롭다운 셀렉터 동기화
       const selUsage = document.getElementById(`selectPageUsage${capSide}`);
@@ -2182,7 +2560,27 @@
 
       const selRole = document.getElementById(`selectPageRole${capSide}`);
       if (selRole) {
-        selRole.value = pageData.role;
+        const isMatter = Boolean(work && work.is_matter);
+        if (selRole.getAttribute('data-is-matter') !== String(isMatter)) {
+          if (isMatter) {
+            selRole.innerHTML = `
+              <option value="matter_template">📋 부속지 템플릿 (기본)</option>
+              <option value="title_only">🏷️ 표제면</option>
+              <option value="independent">📝 독립 자유글</option>
+              <option value="none">🚫 글 없음</option>
+            `;
+          } else {
+            selRole.innerHTML = `
+              <option value="start">📖 본문 시작</option>
+              <option value="title_only">🏷️ 표제면</option>
+              <option value="continue">🔗 글 이어짐</option>
+              <option value="independent">📝 독립 자유글</option>
+              <option value="none">🚫 글 없음</option>
+            `;
+          }
+          selRole.setAttribute('data-is-matter', String(isMatter));
+        }
+        selRole.value = pageData.role || (isMatter ? 'matter_template' : 'continue');
         if (pageData.usage === 'image' || pageData.usage === 'blank') {
           selRole.disabled = true;
           selRole.style.opacity = '0.5';
@@ -2201,7 +2599,21 @@
       // 5) 하단 초과/이어짐 배지 표시
       const overflowBadge = document.getElementById(`dtpOverflow${capSide}`);
       if (overflowBadge) {
-        if (overflowFlags && overflowFlags[pageIdx]) {
+        const isMatter = Boolean(work && work.is_matter);
+        const secId = work.section_id || this.currentSectionId;
+        if (isMatter && ['prologue', 'preface', 'epilogue', 'recommendation', 'commentary', 'toc'].includes(secId) && side === 'right') {
+          const isLeftBlank = cfg.pages && cfg.pages[0] && (cfg.pages[0].usage === 'blank' || cfg.pages[0].role === 'none');
+          const lineCount = (pageData.custom_text || '').split('\n').filter(Boolean).length;
+          if (isLeftBlank && lineCount > 14) {
+            overflowBadge.innerHTML = `⚠️ 분량 초과 감지 ➔ <span style="font-weight:700; text-decoration:underline; cursor:pointer;" onclick="dtpEditor.toggleMatterSpreadMode('spread')">[📖 2면 양면 펼치기 (권장)]</span>`;
+            overflowBadge.style.pointerEvents = "auto";
+            overflowBadge.style.cursor = "pointer";
+            overflowBadge.onclick = () => this.toggleMatterSpreadMode('spread');
+            showElem(overflowBadge, "block");
+          } else {
+            hideElem(overflowBadge);
+          }
+        } else if (overflowFlags && overflowFlags[pageIdx]) {
           const nextPageNum = pageNum + 1;
           const nextPart = Math.ceil(nextPageNum / 2);
           overflowBadge.innerHTML = `⚠️ 본문 초과 ➔ ${nextPageNum}면으로 자동 이어짐 <span style="text-decoration:underline; margin-left:4px; cursor:pointer;">[${nextPart}부 보기]</span>`;
@@ -2546,14 +2958,7 @@
         hideElem(imgElem);
         hideElem(placeholder);
 
-        const resolveCleanImgPath = (file) => {
-          if (!file) return "";
-          let p = "/" + String(file).replace(/^(\.\/|\/)+/, '');
-          if (p.startsWith("/images/")) {
-            p = "/gallery" + p;
-          }
-          return p;
-        };
+        const resolveCleanImgPath = (file) => this.resolveMediaUrl(file);
 
         if (layout === 'single') {
           // [1장 전체 레이아웃]: 글상자와 100% 동일한 4변 여백 리사이즈 핸들 지원
@@ -2677,9 +3082,416 @@
     }
 
     populateBodyLinesDom(bodyElem, pageData, pageIdx, textFlowMap, fontFam, linePx) {
-      const lines = textFlowMap[pageIdx] || [];
+      let lines = textFlowMap[pageIdx] || [];
+      if ((pageData.role === 'matter_template' || pageData.role === 'independent') && pageData.custom_text) {
+        lines = pageData.custom_text.split('\n');
+      }
       const lineStyle = `min-height:${linePx.toFixed(2)}px; line-height:${linePx.toFixed(2)}px; font-family:${fontFam};`;
+      const cleanSecId = (this.currentSectionId || '').replace(/^sec_/, '');
+      const isPartDivider = (pageData.matter_type === 'part_divider') ||
+                            cleanSecId.startsWith('part_');
+      const isCoverFront = (pageData.matter_type === 'cover_front') ||
+                           (cleanSecId === 'cover' && pageIdx === 1);
+      const isCoverBack = (pageData.matter_type === 'cover_back') ||
+                          (cleanSecId === 'cover' && pageIdx === 0) ||
+                          (cleanSecId === 'back_cover');
+      const isToc = (pageData.matter_type === 'toc') ||
+                    cleanSecId === 'toc' || cleanSecId.startsWith('toc_');
+      const isHalfTitle = (pageData.matter_type === 'half_title') ||
+                          cleanSecId === 'half_title';
+      const isPrologue = (pageData.matter_type === 'prologue' || pageData.matter_type === 'recommendation') ||
+                         ['prologue', 'preface', 'recommendation'].includes(cleanSecId);
+      const isEpilogue = (pageData.matter_type === 'epilogue' || pageData.matter_type === 'commentary') ||
+                         ['epilogue', 'afterword', 'commentary'].includes(cleanSecId) ||
+                         lines.some(l => l.includes('[에필로그]') || l.includes('서산 너머에서 건네는 온기') || l.includes('시화집을 엮고 나서'));
+
       if (lines.length > 0) {
+        if (isCoverFront) {
+          const proj = (window.currentStatus && window.currentStatus.project) || {};
+          let badge = "STORYBOOK POETRY COLLECTION";
+          let title = proj.name || "시집 제목";
+          let subtitle = proj.subtitle || "";
+          let author = (proj.author || "시인") + " 시화집";
+          let publisher = proj.publisher || "부크크 (Bookk) 자가출판";
+
+          const nonEmpty = lines.map(l => l.trim()).filter(Boolean);
+          if (nonEmpty.length > 0) {
+            if (nonEmpty[0].includes('COLLECTION')) {
+              badge = nonEmpty[0];
+              if (nonEmpty[1]) title = nonEmpty[1];
+              if (nonEmpty[2] && nonEmpty[2].includes('시화집')) {
+                author = nonEmpty[2];
+                if (nonEmpty[3]) publisher = nonEmpty[3];
+              } else if (nonEmpty[2]) {
+                subtitle = nonEmpty[2];
+                if (nonEmpty[3]) author = nonEmpty[3];
+                if (nonEmpty[4]) publisher = nonEmpty[4];
+              }
+            } else {
+              title = nonEmpty[0];
+              if (nonEmpty[1] && nonEmpty[1].includes('시화집')) {
+                author = nonEmpty[1];
+                if (nonEmpty[2]) publisher = nonEmpty[2];
+              } else if (nonEmpty[1]) {
+                subtitle = nonEmpty[1];
+                if (nonEmpty[2]) author = nonEmpty[2];
+                if (nonEmpty[3]) publisher = nonEmpty[3];
+              }
+            }
+          }
+
+          bodyElem.innerHTML = `
+            <div class="cover-collection-badge">${badge}</div>
+            <h1 class="poem-line cover-front-title" data-line-idx="0" style="font-family:${fontFam}; font-size:2.35rem !important; font-weight:700 !important; color:#2C1D11 !important; line-height:1.25 !important; text-align:center !important; margin:6px 0 8px 0 !important;"><span class="line-text" style="font-size:2.35rem !important; font-weight:700 !important; color:#2C1D11 !important;">${title}</span></h1>
+            ${subtitle ? `<p class="poem-line cover-front-subtitle" data-line-idx="1" style="font-size:0.96rem !important; font-weight:500 !important; color:#8C6A4F !important; line-height:1.4 !important; text-align:center !important; margin-bottom:12px !important;"><span class="line-text" style="color:#8C6A4F !important;">${subtitle}</span></p>` : ''}
+            <p class="poem-line cover-front-author" data-line-idx="2" style="font-size:1.05rem !important; font-weight:600 !important; color:#553412 !important; line-height:1.4 !important; text-align:center !important; margin-bottom:20px !important;"><span class="line-text" style="color:#553412 !important;">${author}</span></p>
+            <div style="flex:1; min-height:180px;"></div>
+            <div class="cover-front-publisher" style="font-size:0.88rem !important; font-weight:700 !important; color:#553412 !important; text-align:center !important; letter-spacing:1px !important; margin-top:16px !important;">${publisher}</div>
+          `;
+          return;
+        }
+
+        if (isCoverBack) {
+          const proj = (window.currentStatus && window.currentStatus.project) || {};
+          let badge = "STORYBOOK POETRY COLLECTION";
+          let blurb = proj.back_cover_blurb || "기억의 서랍에서 꺼내 올린\n따스한 삶의 무늬와 시의 노래.\n\n지나간 시절의 아련한 온기가\n오늘을 살아가는 당신에게\n작은 위로의 등불이 되기를 바랍니다.";
+          let price = proj.price || "13,000원";
+          let isbn = proj.isbn || "ISBN 979-11-XXXXX-X (03810)";
+          let publisher = proj.publisher || "부크크 (Bookk) 자가출판";
+
+          const rawJoined = lines.join('\n');
+          const mPrice = rawJoined.match(/정가\s*([0-9,]+원)/);
+          if (mPrice) price = mPrice[1];
+          const mIsbn = rawJoined.match(/(ISBN\s*[0-9\-X]+(?:\s*\([0-9]+\))?)/);
+          if (mIsbn) isbn = mIsbn[1];
+
+          bodyElem.innerHTML = `
+            <div class="cover-collection-badge" style="margin-bottom:24px !important;">${badge}</div>
+            <div class="cover-back-blurb" style="font-size:0.95rem !important; line-height:2.2 !important; color:#4A3A2C !important; text-align:center !important; padding:0 12px; margin:20px 0 30px 0;">
+              ${blurb.split('\n').map(l => l.trim() ? `<p style="margin:4px 0;">${l}</p>` : `<br>`).join('')}
+            </div>
+            <div class="cover-back-footer" style="border-top:1.5px solid #D8C7B5; padding-top:16px; margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end; font-size:0.80rem; color:#7A6553; width:100%; box-sizing:border-box;">
+              <div style="text-align:left; line-height:1.6;">
+                <div>정가 <strong style="color:#2C1D11; font-size:0.88rem;">${price}</strong></div>
+                <div style="font-size:0.76rem; letter-spacing:0.5px;">${isbn}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:700; color:#553412; font-size:0.85rem;">${publisher}</div>
+                <div style="font-size:0.70rem; color:#8C7560; margin-top:2px;">[ ▌▌▌ 바코드 부착 영역 ]</div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        if (isToc) {
+          let htmlBuf = [];
+          let hasPassedMainTitle = false;
+
+          // 차례 텍스트 첫 줄 검사 (명시적인 '차 례' 헤더 줄 존재 여부 확인)
+          const firstNonEmpty = lines.map(l => (l || '').replace(/[\u00a0\xa0]+/g, '').trim()).find(Boolean) || '';
+          const hasExplicitHeader = Boolean(firstNonEmpty.match(/^(차\s*례|목\s*차|차례|목차|CONTENTS)$/i));
+
+          // 명시적 헤더가 없고 첫 페이지(pageIdx === 0)이거나 우측 단면 모드인 경우, 항상 상단에 품격 있는 '차 례' 헤더 자동 보장!
+          if (!hasExplicitHeader && (pageIdx === 0 || pageData.role === 'matter_template')) {
+            htmlBuf.push(`
+              <div class="poem-line toc-header" data-line-idx="h0" style="text-align:center; margin-top:2px; margin-bottom:20px; padding-bottom:8px; border-bottom:1.5px solid #D8C7B5;">
+                <h2 class="toc-main-title" style="font-family:${fontFam}; font-size:1.75rem !important; font-weight:700 !important; letter-spacing:8px !important; color:#2C1D11 !important; margin:0 0 4px 0 !important; text-align:center;"><span class="line-text" style="font-size:1.75rem !important; font-weight:700 !important; letter-spacing:8px !important; color:#2C1D11 !important;">차  례</span></h2>
+                <div class="toc-sub-title" style="font-size:0.75rem !important; letter-spacing:3px !important; color:#8C6A4F !important; text-transform:uppercase; text-align:center;">Table of Contents</div>
+              </div>
+            `);
+            hasPassedMainTitle = true;
+          }
+
+          lines.forEach((line, lIdx) => {
+            const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trim();
+            if (!trimmed) {
+              htmlBuf.push(`<p class="poem-line empty-line toc-empty-line" data-line-idx="${lIdx}"><br></p>`);
+              return;
+            }
+
+            // Case 1: "차 례" 또는 "목 차" 또는 "CONTENTS" 대제목 라인
+            if (!hasPassedMainTitle && trimmed.match(/^(차\s*례|목\s*차|차례|목차|CONTENTS)$/i)) {
+              hasPassedMainTitle = true;
+              htmlBuf.push(`
+                <div class="poem-line toc-header" data-line-idx="${lIdx}" style="text-align:center; margin-top:2px; margin-bottom:22px; padding-bottom:8px; border-bottom:1.5px solid #D8C7B5;">
+                  <h2 class="toc-main-title" style="font-family:${fontFam}; font-size:1.75rem !important; font-weight:700 !important; letter-spacing:8px !important; color:#2C1D11 !important; margin:0 0 4px 0 !important; text-align:center;"><span class="line-text" style="font-size:1.75rem !important; font-weight:700 !important; letter-spacing:8px !important; color:#2C1D11 !important;">차  례</span></h2>
+                  <div class="toc-sub-title" style="font-size:0.75rem !important; letter-spacing:3px !important; color:#8C6A4F !important; text-transform:uppercase; text-align:center;">Table of Contents</div>
+                </div>
+              `);
+              return;
+            }
+
+            // Case 2: 부 헤더 라인 - "[ 제1부 ]" 또는 "제1부: 솜꽃의 전설" 등
+            if (trimmed.match(/^(\[\s*제\s*\d+\s*부.*?\]|제\s*\d+\s*부|\[\s*특별부.*?\]|\[\s*외전.*?\])/i)) {
+              htmlBuf.push(`
+                <p class="poem-line toc-part-header" data-line-idx="${lIdx}" style="font-family:${fontFam}; font-size:1.06rem !important; font-weight:700 !important; color:#553412 !important; letter-spacing:2px !important; margin:16px 0 8px 0 !important; border-left:3.5px solid #8C6A4F; padding-left:8px; line-height:1.4 !important; text-align:left;">
+                  <span class="line-text" style="font-size:1.06rem !important; font-weight:700 !important; color:#553412 !important; letter-spacing:2px !important;">${trimmed}</span>
+                </p>
+              `);
+              return;
+            }
+
+            // Case 3: 목차 항목 라인 - "제01화. 밍밭에서 ......... 6" 또는 "01화. 밍밭에서 ......... 6" 또는 "제01화. 밍밭에서 6"
+            const mToc = trimmed.match(/^(.+?)(?:\s*\.{2,}|\s*…+|\s*-{2,}|\s+)(\d+)$/);
+            if (mToc) {
+              const itemTitle = mToc[1].trim();
+              const itemPage = mToc[2].trim();
+              htmlBuf.push(`
+                <div class="poem-line toc-item-row" data-line-idx="${lIdx}" style="display:flex; justify-content:space-between; align-items:baseline; margin:4px 0; font-size:0.92rem !important; color:#3A2A1E !important; font-family:${fontFam}; line-height:${linePx.toFixed(2)}px;">
+                  <span class="line-text toc-item-title" style="font-weight:500; font-family:${fontFam};">${itemTitle}</span>
+                  <span class="toc-item-leader" style="flex:1; border-bottom:1.5px dotted #B89A7E; margin:0 8px 5px 8px; opacity:0.65; min-width:12px;"></span>
+                  <span class="toc-item-page" style="font-size:0.88rem; color:#7A6553; font-variant-numeric:tabular-nums; font-weight:600; font-family:${fontFam};">${itemPage}</span>
+                </div>
+              `);
+              return;
+            }
+
+            // Case 4: 일반 텍스트 라인
+            htmlBuf.push(`
+              <p class="poem-line toc-plain-line" data-line-idx="${lIdx}" style="${lineStyle} text-align:left;">
+                <span class="line-text" style="font-family:${fontFam}; font-size:0.92rem; color:#4A3A2C;">${trimmed}</span>
+              </p>
+            `);
+          });
+
+          bodyElem.innerHTML = htmlBuf.join('');
+          return;
+        }
+
+        if (isHalfTitle) {
+          const proj = (window.currentStatus && window.currentStatus.project) || {};
+          let title = proj.name || "시집 제목";
+          let subtitle = proj.subtitle || "";
+          let author = (proj.author || "시인") + " 지음";
+          let publisher = proj.publisher || "부크크 (Bookk) 자가출판";
+
+          const nonEmpty = lines.map(l => l.trim()).filter(Boolean);
+          if (nonEmpty.length > 0) {
+            title = nonEmpty[0];
+            if (nonEmpty[1] && (nonEmpty[1].includes('지음') || nonEmpty[1].includes('시화집') || nonEmpty[1].includes('지은이'))) {
+              author = nonEmpty[1];
+              if (nonEmpty[2]) publisher = nonEmpty[2];
+            } else if (nonEmpty[1]) {
+              subtitle = nonEmpty[1];
+              if (nonEmpty[2]) author = nonEmpty[2];
+              if (nonEmpty[3]) publisher = nonEmpty[3];
+            }
+          }
+
+          bodyElem.innerHTML = `
+            <div style="flex: 1; min-height: 80px;"></div>
+            <h1 class="poem-line half-title-main" data-line-idx="0" style="font-family:${fontFam}; font-size: 2.15rem !important; font-weight: 700 !important; color: #2C1D11 !important; line-height: 1.35 !important; text-align: center !important; margin: 0 0 12px 0 !important; letter-spacing: 4px !important;">
+              <span class="line-text" style="font-size: 2.15rem !important; font-weight: 700 !important; color: #2C1D11 !important;">${title}</span>
+            </h1>
+            ${subtitle ? `<p class="poem-line half-title-sub" data-line-idx="1" style="font-size: 0.98rem !important; font-weight: 500 !important; color: #8C6A4F !important; line-height: 1.5 !important; text-align: center !important; margin-bottom: 24px !important; letter-spacing: 1px !important;"><span class="line-text" style="color: #8C6A4F !important;">${subtitle}</span></p>` : ''}
+            <p class="poem-line half-title-author" data-line-idx="2" style="font-size: 1.05rem !important; font-weight: 600 !important; color: #553412 !important; line-height: 1.5 !important; text-align: center !important; margin-bottom: 24px !important; letter-spacing: 2.5px !important;">
+              <span class="line-text" style="color: #553412 !important;">${author}</span>
+            </p>
+            <div style="flex: 2; min-height: 140px;"></div>
+            <div class="half-title-publisher" style="font-size: 0.88rem !important; font-weight: 700 !important; color: #7A6553 !important; text-align: center !important; letter-spacing: 1.5px !important; margin-bottom: 20px !important;">
+              ${publisher}
+            </div>
+          `;
+          return;
+        }
+
+        if (isPrologue) {
+          const isRec = (pageData.matter_type === 'recommendation') || (this.currentSectionId && this.currentSectionId.includes('recommendation'));
+          const isPref = (pageData.matter_type === 'preface') || (this.currentSectionId && this.currentSectionId.includes('preface'));
+          const headerTitle = isRec ? "추천의 글" : (isPref ? "머리말" : "시인의 말");
+          const headerSub = isRec ? "Recommendation" : (isPref ? "Preface" : "Prologue");
+
+          // 첫 페이지(pageIdx === 1 또는 0)이거나 단면 모드일 때만 대제목 헤더 표시
+          const isFirstPage = (pageIdx === 1 || pageIdx === 0 || pageData.role === 'start' || pageData.role === 'matter_template');
+          let htmlBuf = [];
+
+          if (isFirstPage) {
+            htmlBuf.push(`
+              <div class="poem-line prologue-header" data-line-idx="h0" style="text-align: center; margin-top: 4px; margin-bottom: 24px; padding-bottom: 8px; border-bottom: 1.5px solid #D8C7B5;">
+                <h2 class="prologue-title" style="font-family:${fontFam}; font-size: 1.75rem !important; font-weight: 700 !important; letter-spacing: 6px !important; color: #2C1D11 !important; margin: 0 0 4px 0 !important; text-align: center;"><span class="line-text" style="font-size: 1.75rem !important; font-weight: 700 !important; letter-spacing: 6px !important; color: #2C1D11 !important;">${headerTitle}</span></h2>
+                <div class="prologue-sub-title" style="font-size: 0.75rem !important; letter-spacing: 3px !important; color: #8C6A4F !important; text-transform: uppercase; text-align: center;">${headerSub}</div>
+              </div>
+            `);
+          }
+
+          lines.forEach((line, lIdx) => {
+            let trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trim();
+            trimmed = trimmed.replace(/^#+\s*/, '').replace(/^[🌿🕊️📖✍️✨\s]+/, '').trim();
+
+            if (!trimmed) {
+              htmlBuf.push(`<p class="poem-line empty-line" data-line-idx="${lIdx}" style="min-height: 16px;"><br></p>`);
+              return;
+            }
+
+            // 첫 줄에 '시인의 말', '추천의 글' 등이 있으면 중복 출력 방지
+            if (lIdx === 0 && (trimmed === headerTitle || trimmed === '시인의 말' || trimmed === '서문' || trimmed === '머리말' || trimmed === '추천의 글')) {
+              return;
+            }
+
+            // 서명 줄 (예: "- 시인 임종훈", "- 지은이 임종훈", "시인 OOO")
+            if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.includes('시인 ') || trimmed.includes('지은이 ') || trimmed.includes('추천인 ')) {
+              htmlBuf.push(`
+                <p class="poem-line prologue-signature" data-line-idx="${lIdx}" style="text-align: right !important; margin-top: 26px !important; margin-bottom: 6px !important; font-family:${fontFam}; font-size: 0.96rem !important; font-weight: 600 !important; color: #553412 !important; letter-spacing: 1.5px !important;">
+                  <span class="line-text" style="color: #553412 !important; font-weight: 600 !important;">${trimmed}</span>
+                </p>
+              `);
+              return;
+            }
+
+            // 본문 문장 줄
+            const isHanging = /^["'“‘「『\(\<]/.test(trimmed);
+            const hangClass = isHanging ? ' hang-quote' : '';
+            const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+            htmlBuf.push(`
+              <p class="poem-line prologue-body-line${hangClass}" data-line-idx="${lIdx}" style="font-family:${fontFam}; font-size: 1.02rem !important; line-height: 2.15 !important; color: #3A2A1E !important; margin: 6px 0 !important; text-align: justify; ${hangStyle}">
+                <span class="line-text" style="font-family:${fontFam}; font-size: 1.02rem !important; line-height: 2.15 !important; color: #3A2A1E !important;">${trimmed}</span>
+              </p>
+            `);
+          });
+
+          bodyElem.innerHTML = htmlBuf.join('');
+          return;
+        }
+
+        if (isEpilogue) {
+          const isCom = (pageData.matter_type === 'commentary') || (this.currentSectionId && this.currentSectionId.includes('commentary'));
+          const headerSub = isCom ? "Commentary" : "Epilogue";
+
+          let mainTitle = isCom ? "작품 해설" : "서산 너머에서 건네는 온기";
+          let subTitle = isCom ? "시화집을 엮고 나서" : "— 시화집을 엮고 나서";
+          let bodyLines = [];
+          let hasExtractedHeader = false;
+
+          lines.forEach((line, lIdx) => {
+            const raw = (line || '').replace(/[\u00a0\xa0]+/g, '').trim();
+            if (!raw) {
+              if (hasExtractedHeader) bodyLines.push({ text: '', isBlank: true, idx: lIdx });
+              return;
+            }
+
+            // Case A: 마크다운 # 🌿 [에필로그] 서산 너머에서 건네는 온기
+            const mMain = raw.match(/^#+\s*(?:[🌿🕊️✨\s]*\[(?:에필로그|맺음말|작품해설|평설)\]\s*)?(.*)$/i);
+            if (!hasExtractedHeader && mMain && mMain[1]) {
+              mainTitle = mMain[1].trim() || mainTitle;
+              hasExtractedHeader = true;
+              return;
+            }
+
+            // Case B: ### — 시화집을 엮고 나서
+            if (raw.startsWith('###') || raw.startsWith('##')) {
+              subTitle = raw.replace(/^#+\s*/, '').trim();
+              return;
+            }
+
+            // Case C: 구분선 --- 또는 ——
+            if (raw.match(/^[-—─―]{2,}$/) || raw === '——') {
+              return; // 상단 헤더의 border-bottom으로 대체
+            }
+
+            bodyLines.push({ text: raw, isBlank: false, idx: lIdx });
+          });
+
+          const isFirstPage = (pageIdx === 1 || pageIdx === 0 || pageData.role === 'start' || pageData.role === 'matter_template');
+          let htmlBuf = [];
+
+          if (isFirstPage) {
+            htmlBuf.push(`
+              <div class="poem-line epilogue-header" data-line-idx="h0" style="text-align: center; margin-top: 4px; margin-bottom: 24px; padding-bottom: 10px; border-bottom: 1.5px solid #D8C7B5;">
+                <div class="epilogue-sub-badge" style="font-size: 0.75rem !important; letter-spacing: 3px !important; color: #8C6A4F !important; text-transform: uppercase; margin-bottom: 4px; text-align: center;">${headerSub}</div>
+                <h2 class="epilogue-main-title" style="font-family:${fontFam}; font-size: 1.65rem !important; font-weight: 700 !important; letter-spacing: 3px !important; color: #2C1D11 !important; margin: 0 0 6px 0 !important; text-align: center;"><span class="line-text" style="font-size: 1.65rem !important; font-weight: 700 !important; letter-spacing: 3px !important; color: #2C1D11 !important;">${mainTitle}</span></h2>
+                ${subTitle ? `<div class="epilogue-subtitle" style="font-size: 0.92rem !important; font-style: italic !important; color: #7A6553 !important; letter-spacing: 1px !important; text-align: center;">${subTitle}</div>` : ''}
+              </div>
+            `);
+          }
+
+          bodyLines.forEach(item => {
+            if (item.isBlank) {
+              htmlBuf.push(`<p class="poem-line empty-line" data-line-idx="${item.idx}" style="min-height: 14px;"><br></p>`);
+              return;
+            }
+
+            const trimmed = item.text;
+            // 서명 또는 날짜 줄 (예: "2026년 가을, 시인 임종훈", "- 시인 임종훈")
+            if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.includes('시인 ') || trimmed.match(/^\d{4}년/)) {
+              htmlBuf.push(`
+                <p class="poem-line epilogue-signature" data-line-idx="${item.idx}" style="text-align: right !important; margin-top: 24px !important; margin-bottom: 6px !important; font-family:${fontFam}; font-size: 0.95rem !important; font-weight: 600 !important; color: #553412 !important; letter-spacing: 1.5px !important;">
+                  <span class="line-text" style="color: #553412 !important; font-weight: 600 !important;">${trimmed}</span>
+                </p>
+              `);
+              return;
+            }
+
+            const isHanging = /^["'“‘「『\(\<]/.test(trimmed);
+            const hangClass = isHanging ? ' hang-quote' : '';
+            const hangStyle = isHanging ? 'text-indent: -0.55em !important;' : '';
+            htmlBuf.push(`
+              <p class="poem-line epilogue-body-line${hangClass}" data-line-idx="${item.idx}" style="font-family:${fontFam}; font-size: 0.98rem !important; line-height: 2.15 !important; color: #3A2A1E !important; margin: 5px 0 !important; text-align: justify; ${hangStyle}">
+                <span class="line-text" style="font-family:${fontFam}; font-size: 0.98rem !important; line-height: 2.15 !important; color: #3A2A1E !important;">${trimmed}</span>
+              </p>
+            `);
+          });
+
+          bodyElem.innerHTML = htmlBuf.join('');
+          return;
+        }
+
+        if (isPartDivider) {
+          let hasPassedNo = false;
+          let hasPassedTitle = false;
+          let htmlBuf = [];
+
+          lines.forEach((line, lIdx) => {
+            const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trim();
+            if (!trimmed) {
+              htmlBuf.push(`<p class="poem-line empty-line part-empty-line" data-line-idx="${lIdx}"><br></p>`);
+              return;
+            }
+
+            // Case A: "제1부: 솜꽃의 전설" 처럼 합쳐진 첫 줄인 경우 분리
+            const mCombined = trimmed.match(/^(제\s*\d+\s*부|특별부|외전|Part\s*\d+)\s*[:|-]\s*(.+)$/i);
+            if (mCombined && !hasPassedNo) {
+              hasPassedNo = true;
+              hasPassedTitle = true;
+              htmlBuf.push(`<p class="poem-line part-no-line" data-line-idx="${lIdx}" style="font-size:2.15rem !important; font-weight:700 !important; letter-spacing:5px !important; color:#2C1D11 !important; line-height:1.35 !important; text-align:center !important; margin-top:6px !important; margin-bottom:16px !important; font-family:${fontFam};"><span class="line-text" style="font-size:2.15rem !important; font-weight:700 !important; letter-spacing:5px !important; color:#2C1D11 !important;">${mCombined[1].trim()}</span></p>`);
+              htmlBuf.push(`<p class="poem-line part-title-line" data-line-idx="${lIdx}" style="font-size:1.55rem !important; font-weight:600 !important; letter-spacing:2px !important; color:#3A2A1E !important; line-height:1.4 !important; text-align:center !important; margin-bottom:16px !important; font-family:${fontFam};"><span class="line-text" style="font-size:1.55rem !important; font-weight:600 !important; letter-spacing:2px !important; color:#3A2A1E !important;">${mCombined[2].trim()}</span></p>`);
+              return;
+            }
+
+            // Case B: "제 1 부" 단독 라인
+            if (!hasPassedNo && trimmed.match(/^(제\s*\d+\s*부|특별부|외전|Part\s*\d+)$/i)) {
+              hasPassedNo = true;
+              htmlBuf.push(`<p class="poem-line part-no-line" data-line-idx="${lIdx}" style="font-size:2.15rem !important; font-weight:700 !important; letter-spacing:5px !important; color:#2C1D11 !important; line-height:1.35 !important; text-align:center !important; margin-top:6px !important; margin-bottom:16px !important; font-family:${fontFam};"><span class="line-text" style="font-size:2.15rem !important; font-weight:700 !important; letter-spacing:5px !important; color:#2C1D11 !important;">${trimmed}</span></p>`);
+              return;
+            }
+
+            // Case C: 저자 줄 (지은이 | 임종훈)
+            if (trimmed.startsWith('지은이') || trimmed.startsWith('저자') || trimmed.startsWith('글 |') || trimmed.startsWith('글:')) {
+              htmlBuf.push(`<p class="poem-line part-author-line" data-line-idx="${lIdx}" style="font-size:0.95rem !important; font-weight:500 !important; letter-spacing:2.5px !important; color:#8C6A4F !important; line-height:1.5 !important; text-align:center !important; margin-bottom:20px !important; font-family:${fontFam};"><span class="line-text" style="font-size:0.95rem !important; font-weight:500 !important; letter-spacing:2.5px !important; color:#8C6A4F !important;">${trimmed}</span></p>`);
+              return;
+            }
+
+            // Case D: 구분선 (—— 또는 ---)
+            if (trimmed.match(/^[-—─―]{2,}$/) || trimmed === '——') {
+              htmlBuf.push(`<p class="poem-line part-divider-line" data-line-idx="${lIdx}" style="font-size:1.15rem !important; color:#B89A7E !important; letter-spacing:4px !important; line-height:1.0 !important; text-align:center !important; margin-bottom:26px !important; user-select:none;"><span class="line-text" style="color:#B89A7E !important; letter-spacing:4px !important;">——</span></p>`);
+              return;
+            }
+
+            // Case E: 번호 바로 다음에 나온 제목
+            if (hasPassedNo && !hasPassedTitle && !trimmed.startsWith('지은이')) {
+              hasPassedTitle = true;
+              htmlBuf.push(`<p class="poem-line part-title-line" data-line-idx="${lIdx}" style="font-size:1.55rem !important; font-weight:600 !important; letter-spacing:2px !important; color:#3A2A1E !important; line-height:1.4 !important; text-align:center !important; margin-bottom:16px !important; font-family:${fontFam};"><span class="line-text" style="font-size:1.55rem !important; font-weight:600 !important; letter-spacing:2px !important; color:#3A2A1E !important;">${trimmed}</span></p>`);
+              return;
+            }
+
+            // Case F: 그 외는 서정 인트로 설명문
+            htmlBuf.push(`<p class="poem-line part-desc-line" data-line-idx="${lIdx}" style="font-size:0.95rem !important; line-height:2.2 !important; font-style:italic !important; color:#5A4A3A !important; text-align:center !important; letter-spacing:0.3px !important; font-family:${fontFam};"><span class="line-text" style="font-size:0.95rem !important; line-height:2.2 !important; font-style:italic !important; color:#5A4A3A !important;">${trimmed}</span></p>`);
+          });
+
+          bodyElem.innerHTML = htmlBuf.join('');
+          return;
+        }
+
         bodyElem.innerHTML = lines.map((line, lIdx) => {
           const trimmed = (line || '').replace(/[\u00a0\xa0]+/g, '').trimEnd();
           if (!trimmed.trim()) {
@@ -3022,8 +3834,12 @@
         }
 
         const isIndep = (pageData.role === 'independent');
-        const pt = parseFloat((isIndep && pageData.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 12;
-        const lh = parseFloat((isIndep && pageData.line_height_ratio) ? pageData.line_height_ratio : cfg.line_height_ratio) || 1.6;
+        const isMatter = (pageData.role === 'matter_template');
+        const isPartDivider = (pageData.matter_type === 'part_divider') ||
+                              (this.currentSectionId && (this.currentSectionId.startsWith('part_') || this.currentSectionId.startsWith('sec_part_')));
+
+        const pt = parseFloat(((isIndep || isMatter) && pageData.font_size_pt) ? pageData.font_size_pt : cfg.font_size_pt) || 12;
+        const lh = parseFloat(((isIndep || isMatter) && pageData.line_height_ratio) ? pageData.line_height_ratio : cfg.line_height_ratio) || 1.6;
         const fontPx = (pt / 12.0) * 15.2;
         const linePx = fontPx * lh;
         const minSingleLineH = Math.round(linePx + 28);
@@ -3044,7 +3860,12 @@
           targetLines = isSplit ? Math.min(maxSafeLines, 4) : maxSafeLines;
         }
         const targetBoxH = Math.min(maxAllowedH, Math.max(minSingleLineH, Math.round(targetLines * linePx + 28)));
-        boxBody.style.setProperty("height", `${targetBoxH}px`, "important");
+        if (isPartDivider) {
+          boxBody.style.setProperty("height", "auto", "important");
+          boxBody.style.setProperty("min-height", "280px", "important");
+        } else {
+          boxBody.style.setProperty("height", `${targetBoxH}px`, "important");
+        }
         boxBody.style.setProperty("flex", "none", "important");
 
         // 핸들 이벤트 주입
@@ -3053,10 +3874,10 @@
         bodyElem.style.fontSize = `${fontPx.toFixed(2)}px`;
         bodyElem.style.lineHeight = `${linePx.toFixed(2)}px`;
 
-        const fontFam = (isIndep && pageData.font_family) ? pageData.font_family : (cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif");
+        const fontFam = ((isIndep || isMatter) && pageData.font_family) ? pageData.font_family : (cfg.font_family || "'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif");
         bodyElem.style.setProperty('font-family', fontFam, 'important');
 
-        const align = (isIndep && pageData.text_align) ? pageData.text_align : (cfg.text_align || 'left');
+        const align = pageData.text_align || ((isIndep || isMatter) && pageData.text_align) || (cfg.text_align || 'left');
         bodyElem.classList.remove('text-align-left', 'text-align-center', 'text-align-right', 'text-align-justify');
         bodyElem.classList.add(`text-align-${align}`);
         bodyElem.style.textAlign = align;
@@ -3109,7 +3930,19 @@
           bodyElem.onblur = () => {
             if (this._isDraggingHandle || boxBody.classList.contains("is-resizing")) return;
             if (bodyElem.querySelector(".poem-placeholder")) return;
-            this.onBodyEdited(pageIdx, bodyElem, displayFlowMap);
+            if (pageData.role === 'matter_template') {
+              const pElems = Array.from(bodyElem.querySelectorAll(".poem-line"));
+              if (pElems.length > 0) {
+                const extractedLines = pElems.map(p => {
+                  if (p.classList.contains("empty-line")) return "";
+                  return p.textContent.replace(/[\u00a0\xa0]+/g, "").trimEnd();
+                });
+                pageData.custom_text = extractedLines.join("\n");
+                this.saveLayoutConfigToServer(work.episode_no || this.currentSectionId, cfg);
+              }
+            } else {
+              this.onBodyEdited(pageIdx, bodyElem, displayFlowMap);
+            }
             bodyElem.style.setProperty('font-family', fontFam, 'important');
             bodyElem.querySelectorAll('.poem-line, .line-text').forEach(el => {
               el.style.setProperty('font-family', fontFam, 'important');
@@ -3233,17 +4066,25 @@
       if (struct && struct.sections && struct.sections.length > 0) {
         const sections = struct.sections;
         let curSecIdx = -1;
-
-        if (this.currentSectionId) {
-          curSecIdx = sections.findIndex(s => s.id === this.currentSectionId);
-        } else {
+        const targetId = (this.currentSectionId || '').replace(/^sec_/, '');
+        if (targetId) {
+          curSecIdx = sections.findIndex(s => s.id === targetId || s.id === this.currentSectionId);
+        }
+        if (curSecIdx === -1 && !this.isMatterMode) {
           const works = this.getWorksList();
           const curWork = works[this.currentWorkIndex];
-          if (curWork) {
+          if (curWork && curWork.episode_no) {
             curSecIdx = sections.findIndex(s => s.episode_no === curWork.episode_no);
           }
         }
-
+        if (curSecIdx === -1) {
+          const activeTreeItem = document.querySelector('.book-tree-item.active');
+          const treeDataId = activeTreeItem?.getAttribute('data-sec-id');
+          if (treeDataId) {
+            const cleanTreeId = treeDataId.replace(/^sec_/, '');
+            curSecIdx = sections.findIndex(s => s.id === cleanTreeId || s.id === treeDataId);
+          }
+        }
         if (curSecIdx === -1) curSecIdx = 0;
         let nextSecIdx = curSecIdx + delta;
 
@@ -3293,102 +4134,85 @@
       // 1. 책 전체 구조(sections)가 있는 경우의 통합 네비게이션
       if (sections) {
         let curSecIdx = -1;
-        if (this.currentSectionId) {
-          curSecIdx = sections.findIndex(s => s.id === this.currentSectionId);
+        const targetId = (this.currentSectionId || '').replace(/^sec_/, '');
+        if (targetId) {
+          curSecIdx = sections.findIndex(s => s.id === targetId || s.id === this.currentSectionId);
         }
-        if (curSecIdx === -1) {
+        if (curSecIdx === -1 && !this.isMatterMode) {
           const works = this.getWorksList();
           const curWork = works[this.currentWorkIndex];
-          if (curWork) {
+          if (curWork && curWork.episode_no) {
             curSecIdx = sections.findIndex(s => s.episode_no === curWork.episode_no);
+          }
+        }
+        if (curSecIdx === -1) {
+          const activeTreeItem = document.querySelector('.book-tree-item.active');
+          const treeDataId = activeTreeItem?.getAttribute('data-sec-id');
+          if (treeDataId) {
+            const cleanTreeId = treeDataId.replace(/^sec_/, '');
+            curSecIdx = sections.findIndex(s => s.id === cleanTreeId || s.id === treeDataId);
           }
         }
         if (curSecIdx === -1) curSecIdx = 0;
 
         const curSec = sections[curSecIdx];
-        const isPoem = (curSec.category === 'poem' || curSec.group === 'body_matter');
+        const isPoem = (curSec.section_type === 'poem' || curSec.category === 'poem') && Boolean(curSec.episode_no);
 
         if (delta > 0) {
           // [다음 페이지]
+          // 1. 현재 섹션이 다면(4쪽 이상) 시화이고 아직 뒷면이 남은 경우 내부 파트 전환
           if (isPoem) {
             const works = this.getWorksList();
-            const workIdx = works.findIndex(w => w.episode_no === curSec.episode_no);
-            const work = workIdx !== -1 ? works[workIdx] : this.getCurrentWork();
+            const work = works.find(w => w.episode_no === curSec.episode_no);
             if (work) {
               const cfg = this.getNormalizedConfig(work);
               const totalParts = Math.max(1, Math.ceil(cfg.page_count / 2));
               const curPart = this.currentSpreadPart || 1;
               if (curPart < totalParts) {
-                // 현재 시화 내 다음 펼침면 (예: 1·2면 -> 3·4면)
                 this.switchSpreadPart(curPart + 1);
                 return;
               }
             }
           }
 
-          // 다음 섹션으로 이동
+          // 2. 다음 섹션으로 이동 (부속지/시화 가리지 않고 완전 초기화 전환)
           const nextSecIdx = curSecIdx + 1;
           if (nextSecIdx >= sections.length) {
             if (window.showToast) window.showToast("시화집의 마지막 페이지(뒤표지)입니다.", "info");
             return;
           }
           const nextSec = sections[nextSecIdx];
-          if (nextSec.category === 'poem' || nextSec.group === 'body_matter') {
-            const works = this.getWorksList();
-            const targetWorkIdx = works.findIndex(w => w.episode_no === nextSec.episode_no);
-            if (targetWorkIdx !== -1) {
-              this.currentSectionId = nextSec.id;
-              this.currentWorkIndex = targetWorkIdx;
-              window.currentWorkIndex = targetWorkIdx;
-              this.renderSpread(targetWorkIdx, 1, false);
-            } else {
-              this.loadSection(nextSec);
-            }
-          } else {
-            this.loadSection(nextSec);
-          }
+          this.loadSection(nextSec, { spreadPart: 1 });
           return;
         } else {
           // [이전 페이지]
+          // 1. 현재 섹션이 다면(4쪽 이상) 시화이고 2부 이상인 경우 내부 앞 파트로 전환
           if (isPoem) {
-            const works = this.getWorksList();
-            const workIdx = works.findIndex(w => w.episode_no === curSec.episode_no);
-            const work = workIdx !== -1 ? works[workIdx] : this.getCurrentWork();
-            if (work) {
-              const curPart = this.currentSpreadPart || 1;
-              if (curPart > 1) {
-                // 현재 시화 내 앞 펼침면 (예: 3·4면 -> 1·2면)
-                this.switchSpreadPart(curPart - 1);
-                return;
-              }
+            const curPart = this.currentSpreadPart || 1;
+            if (curPart > 1) {
+              this.switchSpreadPart(curPart - 1);
+              return;
             }
           }
 
-          // 이전 섹션으로 이동
+          // 2. 이전 섹션으로 이동
           const prevSecIdx = curSecIdx - 1;
           if (prevSecIdx < 0) {
             if (window.showToast) window.showToast("시화집의 첫 페이지(앞표지)입니다.", "info");
             return;
           }
           const prevSec = sections[prevSecIdx];
-          if (prevSec.category === 'poem' || prevSec.group === 'body_matter') {
+          let targetPart = 1;
+          const isPrevPoem = (prevSec.section_type === 'poem' || prevSec.category === 'poem') && Boolean(prevSec.episode_no);
+          if (isPrevPoem) {
             const works = this.getWorksList();
-            const targetWorkIdx = works.findIndex(w => w.episode_no === prevSec.episode_no);
-            if (targetWorkIdx !== -1) {
-              const targetWork = works[targetWorkIdx];
-              const targetCfg = this.getNormalizedConfig(targetWork);
-              const targetMaxParts = Math.max(1, Math.ceil(targetCfg.page_count / 2));
-              this.currentSectionId = prevSec.id;
-              this.currentWorkIndex = targetWorkIdx;
-              window.currentWorkIndex = targetWorkIdx;
-              // 이전 시화의 마지막 펼침면(예: 3·4면)으로 진입!
-              this.renderSpread(targetWorkIdx, targetMaxParts, false);
-            } else {
-              this.loadSection(prevSec);
+            const prevWork = works.find(w => w.episode_no === prevSec.episode_no);
+            if (prevWork) {
+              const prevCfg = this.getNormalizedConfig(prevWork);
+              targetPart = Math.max(1, Math.ceil(prevCfg.page_count / 2));
             }
-          } else {
-            this.loadSection(prevSec);
           }
+          this.loadSection(prevSec, { spreadPart: targetPart });
           return;
         }
       }
@@ -3818,6 +4642,9 @@
           const pageIdx = (this.currentSpreadPart - 1) * 2 + (side === 'left' ? 0 : 1);
           if (!cfg.pages[pageIdx]) cfg.pages[pageIdx] = {};
           delete cfg.pages[pageIdx].custom_html;
+          if (work.is_matter || cfg.pages[pageIdx].role === 'independent' || cfg.pages[pageIdx].role === 'matter_template') {
+            cfg.pages[pageIdx].custom_text = editableEl.innerText;
+          }
         }
       }
 
@@ -4490,6 +5317,33 @@
     async saveLayoutConfigToServer(episodeNo, layoutConfig, status = null) {
       if (!episodeNo) return false;
       const payloadCfg = this.getCleanConfigForSave(layoutConfig);
+      if (this.isMatterMode && this.currentMatterWork) {
+        const secId = this.currentMatterWork.section_id || this.currentSectionId;
+        try {
+          const resp = await fetch('/api/book/structure/update_section', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              section_id: secId,
+              data: {
+                layout_config: payloadCfg,
+                title: this.currentMatterWork.title,
+                custom_text: payloadCfg?.pages?.[1]?.custom_text || ''
+              }
+            })
+          });
+          if (resp.ok) {
+            const resJson = await resp.json();
+            if (resJson.success && resJson.data) {
+              window.bookStructureData = resJson.data;
+            }
+            return true;
+          }
+        } catch (err) {
+          console.error('[DTP Core] 부속물 조판 저장 오류:', err);
+        }
+        return false;
+      }
       const curWork = this.getCurrentWork();
       if (curWork && curWork.episode_no === episodeNo) {
         curWork.layout_config = payloadCfg;
@@ -4529,7 +5383,7 @@
     }
 
     /**
-     * [조판 완료] 버튼 클릭 시 현재 작품 설정 영구 저장
+     * [조판 완료] 버튼 클릭 시 현재 작품 또는 부속물/부 간지 설정 영구 저장
      */
     async finishAndSaveLayout() {
       const work = this.getCurrentWork();
@@ -4604,33 +5458,53 @@
     }
 
     /**
-     * DTP 도구상자 5종 탭 전환 ('image1', 'image2', 'text1', 'text2', 'ai')
+     * DTP 도구상자 3종 탭 전환 ('text', 'image', 'ai')
      */
     switchToolboxTab(tabKey) {
-      if (tabKey === 'text') tabKey = 'text1';
-      if (tabKey === 'image') tabKey = 'image1';
+      if (tabKey === 'text1' || tabKey === 'text2' || tabKey === 'layout' || tabKey === 'text') {
+        tabKey = 'text';
+      } else if (tabKey === 'image1' || tabKey === 'image2' || tabKey === 'image') {
+        tabKey = 'image';
+      } else if (tabKey === 'ai') {
+        tabKey = 'ai';
+      }
 
       this.currentToolboxTab = tabKey;
       const spread = document.getElementById("bookSpreadContainer");
       if (spread) {
-        spread.classList.remove("tab-mode-text1", "tab-mode-text2", "tab-mode-image1", "tab-mode-image2", "tab-mode-ai", "tab-mode-text", "tab-mode-image");
+        spread.classList.remove("tab-mode-text1", "tab-mode-text2", "tab-mode-image1", "tab-mode-image2", "tab-mode-ai", "tab-mode-text", "tab-mode-image", "tab-mode-layout");
         spread.classList.add(`tab-mode-${tabKey}`);
-        if (tabKey.startsWith('text')) spread.classList.add('tab-mode-text');
-        if (tabKey.startsWith('image')) spread.classList.add('tab-mode-image');
       }
-      const tabs = ['image1', 'image2', 'text1', 'text2', 'ai'];
-      tabs.forEach(t => {
-        const btn = document.getElementById(`btnTabDtp${t.charAt(0).toUpperCase() + t.slice(1)}`);
-        const content = document.getElementById(`toolboxTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
-        if (btn) btn.classList.toggle('active', t === tabKey);
-        if (content) {
-          content.classList.toggle('active', t === tabKey);
-          content.style.setProperty('display', t === tabKey ? 'flex' : 'none', 'important');
-        }
-      });
-      if (tabKey === 'image1' || tabKey === 'image2') {
+
+      const btnText = document.getElementById('btnTabDtpText');
+      const btnImage = document.getElementById('btnTabDtpImage');
+      const btnAi = document.getElementById('btnTabDtpAi');
+      const contentText = document.getElementById('toolboxTabText');
+      const contentImage = document.getElementById('toolboxTabImage');
+      const contentAi = document.getElementById('toolboxTabAi');
+
+      if (btnText) btnText.classList.toggle('active', tabKey === 'text');
+      if (btnImage) btnImage.classList.toggle('active', tabKey === 'image');
+      if (btnAi) btnAi.classList.toggle('active', tabKey === 'ai');
+
+      if (contentText) {
+        contentText.classList.toggle('active', tabKey === 'text');
+        contentText.style.setProperty('display', tabKey === 'text' ? 'flex' : 'none', 'important');
+      }
+      if (contentImage) {
+        contentImage.classList.toggle('active', tabKey === 'image');
+        contentImage.style.setProperty('display', tabKey === 'image' ? 'flex' : 'none', 'important');
+      }
+      if (contentAi) {
+        contentAi.classList.toggle('active', tabKey === 'ai');
+        contentAi.style.setProperty('display', tabKey === 'ai' ? 'flex' : 'none', 'important');
+      }
+
+      // 그림 탭 활성화 시 그림 컨트롤 상태를 동기화
+      if (tabKey === 'image') {
         this.syncToolboxImageTab();
       }
+
       if (tabKey === 'ai') {
         const work = this.getCurrentWork();
         const chip = document.getElementById('canvaAiWorkTitle');
@@ -4757,7 +5631,7 @@
           font_size_pt: 12,
           line_height_ratio: 1.7,
           letter_spacing_em: -0.02,
-          text_align: "left",
+          text_align: (secId.startsWith('part_') || sec.section_type === 'part_divider' || secId === 'half_title') ? "center" : "left",
           text_color_mode: "dark",
           backdrop_opacity: 0.85
         },
@@ -4779,7 +5653,7 @@
           font_size_pt: 12,
           line_height_ratio: 1.6,
           letter_spacing_em: 0.0,
-          text_align: "left",
+          text_align: (secId.startsWith('part_') || sec.section_type === 'part_divider' || secId === 'half_title') ? "center" : "left",
           text_color_mode: "dark",
           backdrop_opacity: 0.70
         }

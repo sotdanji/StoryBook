@@ -344,7 +344,7 @@ async def save_work(req: SaveWorkRequest):
     )
     mgr.save_work(work)
 
-    # 퇴고 판본(Revision) 스냅샷 자동 보관
+    # 퇴고 판본(Revision) 스냅샷 Turso DB 자동 보관
     try:
         from core.revision_manager import save_revision_snapshot
         p_dir = project_manager.get_project_dir()
@@ -357,17 +357,6 @@ async def save_work(req: SaveWorkRequest):
     except Exception:
         pass
 
-    # CSV 및 갤러리 HTML도 자동 동기화 갱신
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-    try:
-        from core.gallery_builder import sync_project_gallery_html
-        sync_project_gallery_html()
-    except Exception:
-        pass
-
     return {"success": True, "message": f"[{req.episode_no}] 「{req.title}」 원고가 저장되었습니다."}
 
 @router.post("/api/save_work_layout")
@@ -377,15 +366,6 @@ async def save_work_layout_endpoint(req: SaveLayoutRequest):
     success = mgr.update_work_layout(req.episode_no, req.layout_mode, req.part2_mode, req.image_file_2)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-    try:
-        from core.gallery_builder import sync_project_gallery_html
-        sync_project_gallery_html()
-    except Exception:
-        pass
     return {
         "success": True,
         "episode_no": req.episode_no,
@@ -401,15 +381,6 @@ async def save_work_layout_config_endpoint(req: SaveLayoutConfigRequest):
     success = mgr.update_work_layout_config(req.episode_no, req.layout_config, title=req.title, poem_body=req.poem_body, status=req.status)
     if not success:
         raise HTTPException(status_code=404, detail=f"{req.episode_no} 작품을 찾을 수 없습니다.")
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-    try:
-        from core.gallery_builder import sync_project_gallery_html
-        sync_project_gallery_html()
-    except Exception:
-        pass
     return {
         "success": True,
         "message": f"'{req.episode_no}'의 조판 설정이 성공적으로 저장되었습니다.",
@@ -449,17 +420,6 @@ async def delete_work(req: DeleteWorkRequest):
     if not success:
         raise HTTPException(status_code=404, detail=f"[{req.episode_no}] 작품을 찾을 수 없습니다.")
 
-    # CSV 및 갤러리 HTML도 자동 동기화 갱신
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-    try:
-        from core.gallery_builder import sync_project_gallery_html
-        sync_project_gallery_html()
-    except Exception:
-        pass
-
     return {"success": True, "message": f"[{req.episode_no}] 원고가 성공적으로 삭제되었습니다."}
 
 @router.post("/api/reorder_works")
@@ -467,17 +427,6 @@ async def reorder_works_endpoint(req: ReorderWorksRequest):
     mgr = project_manager.get_active_manuscript_manager()
     items_dict = [it.dict() for it in req.items]
     works = mgr.reorder_works(items_dict, auto_renumber=req.auto_renumber)
-
-    # CSV 및 갤러리 HTML도 자동 동기화 갱신
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-    try:
-        from core.gallery_builder import sync_project_gallery_html
-        sync_project_gallery_html()
-    except Exception:
-        pass
 
     return {
         "success": True,
@@ -627,87 +576,59 @@ async def preview_bulk_manuscript(req: BulkParseRequest):
 @router.post("/api/import_bulk_manuscript")
 async def import_bulk_manuscript(req: BulkImportRequest):
     """
-    분석된 완성 원고를 현재 활성 프로젝트에 일괄 저장 및 반영
+    분석된 완성 원고를 현재 활성 프로젝트의 Turso DB에 일괄 저장 및 반영 (로컬 파일 우회 버그 수정)
     """
     mgr = project_manager.get_active_manuscript_manager()
-    existing_works = mgr.load_works() if req.mode == "append" else []
-    start_index = len(existing_works) + 1 if req.mode == "append" else 1
+    info = project_manager.get_active_project_info()
+
+    if req.mode != "append":
+        # 덮어쓰기 모드일 경우 기존 작품을 삭제 처리 후 새로 채번
+        for old_w in mgr.load_works():
+            mgr.delete_work(old_w.episode_no)
+        start_index = 1
+    else:
+        existing_works = mgr.load_works()
+        start_index = len(existing_works) + 1
 
     parsed_items = parse_bulk_manuscript(req.raw_text, start_index=start_index)
     if not parsed_items:
         raise HTTPException(status_code=400, detail="유효한 시 본문을 찾을 수 없습니다. 원고 텍스트를 확인해주세요.")
 
-    new_works: List[PoemWork] = list(existing_works)
     for p in parsed_items:
         clean_ep = re.sub(r'[^0-9]', '', p["episode_no"]).zfill(2)
         clean_title = re.sub(r'[\s\\/*?:"<>|]', '', p["title"])
         image_file = f"images/{clean_ep}_{clean_title}.jpg"
-        
         art_dir = p["suggested_prompt"] if req.auto_prompts else "한국적 서정 수채화 (300 DPI)"
 
-        new_works.append(PoemWork(
+        w = PoemWork(
             episode_no=p["episode_no"],
             title=p["title"],
             status="완성 (승인 완료)",
             memory_anchor=p["memory_anchor"],
             image_file=image_file,
             art_direction=art_dir,
-            poem_body=p["poem_body"]
-        ))
+            poem_body=p["poem_body"],
+            author=info.author
+        )
+        mgr.save_work(w)
 
-    # 활성 원고 마크다운 파일에 일괄 저장
-    info = project_manager.get_active_project_info()
-    manuscript_file = project_manager.get_project_dir() / "작품집_원고.md"
-    
-    header = f"""# {info.name} 원고 (진행 현황: {len(new_works)} / {max(info.target_count, len(new_works))}편 완료)
-
-> **지은이**: {info.author}  
-> **부제**: {info.subtitle}  
-> **도서 형태**: {'서정 시화집' if getattr(info, 'book_type', 'illustrated') == 'illustrated' else '일반 시집'}  
-> **기획**: {info.description}  
-
----
-"""
-    body_blocks = []
-    for w in new_works:
-        block = f"""
-## [{w.episode_no}] {w.title}
-
-- **상태**: {w.status}
-- **기억의 중심**: {w.memory_anchor}
-- **삽화 파일**: `{w.image_file}`
-- **그림 방향**: {w.art_direction}
-
-### [시 본문]
-
-{w.poem_body}
-"""
-        body_blocks.append(block)
-
-    full_md = header + "\n".join(body_blocks)
-    manuscript_file.write_text(full_md, encoding="utf-8")
+    final_works = mgr.load_works()
 
     # 프로젝트 정보(target_count 등) 자동 업데이트
-    if len(new_works) > info.target_count:
+    if len(final_works) > info.target_count:
         project_manager.update_project_info(
             project_id=info.id,
             name=info.name,
             subtitle=info.subtitle,
             author=info.author,
-            target_count=len(new_works),
+            target_count=len(final_works),
             description=info.description,
             book_type=getattr(info, "book_type", "illustrated")
         )
 
-    # CSV 데이터 자동 갱신
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-
     return {
         "success": True,
-        "count": len(new_works),
+        "count": len(final_works),
         "imported_count": len(parsed_items),
-        "message": f"총 {len(parsed_items)}편의 완성 원고가 성공적으로 등록되었습니다!"
+        "message": f"총 {len(parsed_items)}편의 완성 원고가 클라우드 DB에 성공적으로 등록되었습니다!"
     }

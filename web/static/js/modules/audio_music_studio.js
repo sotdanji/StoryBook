@@ -150,7 +150,7 @@ function updateMusicTabSelection(selected) {
   const b1 = document.getElementById("btnSelectSunoAI");
   const b2 = document.getElementById("btnSelectUdioAI");
   const b3 = document.getElementById("btnSelectYue2AI");
-  
+
   [b1, b2, b3].forEach(b => {
     if (!b) return;
     b.classList.remove("active-music-btn");
@@ -231,7 +231,7 @@ async function copyFullMusicPrompt(silent = false) {
   const lyricsInput = document.getElementById("musicLyricsInput");
   const lyrics = lyricsInput ? lyricsInput.value.trim() : "";
   const title = document.getElementById("inputFinalTitle").value.trim() || "무제";
-  
+
   const genrePrompt = getMusicGenrePrompt(currentMusicGenre);
   const fullPrompt = `[Title]\n${title}\n\n[Style / Tags]\n${genrePrompt}\n\n[Lyrics]\n${lyrics || "(시 본문을 노랫말로 운율화해주세요)"}`;
 
@@ -459,6 +459,11 @@ async function uploadStudioAudio(file) {
         player.src = data.web_url;
         player.load();
       }
+      const dlSongBtn = document.getElementById("btnDownloadStudioSongAudio");
+      if (dlSongBtn) {
+        dlSongBtn.href = data.web_url;
+        dlSongBtn.download = data.filename || "01_노래음원.mp3";
+      }
       if (previewArea) previewArea.style.display = "block";
 
       const toastMsg = data.trimmed
@@ -554,7 +559,7 @@ function updateStudioLyricsDisplay() {
   const lyricsInput = document.getElementById("musicLyricsInput");
   const displayEl = document.getElementById("studioLyricsDisplayText");
   if (!displayEl) return;
-  
+
   const text = lyricsInput ? lyricsInput.value.trim() : "";
   if (text) {
     displayEl.textContent = text;
@@ -571,7 +576,7 @@ function toggleStudioLyricsPanel() {
   const panel = document.getElementById("studioLyricsViewPanel");
   const btn = document.getElementById("btnToggleStudioLyricsView");
   if (!panel) return;
-  
+
   const isHidden = (panel.style.display === "none");
   if (isHidden) {
     updateStudioLyricsDisplay();
@@ -666,6 +671,11 @@ async function onApplyAudioTrim() {
         player.pause();
         player.src = `${data.web_url}&cachebust=${Date.now()}`;
         player.load();
+      }
+      const dlSongBtn = document.getElementById("btnDownloadStudioSongAudio");
+      if (dlSongBtn) {
+        dlSongBtn.href = `${data.web_url}&cachebust=${Date.now()}`;
+        dlSongBtn.download = data.filename || "01_노래음원.mp3";
       }
       const nameElem = document.getElementById("studioPreviewAudioFilename");
       if (nameElem) {
@@ -1234,7 +1244,7 @@ async function toggleSpeakPoem() {
 
     if (res.ok && data.success && (data.data_uri || data.audio_url)) {
       currentGeminiReciteAudio = new Audio(data.data_uri || data.audio_url);
-      
+
       currentGeminiReciteAudio.onplay = () => {
         if (btn) {
           btn.disabled = false;
@@ -1244,7 +1254,7 @@ async function toggleSpeakPoem() {
 
       currentGeminiReciteAudio.onended = () => {
         if (btn) btn.innerHTML = `🎧 시 낭송 듣기`;
-        
+
         // 🎙️ 낭송 감상 완료 후 공식 재생용 음원으로 저장할지 확인
         askSaveTtsReciteAudio(data, ep, title);
       };
@@ -1277,7 +1287,7 @@ async function toggleSpeakPoem() {
     const fallbackText = (title && title !== "무제") ? `${title}.\n\n${poemText}` : poemText;
     const utterance = new SpeechSynthesisUtterance(fallbackText);
     utterance.lang = 'ko-KR';
-    
+
     // 성우 성별/연령대에 맞춘 피치 및 속도 조절
     const isMale = ["Charon", "Puck", "Fenrir"].includes(selectedVoice);
     if (selectedVoice === "Fenrir") {
@@ -1526,6 +1536,11 @@ async function saveVoiceRecordingToWork() {
         const safeName = (proj && proj.name) ? proj.name.replace(/\s+/g, '_') : "노을빛_기억";
         recitePlayer.src = `/projects/${safeName}/${data.audio_file.replace(/^\.?\//, '')}`;
         recitePlayer.load();
+        const dlReciteBtn = document.getElementById("btnDownloadStudioRecite");
+        if (dlReciteBtn) {
+          dlReciteBtn.href = recitePlayer.src;
+          dlReciteBtn.download = data.filename || data.audio_file.split("/").pop() || "01_낭송.mp3";
+        }
       }
       if (recitePreviewArea) recitePreviewArea.style.display = "block";
 

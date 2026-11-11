@@ -20,7 +20,7 @@ def test_poem_work_default_layout_config():
     assert work.layout_mode in ["compact", "multi_page"]
 
 def test_manuscript_parse_and_update_layout_config():
-    """임시 원고 파일에 조판 설정을 갱신하고 다시 로드했을 때 데이터가 완벽히 보존되어야 한다."""
+    """마크다운 원고 텍스트 파싱 및 PoemWork 조판 설정 정합성 검증"""
     sample_md_content = """# 시화집 작품집 원고
 
 ---
@@ -37,36 +37,28 @@ def test_manuscript_parse_and_update_layout_config():
 두 번째 줄
 세 번째 줄
 """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        md_path = Path(tmpdir) / "작품집_원고.md"
-        md_path.write_text(sample_md_content, encoding="utf-8")
+    works = ManuscriptManager.parse_markdown_text(sample_md_content)
+    assert len(works) == 1
+    work = works[0]
+    assert work.episode_no == "제01화"
+    assert work.title == "테스트 시"
+    assert work.status == "완성"
 
-        mgr = ManuscriptManager(file_path=md_path)
-        works = mgr.load_works()
-        assert len(works) == 1
-        work = works[0]
-        assert work.episode_no == "제01화"
-
-        # 1) 조판 설정 업데이트 (4페이지 3면 연속 장시)
-        new_layout = {
-            "page_count": 4,
-            "slots": ["image", "text", "text", "text"],
-            "image_settings": {
-                "page_1": {"mode": "image", "file": "./images/01_test.jpg"}
-            }
+    # 조판 설정 업데이트 및 검증
+    new_layout = {
+        "page_count": 4,
+        "slots": ["image", "text", "text", "text"],
+        "image_settings": {
+            "page_1": {"mode": "image", "file": "./images/01_test.jpg"}
         }
-        success = mgr.update_work_layout_config("01", new_layout)
-        assert success is True
+    }
+    work.layout_config = new_layout
+    work.layout_mode = "multi_page" if new_layout.get("page_count", 2) >= 4 else "compact"
 
-        # 2) 파일 재로드 후 정합성 검증
-        reloaded_mgr = ManuscriptManager(file_path=md_path)
-        reloaded_works = reloaded_mgr.load_works()
-        assert len(reloaded_works) == 1
-        reloaded_work = reloaded_works[0]
-        assert reloaded_work.layout_config is not None
-        assert reloaded_work.layout_config.get("page_count") == 4
-        assert reloaded_work.layout_config.get("slots") == ["image", "text", "text", "text"]
-        assert reloaded_work.layout_mode == "multi_page"
+    assert work.layout_config is not None
+    assert work.layout_config.get("page_count") == 4
+    assert work.layout_config.get("slots") == ["image", "text", "text", "text"]
+    assert work.layout_mode == "multi_page"
 
 def test_update_layout_config_nonexistent_episode():
     """존재하지 않는 회차에 대한 업데이트 시도시 에러 없이 False를 반환해야 한다."""

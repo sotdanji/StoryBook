@@ -92,32 +92,36 @@ async def upload_audio_endpoint(
     episode_no: str = Form(...),
     lyrics: Optional[str] = Form(None)
 ):
-    """사용자가 외부 AI(Colab YuE2, Suno 등)나 웹 녹음기에서 녹음한 오디오 파일을
-    앞뒤 무음 자동 검사/트리밍 및 320kbps MP3로 최적화하여 music/ 디렉토리에 저장하고 가사 동기화"""
-    temp_upload = None
+    """
+    [100% 서버 일원화]
+    사용자가 외부 AI(Colab YuE2, Suno 등)나 웹 녹음기에서 녹음한 오디오 파일을
+    /tmp 임시 버퍼에서 앞뒤 무음 자동 검사/트리밍 및 320kbps MP3로 최적화한 뒤
+    Cloudflare R2에 업로드하고 Turso DB에 동기화합니다.
+    """
+    import tempfile
+    from core.r2_storage import r2_storage
     try:
-        project_dir = project_manager.get_project_dir()
-        music_dir = project_dir / "music"
-        music_dir.mkdir(parents=True, exist_ok=True)
-
-        orig_name = audio_file.filename or "song.mp3"
+        active_id = project_manager.get_active_project_id()
+        orig_name = Path(audio_file.filename or "song.mp3").name
         clean_ep = re.sub(r'[^0-9]', '', episode_no).zfill(2) if episode_no else "01"
         safe_name = f"{clean_ep}_음원.mp3"
-        target_path = music_dir / safe_name
-
-        # 임시 업로드 파일로 먼저 저장
-        temp_upload = music_dir / f"upload_tmp_{int(time.time())}_{orig_name}"
-        with open(temp_upload, "wb") as buffer:
-            shutil.copyfileobj(audio_file.file, buffer)
-
-        # 안실장 오디오 프로세서: 앞뒤 무음 자동 감지/트리밍 및 고음질 MP3 변환
-        proc_result = clean_and_optimize_audio(temp_upload, target_path)
-
         rel_path = f"music/{safe_name}"
-        active_id = project_manager.get_active_project_id()
+
+        with tempfile.TemporaryDirectory() as tmp_dir_str:
+            tmp_dir = Path(tmp_dir_str)
+            temp_upload = tmp_dir / f"upload_tmp_{orig_name}"
+            target_path = tmp_dir / safe_name
+
+            with open(temp_upload, "wb") as buffer:
+                shutil.copyfileobj(audio_file.file, buffer)
+
+            proc_result = clean_and_optimize_audio(temp_upload, target_path)
+            opt_bytes = target_path.read_bytes() if target_path.exists() else temp_upload.read_bytes()
+
+        r2_storage.upload_bytes(opt_bytes, f"{active_id}/{rel_path}", content_type="audio/mpeg")
         web_url = f"/projects/{active_id}/{rel_path}?t={int(time.time())}"
 
-        # 원고에도 music_file 경로 및 가사(lyrics) 자동 업데이트 (기존 낭송 recite_file은 보존)
+        # Turso DB에 music_file 경로 및 가사(lyrics) 자동 업데이트
         mgr = project_manager.get_active_manuscript_manager()
         work = mgr.get_work_by_episode(episode_no)
         if work:
@@ -142,35 +146,42 @@ async def upload_audio_endpoint(
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
-    finally:
-        if temp_upload and temp_upload.exists():
-            try:
-                temp_upload.unlink()
-            except Exception:
-                pass
 
 @router.post("/api/trim_audio")
 async def trim_audio_endpoint(req: TrimAudioRequest):
-    """지정한 회차의 음원 앞뒤를 수동으로 정밀하게 자르기"""
+    """지정한 회차의 음원을 R2에서 /tmp로 가져와 수동 트리밍 후 다시 R2에 업로드"""
+    import tempfile
+    from core.r2_storage import r2_storage
     try:
-        project_dir = project_manager.get_project_dir()
-        music_dir = project_dir / "music"
+        active_id = project_manager.get_active_project_id()
         clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
-        target_path = music_dir / f"{clean_ep}_음원.mp3"
-        if not target_path.exists():
-            matches = list(music_dir.glob(f"{clean_ep}_음원.*"))
-            if matches:
-                target_path = matches[0]
-            else:
-                return {"success": False, "error": f"{req.episode_no}의 등록된 음원 파일을 찾을 수 없습니다."}
+        safe_name = f"{clean_ep}_음원.mp3"
+        rel_path = f"music/{safe_name}"
+
+        raw_bytes = r2_storage.get_media_bytes(f"/projects/{active_id}/{rel_path}")
+        if not raw_bytes:
+            mgr = project_manager.get_active_manuscript_manager()
+            work = mgr.get_work_by_episode(req.episode_no)
+            if work and getattr(work, "music_file", ""):
+                rel_path = work.music_file.lstrip("./")
+                safe_name = Path(rel_path).name
+                raw_bytes = r2_storage.get_media_bytes(f"/projects/{active_id}/{rel_path}")
+
+        if not raw_bytes:
+            return {"success": False, "error": f"{req.episode_no}의 등록된 음원 파일을 찾을 수 없습니다."}
 
         start_sec = parse_time_to_seconds(req.start_time) or 0.0
         end_sec = parse_time_to_seconds(req.end_time) if req.end_time else None
 
-        res = trim_audio_manually(target_path, start_sec=start_sec, end_sec=end_sec)
+        with tempfile.TemporaryDirectory() as tmp_dir_str:
+            tmp_dir = Path(tmp_dir_str)
+            target_path = tmp_dir / safe_name
+            target_path.write_bytes(raw_bytes)
+            res = trim_audio_manually(target_path, start_sec=start_sec, end_sec=end_sec)
+            if res["success"] and target_path.exists():
+                r2_storage.upload_bytes(target_path.read_bytes(), f"{active_id}/{rel_path}", content_type="audio/mpeg")
+
         if res["success"]:
-            active_id = project_manager.get_active_project_id()
-            rel_path = f"music/{target_path.name}"
             web_url = f"/projects/{active_id}/{rel_path}?t={int(time.time())}"
             return {
                 "success": True,
@@ -178,7 +189,7 @@ async def trim_audio_endpoint(req: TrimAudioRequest):
                 "new_duration": res["new_duration"],
                 "new_duration_str": res["new_duration_str"],
                 "web_url": web_url,
-                "filename": target_path.name
+                "filename": safe_name
             }
         else:
             return {"success": False, "error": res["message"]}

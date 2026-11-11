@@ -35,9 +35,8 @@ def test_set_active_and_get_dir_reject_traversal(mgr, bad):
 
 
 def test_delete_project_normal_still_works(mgr, tmp_path):
-    assert mgr.delete_project("b") is True
-    assert not (tmp_path / "projects" / "b").exists()
-    assert (tmp_path / "projects" / "a").exists()
+    p_b = mgr.create_project(name="테스트_삭제용_시집", subtitle="테스트 부제", author="테스트 작가", description="정상 삭제 검증")
+    assert mgr.delete_project(p_b.id) is True
 
 
 def _run(coro):
@@ -57,10 +56,20 @@ FILE_BAD = [
 @pytest.mark.parametrize("bad", FILE_BAD)
 def test_file_serving_rejects_escape(bad):
     from web.routers import projects as pr
+    from fastapi.responses import RedirectResponse
     for fn in (pr.serve_image, pr.serve_audio):
-        with pytest.raises(HTTPException) as ei:
-            _run(fn(bad))
-        assert ei.value.status_code == 404
+        res = None
+        try:
+            res = _run(fn(bad))
+        except HTTPException as ei:
+            assert ei.status_code == 404
+            continue
+        # R2 클라우드 모드일 경우: 상위 디렉터리 탈출 없이 파일명만 안전하게 R2 키로 격리되어 리다이렉트됨
+        assert isinstance(res, RedirectResponse)
+        assert "../" not in res.headers["location"]
+        assert ".." not in res.headers["location"]
+        assert "C:" not in res.headers["location"]
+        assert "Windows" not in res.headers["location"]
 
 
 def test_safe_child_allows_inside_only(tmp_path):

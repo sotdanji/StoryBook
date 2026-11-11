@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ author.pen_name }} 시인의 서재 | 모둠솥 디지털 문학관</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --bg-warm: #F9F6F0;
+      --card-bg: #FFFFFF;
+      --wood-shelf: #8C5335;
+      --wood-shelf-dark: #5B321D;
+      --wood-shadow: rgba(65, 35, 18, 0.15);
+      --text-main: #2C221E;
+      --text-muted: #7A6960;
+      --accent: #8C5335;
+      --border-warm: #EAE0D5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background-color: var(--bg-warm);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 작가 프로필 헤더 배너 */
+    .author-banner {
+      background: linear-gradient(135deg, #FFFDF9 0%, #F5ECE1 100%);
+      border-bottom: 1.5px solid var(--border-warm);
+      padding: 40px 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    }
+
+    .author-banner-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .author-bio-wrap {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .author-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: #EADBCE;
+      border: 3px solid #FFF;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+    }
+
+    .author-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--wood-shelf-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .author-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.5;
+      max-width: 560px;
+    }
+
+    .author-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action-primary {
+      background: linear-gradient(135deg, var(--wood-shelf) 0%, var(--wood-shelf-dark) 100%);
+      color: #FFF;
+      border: none;
+      box-shadow: 0 3px 8px var(--wood-shadow);
+    }
+
+    .btn-action-primary:hover {
+      background: linear-gradient(135deg, #A66441 0%, var(--wood-shelf) 100%);
+    }
+
+    .btn-action-outline {
+      background: #FFF;
+      color: var(--wood-shelf-dark);
+      border: 1.5px solid var(--border-warm);
+    }
+
+    .btn-action-outline:hover {
+      background: #FAF6F0;
+      border-color: var(--wood-shelf);
+    }
+
+    /* 서가 영역 */
+    .author-shelf-main {
+      flex: 1;
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 36px 20px 60px;
+    }
+
+    .shelf-heading {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--wood-shelf-dark);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .author-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 28px 20px;
+    }
+
+    .book-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-warm);
+      box-shadow: 0 4px 14px rgba(65, 35, 18, 0.06);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .book-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 24px rgba(65, 35, 18, 0.12);
+    }
+
+    .book-cover-wrap {
+      width: 100%;
+      height: 270px;
+      background: #ECE5DC;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .book-cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .book-badge-row {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: flex-end;
+    }
+
+    .badge-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      color: #FFF;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+
+    .badge-internal {
+      background: rgba(46, 125, 50, 0.9);
+    }
+
+    .badge-external {
+      background: rgba(30, 70, 110, 0.9);
+    }
+
+    .badge-recite {
+      background: rgba(140, 83, 53, 0.9);
+    }
+
+    .badge-private {
+      background: rgba(185, 28, 28, 0.85);
+    }
+
+    .book-info-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .book-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--wood-shelf-dark);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .book-excerpt {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      font-style: italic;
+      margin-bottom: 14px;
+      flex: 1;
+      border-left: 2px solid var(--border-warm);
+      padding-left: 8px;
+    }
+
+    .btn-read {
+      width: 100%;
+      padding: 9px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .btn-read-internal {
+      background: #FAF6F0;
+      border: 1.5px solid var(--wood-shelf);
+      color: var(--wood-shelf);
+    }
+
+    .btn-read-external {
+      background: #F0F5FA;
+      border: 1.5px solid #7FAAD0;
+      color: #1E466E;
+    }
+
+    .owner-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-warm);
+    }
+
+    .btn-owner {
+      flex: 1;
+      padding: 5px;
+      border-radius: 5px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-warm);
+      background: #FFF;
+      color: var(--text-muted);
+    }
+
+    .btn-owner:hover {
+      background: #FAF6F0;
+      color: var(--wood-shelf-dark);
+    }
+
+    .portal-footer {
+      background: #F4ECE1;
+      border-top: 1.5px solid var(--border-warm);
+      padding: 24px;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 작가 헤더 배너 -->
+  <header class="author-banner">
+    <div class="author-banner-inner">
+      <div class="author-bio-wrap">
+        <div class="author-avatar">✍️</div>
+        <div>
+          <h1 class="author-title">
+            <span>{{ author.pen_name }}</span>
+            <span style="font-size: 1.15rem; font-weight: 400; color: var(--text-muted);">시인의 서재</span>
+          </h1>
+          <p class="author-subtitle">{{ author.bio or '삶의 작은 순간과 온기 어린 기억을 시와 그림으로 빚어냅니다.' }}</p>
+        </div>
+      </div>
+      <div class="author-actions">
+        <button type="button" class="btn-action btn-action-outline" onclick="copyAuthorShelfLink()">
+          <span>📋</span> <span>내 서재 주소 복사</span>
+        </button>
+        <a href="/gallery" class="btn-action btn-action-primary">
+          <span>🏛️</span> <span>모둠솥 공용 서가</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 작가의 서재 본문 -->
+  <main class="author-shelf-main">
+    <div class="shelf-heading">
+      <span>📚</span> <span>시인의 출품 및 소장 도서 목록</span>
+      <span
+        style="font-size: 0.82rem; background: #EFE6D8; color: var(--wood-shelf); padding: 2px 8px; border-radius: 10px; font-weight: 700;">총
+        {{ items|length }}권</span>
+    </div>
+
+    {% if items|length == 0 %}
+    <div
+      style="text-align: center; padding: 60px 20px; background: #FFFDF9; border: 1.5px dashed var(--border-warm); border-radius: 12px; color: var(--text-muted);">
+      <div style="font-size: 2.5rem; margin-bottom: 10px;">📖</div>
+      <h3 style="font-family: 'Nanum Myeongjo', serif; color: var(--wood-shelf-dark); margin-bottom: 6px;">아직 서재에 등록된
+        도서가 없습니다.</h3>
+      <p style="font-size: 0.85rem; margin-bottom: 16px;">스튜디오에서 시화집을 출품하거나, 소장하고 계신 e-Book을 등록해 보세요.</p>
+      <a href="/" class="btn-action btn-action-primary">집필실로 이동</a>
+    </div>
+    {% else %}
+    <div class="author-grid">
+      {% for b in items %}
+      <div class="book-card" id="card-{{ b.item_id }}">
+        <div class="book-cover-wrap" style="cursor: pointer;"
+          onclick="window.open('{% if b.book_type == \'internal_storybook\' %}/gallery/view/{{ b.project_id }}{% else %}{{ b.view_url }}{% endif %}', '_blank')"
+          title="클릭하면 새 창에서 펼쳐봅니다">
+          <img src="{{ b.cover_image_url or '/static/images/default_cover.png' }}" class="book-cover-img"
+            alt="{{ b.title }}" onerror="this.src='/static/images/default_cover.png'">
+          <div class="book-badge-row">
+            {% if b.book_type == 'internal_storybook' %}
+            <span class="badge-pill badge-internal">🎙️ 모둠솥 3D</span>
+            {% elif b.book_type == 'published_book' %}
+            <span class="badge-pill badge-external">🛒 정식 출간</span>
+            {% else %}
+            <span class="badge-pill badge-external">🔗 외부 e-Book</span>
+            {% endif %}
+
+            {% if b.has_recite %}
+            <span class="badge-pill badge-recite">🎧 낭송</span>
+            {% endif %}
+
+            {% if not b.is_published %}
+            <span class="badge-pill badge-private">🔒 비공개</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="book-info-body">
+          <h3 class="book-title">{{ b.title }}</h3>
+          <div class="book-excerpt">{{ b.excerpt or '기억의 향기가 머무는 서정 시화집' }}</div>
+
+          {% if b.book_type == 'internal_storybook' %}
+          <a href="/gallery/view/{{ b.project_id }}" target="_blank" rel="noopener noreferrer"
+            class="btn-read btn-read-internal">
+            <span>📖 시집 펼쳐보기</span>
+          </a>
+          {% else %}
+          <a href="{{ b.view_url }}" target="_blank" rel="noopener noreferrer" class="btn-read btn-read-external">
+            <span>🌐 작가의 공간 열람</span>
+          </a>
+          {% endif %}
+
+          {% if is_owner %}
+          <div class="owner-actions">
+            <button type="button" class="btn-owner" onclick="toggleBookVisibility('{{ b.item_id }}')">
+              {% if b.is_published %}🔒 비공개 전환{% else %}🌐 공개 전환{% endif %}
+            </button>
+            <button type="button" class="btn-owner" style="color: #c94a29;" onclick="deleteBookItem('{{ b.item_id }}')">
+              🗑️ 삭제
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </main>
+
+  <footer class="portal-footer">
+    <p>StoryBook Studio &middot; {{ author.pen_name }} 시인의 개인 서재</p>
+  </footer>
+
+  <script>
+    function copyAuthorShelfLink() {
+      const url = window.location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          Swal.fire({
+            icon: 'success',
+            title: '서재 주소 복사 완료!',
+            html: `시인의 서재 주소가 복사되었습니다.<br><strong style="color: #8C5335; display: inline-block; margin-top: 6px;">${url}</strong><br><small style="color: #666;">가족이나 지인, 카카오톡 등에 붙여넣어 공유하세요.</small>`,
+            confirmButtonColor: '#8C5335'
+          });
+        });
+      } else {
+        prompt('아래 서재 주소를 복사하세요:', url);
+      }
+    }
+
+    async function toggleBookVisibility(itemId) {
+      try {
+        const res = await fetch('/api/bookshelf/toggle_visibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: itemId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.reload();
+        } else {
+          Swal.fire({ icon: 'error', title: '설정 실패', text: data.detail || '상태 변경 중 오류가 발생했습니다.' });
+        }
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: '통신 오류', text: '서버와 통신할 수 없습니다.' });
+      }
+    }
+
+    async function deleteBookItem(itemId) {
+      const result = await Swal.fire({
+        title: '서가에서 도서 삭제',
+        text: '서가에서 이 도서를 삭제하시겠습니까?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#c94a29',
+        cancelButtonColor: '#8C5335',
+        confirmButtonText: '삭제',
+        cancelButtonText: '취소'
+      });
+      if (!result.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/api/bookshelf/item/${itemId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          Swal.fire({ icon: 'success', title: '삭제 완료', text: '도서가 서가에서 삭제되었습니다.' });
+          const card = document.getElementById(`card-${itemId}`);
+          if (card) card.remove();
+        } else {
+          Swal.fire({ icon: 'error', title: '삭제 실패', text: data.detail || '삭제 중 오류가 발생했습니다.' });
+        }
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: '통신 오류', text: '서버와 통신할 수 없습니다.' });
+      }
+    }
+  </script>
+</body>
+
+</html>

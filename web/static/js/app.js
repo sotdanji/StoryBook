@@ -85,7 +85,7 @@ window.setAppBusy = setAppBusy;
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
     const url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url ? args[0].url : "");
-    
+
     // 상황별 라벨 자동 부여
     let busyLabel = "처리 중...";
     if (url.includes("generate_poem") || url.includes("generate_episodes")) busyLabel = "시 생성 중...";
@@ -181,11 +181,15 @@ function startNewPoem(skipConfirm = false) {
   document.getElementById("inputCoreMemory").value = "";
   document.getElementById("inputSensoryDetails").value = "";
   document.getElementById("inputSpokenWords").value = "";
-  document.getElementById("inputFinalTitle").value = "";
+  const inputTitleEl = document.getElementById("inputFinalTitle");
+  if (inputTitleEl) {
+    inputTitleEl.value = "";
+    inputTitleEl.placeholder = "작품 제목을 입력하세요 (새 글 작성 시 반드시 기입)";
+  }
   if (document.getElementById("inputFinalAuthor")) document.getElementById("inputFinalAuthor").value = "";
   document.getElementById("inputFinalPoem").value = "";
   if (typeof syncPoemEditorWithDtpConfig === "function") syncPoemEditorWithDtpConfig(null);
-  
+
   const previewArea = document.getElementById("studioImagePreviewArea");
   if (previewArea) previewArea.style.display = "none";
   const genStatus = document.getElementById("studioGenStatus");
@@ -329,9 +333,11 @@ function loadWorkIntoEditor(episodeNo, options = {}) {
   if (!options.fromDtpOrTree && window.dtpEditor && workIdx >= 0) {
     window.dtpEditor.renderSpread(workIdx, 1, false, { skipStudioSync: true });
   }
-  if (typeof updateSidebarVideoCard === 'function') {
-    const cleanedEp = String(work.episode_no).replace(/[^0-9]/g, '');
-    if (cleanedEp) updateSidebarVideoCard(parseInt(cleanedEp, 10));
+  const cleanedEp = String(work.episode_no).replace(/[^0-9]/g, '');
+  if (cleanedEp) {
+    const parsedEp = parseInt(cleanedEp, 10);
+    if (typeof updateSidebarVideoCard === 'function') updateSidebarVideoCard(parsedEp);
+    if (typeof updateSongVideoCard === 'function') updateSongVideoCard(parsedEp);
   }
   document.getElementById("inputEpisode").value = work.episode_no;
 
@@ -356,8 +362,8 @@ function loadWorkIntoEditor(episodeNo, options = {}) {
   if (memInput) memInput.value = cleanMemory;
   const factLock = document.getElementById("factLockText");
   if (factLock) {
-    factLock.textContent = cleanMemory 
-      ? `기억의 중심: ${cleanMemory}` 
+    factLock.textContent = cleanMemory
+      ? `기억의 중심: ${cleanMemory}`
       : `[${work.episode_no}] 「${work.title}」 원고를 편집창으로 불러왔습니다.`;
   }
 
@@ -448,10 +454,16 @@ function loadWorkIntoEditor(episodeNo, options = {}) {
     const reciteUrl = (rawRecite.startsWith("http") || rawRecite.startsWith("/"))
       ? rawRecite
       : `/projects/${safeName}/${rawRecite.replace(/^\.?\//, '')}`;
-    if (reciteNameElem) reciteNameElem.textContent = rawRecite.split("/").pop();
+    const reciteFilename = rawRecite.split("/").pop();
+    if (reciteNameElem) reciteNameElem.textContent = reciteFilename;
     if (recitePlayer) {
       recitePlayer.src = reciteUrl;
       recitePlayer.load();
+    }
+    const dlReciteBtn = document.getElementById("btnDownloadStudioRecite");
+    if (dlReciteBtn) {
+      dlReciteBtn.href = reciteUrl;
+      dlReciteBtn.download = reciteFilename || "01_낭송.mp3";
     }
     if (recitePreviewArea) recitePreviewArea.style.display = "block";
   } else {
@@ -467,10 +479,16 @@ function loadWorkIntoEditor(episodeNo, options = {}) {
     const musicUrl = (rawMusic.startsWith("http") || rawMusic.startsWith("/"))
       ? rawMusic
       : `/projects/${safeName}/${rawMusic.replace(/^\.?\//, '')}`;
-    if (audioNameElem) audioNameElem.textContent = rawMusic.split("/").pop();
+    const musicFilename = rawMusic.split("/").pop();
+    if (audioNameElem) audioNameElem.textContent = musicFilename;
     if (audioPlayer) {
       audioPlayer.src = musicUrl;
       audioPlayer.load();
+    }
+    const dlSongBtn = document.getElementById("btnDownloadStudioSongAudio");
+    if (dlSongBtn) {
+      dlSongBtn.href = musicUrl;
+      dlSongBtn.download = musicFilename || "01_노래음원.mp3";
     }
     if (audioPreviewArea) audioPreviewArea.style.display = "block";
   } else {
@@ -595,20 +613,28 @@ async function executeDeleteCurrentWork() {
 }
 
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   bindEvents();
   initCustomTooltips();
   initSidebar();
   initTabs();
-  loadProjects();
+  try {
+    await loadProjects();
+    await loadStatus();
+  } catch (err) {
+    console.error("초기 프로젝트 및 상태 로드 실패:", err);
+  }
   updateWorkToEditDropdown();
-  loadStatus();
   if (typeof refreshBookStructure === 'function') {
     refreshBookStructure();
   }
   calculateSpecs();
   initDropzones();
-  selectDraft("A");
+  if (currentStatus && currentStatus.works && currentStatus.works.length > 0) {
+    loadWorkIntoEditor(currentStatus.works[0].episode_no);
+  } else {
+    startNewPoem(true);
+  }
 });
 
 // 0. 사이드바 및 모바일 반응형 제어
@@ -698,11 +724,13 @@ function initTabs() {
 
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
+      const targetId = tab.getAttribute("data-target");
+      if (!targetId) return; // 액션 버튼(예: 조판 검토실)은 패널 전환 제외
+
       tabs.forEach(t => t.classList.remove("active"));
       panels.forEach(p => p.classList.remove("active"));
 
       tab.classList.add("active");
-      const targetId = tab.getAttribute("data-target");
       const targetPanel = document.getElementById(targetId);
       if (targetPanel) {
         targetPanel.classList.add("active");
@@ -1524,7 +1552,7 @@ async function onSaveWork() {
   }
 
   const cleanTitle = title.replace(/[\s\\/*?:"<>|]/g, '');
-  
+
   // 이미지 파일 결정: 기존 작품에 이미 삽화가 있다면 보존하고, 신규 제안이 있을 때만 갱신
   let imageFile = "";
   if (currentDrafts && currentDrafts.suggested_image_file) {
@@ -1591,9 +1619,9 @@ async function onSaveWork() {
     }
 
     const data = await res.json();
-    
+
     // 처음 저장 vs 수정본 재저장 안내 토스트
-    const successMsg = isUpdate 
+    const successMsg = isUpdate
       ? `✅ [${targetEp}] 「${title}」 수정본이 성공적으로 원고에 저장되었습니다!`
       : `🎉 [${targetEp}] 「${title}」 새 원고가 성공적으로 등록되었습니다!`;
     showToast(successMsg, "success");
@@ -1656,7 +1684,7 @@ async function onSaveWork() {
     isSavingWork = false;
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<span>💾 시 · 그림 · 노래 전체 최종 저장하기</span>';
+      btn.innerHTML = '<span>💾 글 · 그림 전체 최종 저장하기</span>';
     }
     if (btnLeft) {
       btnLeft.disabled = false;
@@ -1686,9 +1714,9 @@ async function openSlotImageManager(side) {
   const activePart = (window.dtpEditor && window.dtpEditor.currentSpreadPart) ? window.dtpEditor.currentSpreadPart : (window.currentSpreadPart || currentSpreadPart || 1);
   currentSpreadPart = activePart;
   window.currentSpreadPart = activePart;
-  
-  const slotIdx = (side === "left") 
-    ? (activePart - 1) * 2 
+
+  const slotIdx = (side === "left")
+    ? (activePart - 1) * 2
     : (activePart - 1) * 2 + 1;
 
   const pageNum = slotIdx + 1;
@@ -1873,7 +1901,7 @@ function openGlobalVideoModal(videoUrl, title = "시화집 영상 감상") {
   if (videoEl) {
     videoEl.src = videoUrl;
     videoEl.load();
-    videoEl.play().catch(() => {});
+    videoEl.play().catch(() => { });
   }
   modal.style.display = "flex";
 }
@@ -2647,14 +2675,9 @@ document.addEventListener("DOMContentLoaded", () => {
  * 1. [개인용] 내 시집 넘겨보기 (비공개 검토)
  */
 function openPrivateBookPreview() {
-  try {
-    if (window.currentStatus) {
-      localStorage.setItem("storybook_private_preview_status", JSON.stringify(window.currentStatus));
-    }
-  } catch (e) {
-    console.warn("개인 미리보기 데이터 저장 경고:", e);
-  }
-  const previewUrl = "/gallery?mode=private_preview&t=" + Date.now();
+  const proj = (window.currentStatus && window.currentStatus.project) ? window.currentStatus.project : null;
+  const pid = (proj && (proj.id || proj.name)) ? (proj.id || proj.name).replace(/\s+/g, '_') : '';
+  const previewUrl = pid ? `/gallery/view/${encodeURIComponent(pid)}` : '/gallery?view=1';
   window.open(previewUrl, "_blank");
 }
 window.openPrivateBookPreview = openPrivateBookPreview;
@@ -2664,18 +2687,13 @@ window.openPrivateBookPreview = openPrivateBookPreview;
  */
 function publishToPublicGallery() {
   const bookTitle = document.getElementById("bannerBookTitle")?.textContent?.trim() || "노을빛 기억";
-  const bookAuthor = document.getElementById("bannerBookAuthor")?.textContent?.trim() || "김서정 시인 지음";
-
-  const confirmMsg = `【${bookTitle}】 시집을 모둠솥 공용 갤러리에 정식으로 출품하시겠습니까?\n\n`
-    + `• 출품 시 전국의 독자들이 모둠솥 갤러리에서 내 시집을 감상할 수 있습니다.\n`
-    + `• 미완성 상태이거나 수정 중인 원고는 [내 시집 넘겨보기(비공개)]에서만 보실 수 있습니다.\n`
-    + `• 출품 후 내용을 수정하셔도 언제든 이 버튼으로 최신본으로 갱신 교체됩니다.`;
+  const bookAuthor = document.getElementById("bannerBookAuthor")?.textContent?.trim() || "시인";
 
   if (typeof Swal !== "undefined") {
     Swal.fire({
       title: "🚀 모둠솥 갤러리에 출품",
       html: `<div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #4B382A;">
-        <p style="margin-bottom: 8px;"><strong>「${bookTitle}」</strong> (${bookAuthor}) 시집을 전국의 독자들이 모인 <strong>[모둠솥 공용 갤러리]</strong>에 정식 출품합니다.</p>
+        <p style="margin-bottom: 8px;"><strong>「${bookTitle}」</strong> (${bookAuthor}) 시집을 전국의 독자들이 모인 <strong>[모둠솥 공용 서가]</strong>에 정식 출품합니다.</p>
         <div style="background: #FFFDF7; border: 1.5px solid #F3DCB1; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; color: #78350F; margin-top: 10px;">
           ✓ 출품 전 원고는 [내 시집 넘겨보기(비공개)]에서 나만 볼 수 있습니다.<br>
           ✓ 출품 후 시나 그림을 수정하신 뒤 다시 누르시면 <strong>최종본으로 즉시 교체 갱신</strong>됩니다.
@@ -2685,7 +2703,7 @@ function publishToPublicGallery() {
       showCancelButton: true,
       confirmButtonColor: "#7C3AED",
       cancelButtonColor: "#6B7280",
-      confirmButtonText: "✨ 네, 공용 갤러리에 출품합니다",
+      confirmButtonText: "✨ 네, 공용 서가에 출품합니다",
       cancelButtonText: "취소"
     }).then((result) => {
       if (result.isConfirmed) {
@@ -2693,49 +2711,48 @@ function publishToPublicGallery() {
       }
     });
   } else {
-    if (confirm(confirmMsg)) {
+    if (confirm(`【${bookTitle}】 시집을 모둠솥 공용 서가에 정식으로 출품하시겠습니까?`)) {
       doPublishProcess(bookTitle, bookAuthor);
     }
   }
 }
 window.publishToPublicGallery = publishToPublicGallery;
 
-function doPublishProcess(bookTitle, bookAuthor) {
+async function doPublishProcess(bookTitle, bookAuthor) {
   try {
-    const publishedPayload = {
-      id: "published_" + Date.now(),
-      title: bookTitle,
-      author: bookAuthor,
-      published_at: new Date().toISOString(),
-      published_date: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" }),
-      status: window.currentStatus || null
-    };
+    const res = await fetch("/api/bookshelf/publish_current", { method: "POST" });
+    const data = await res.json();
 
-    localStorage.setItem("modumsot_published_book", JSON.stringify(publishedPayload));
-    localStorage.setItem("modumsot_has_published", "true");
-
-    if (typeof Swal !== "undefined") {
-      Swal.fire({
-        title: "🎉 정식 출품 완료!",
-        html: `<strong>「${bookTitle}」</strong>이(가) 모둠솥 공용 갤러리에 성공적으로 출품 등록되었습니다.<br><br>지금 공용 갤러리로 이동하여 확인하시겠습니까?`,
-        icon: "success",
-        showCancelButton: true,
-        confirmButtonColor: "#7C3AED",
-        cancelButtonColor: "#6B7280",
-        confirmButtonText: "🌐 모둠솥 공용 갤러리 보러가기",
-        cancelButtonText: "계속 편집하기"
-      }).then((res) => {
-        if (res.isConfirmed) {
-          window.open("/gallery", "_blank");
-        }
-      });
+    if (res.ok && data.success) {
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          title: "🎉 정식 출품 완료!",
+          html: `<strong>「${bookTitle}」</strong>이(가) 모둠솥 공용 서가에 성공적으로 출품 등록되었습니다.<br><br>지금 공용 서가로 이동하여 확인하시겠습니까?`,
+          icon: "success",
+          showCancelButton: true,
+          confirmButtonColor: "#7C3AED",
+          cancelButtonColor: "#6B7280",
+          confirmButtonText: "🌐 모둠솥 공용 서가 보러가기",
+          cancelButtonText: "계속 편집하기"
+        }).then((res) => {
+          if (res.isConfirmed) {
+            window.open("/gallery", "_blank");
+          }
+        });
+      } else {
+        alert(`🎉 「${bookTitle}」이(가) 모둠솥 공용 서가에 정식 출품되었습니다!`);
+        window.open("/gallery", "_blank");
+      }
     } else {
-      alert(`🎉 「${bookTitle}」이(가) 모둠솥 공용 갤러리에 정식 출품되었습니다!`);
-      window.open("/gallery", "_blank");
+      throw new Error(data.detail || "출품 중 서버 오류가 발생했습니다.");
     }
   } catch (err) {
     console.error("출품 저장 실패:", err);
-    alert("출품 저장 중 오류가 발생했습니다: " + err.message);
+    if (typeof Swal !== "undefined") {
+      Swal.fire({ icon: "error", title: "출품 실패", text: err.message });
+    } else {
+      alert("출품 저장 중 오류가 발생했습니다: " + err.message);
+    }
   }
 }
 

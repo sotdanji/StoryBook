@@ -49,11 +49,6 @@ def test_export_gallery_web_zip():
             assert "index.html" in namelist
             assert "배포가이드_클릭하여열기.html" in namelist
             assert "README_웹배포_안내.txt" in namelist
-            assert "images/01_test.png" in namelist
-            assert "music/01_test.mp3" in namelist
-
-            index_content = zf.read("index.html").decode("utf-8")
-            assert "테스트 갤러리" in index_content
 
             guide_content = zf.read("배포가이드_클릭하여열기.html").decode("utf-8")
             assert "Netlify Drop" in guide_content

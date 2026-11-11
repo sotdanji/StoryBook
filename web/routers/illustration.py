@@ -167,15 +167,12 @@ async def export_colab_image_notebook_endpoint(req: ColabImageNotebookRequest):
 @router.post("/api/generate_image_free")
 async def generate_image_free(req: GenerateFreeImageRequest):
     """
-    API 키 없이 100% 무료로 고품질 서정 수채화 삽화를 자동 생성 (Pollinations / FLUX 엔진)
+    API 키 없이 100% 무료로 고품질 서정 수채화 삽화를 자동 생성 (Pollinations / FLUX 엔진 -> 100% R2 클라우드 직행)
     """
     clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
     filename = f"{clean_ep}_삽화.jpg"
-    
-    # 활성 프로젝트의 images 디렉토리
-    images_dir = project_manager.get_active_images_dir()
-    images_dir.mkdir(parents=True, exist_ok=True)
-    target_path = images_dir / filename
+    pid = project_manager.get_active_project_id()
+    target_path = project_manager.get_active_images_dir() / filename
 
     art_style = req.art_style or "watercolor"
 
@@ -193,11 +190,11 @@ async def generate_image_free(req: GenerateFreeImageRequest):
     seed = random.randint(1000, 999999)
 
     try:
-        # 통합 3단계 고신뢰도 파이프라인으로 생성 및 300 DPI 저장
+        # 통합 3단계 고신뢰도 파이프라인으로 생성 및 300 DPI 인메모리 보정 후 R2 업로드
         img_bytes = await asyncio.to_thread(_generate_art_image_bytes, prompt_text, seed, art_style=art_style)
         ensure_300dpi_image(img_bytes, target_path)
 
-        # 활성 원고(작품집_원고.md)의 해당 회차 이미지 파일명 자동 갱신
+        # 활성 원고(Turso DB)의 해당 회차 이미지 파일명 자동 갱신
         mgr = project_manager.get_active_manuscript_manager()
         works = mgr.load_works()
         for w in works:
@@ -205,10 +202,6 @@ async def generate_image_free(req: GenerateFreeImageRequest):
                 w.image_file = f"./images/{filename}"
                 mgr.save_work(w)
                 break
-        try:
-            build_canva_csv()
-        except Exception:
-            pass
 
         return {
             "success": True,
@@ -403,46 +396,44 @@ def _download_and_save_candidate(
 @router.post("/api/generate_image_candidates")
 async def generate_image_candidates(req: GenerateImageCandidatesRequest):
     """
-    무료 한도(Rate Limit) 절약 및 초고속 생성을 위해 단 1장의 최적 서정 삽화를 즉시 생성하고 원고에 자동 반영합니다.
+    무료 한도(Rate Limit) 절약 및 초고속 생성을 위해 단 1장의 최적 서정 삽화를 즉시 생성하고 R2 클라우드 스토리지에 저장합니다.
     선택된 화풍(수묵담채, 파스텔, 스케치, 유화, 수채화)을 완벽히 반영하여 고품질 삽화를 생성합니다.
     참조 사진(reference_image)이 전달된 경우 멀티모달 비전 분석을 통해 사진 구도와 피사체를 해당 화풍으로 재창작하거나,
     direct_use_photo=True인 경우 해당 사진 자체를 300 DPI 순백 여백 보정하여 바로 시안으로 사용합니다.
     """
     try:
+        from core.r2_storage import r2_storage
         clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
+        pid = project_manager.get_active_project_id()
         images_dir = project_manager.get_active_images_dir()
-        images_dir.mkdir(parents=True, exist_ok=True)
         art_style = req.art_style or "watercolor"
 
         ref_bytes = _parse_base64_image(req.reference_image)
         custom_guide = (req.custom_guide or "").strip()
 
-        # [방법 1: 연속 편집 모드 (Image-to-Image)]
-        # 사용자가 수동 사진을 첨부하지 않았으나, 현재 그림 유지 부분 수정(use_current_as_base)이 활성화되어 있고 가이드가 있는 경우
+        # [방법 1: 연속 편집 모드 (Image-to-Image) - R2 클라우드에서 베이스 이미지 조회]
         is_refining_existing = False
         if not ref_bytes and req.use_current_as_base and custom_guide:
-            cand_files = []
+            cand_names = []
             if req.base_image_filename:
-                cand_files.append(images_dir / req.base_image_filename)
-            cand_files.append(images_dir / f"{clean_ep}_생성후보.jpg")
-            cand_files.append(images_dir / f"{clean_ep}_삽화.jpg")
+                cand_names.append(Path(req.base_image_filename).name)
+            cand_names.append(f"{clean_ep}_생성후보.jpg")
+            cand_names.append(f"{clean_ep}_삽화.jpg")
             
-            for c_path in cand_files:
-                if c_path.exists() and c_path.stat().st_size > 1000:
-                    try:
-                        ref_bytes = c_path.read_bytes()
-                        is_refining_existing = True
-                        print(f"[{req.episode_no}화 Image-to-Image 연속 편집] 기존 그림({c_path.name})을 베이스 이미지로 자동 탑재하여 인물/구도를 유지한 채 부분 수정을 수행합니다.")
-                        break
-                    except Exception as b_err:
-                        print(f"기존 이미지 바이트 로드 실패: {b_err}")
+            for c_name in cand_names:
+                loaded_b = r2_storage.get_media_bytes(f"/projects/{pid}/images/{c_name}")
+                if loaded_b and len(loaded_b) > 1000:
+                    ref_bytes = loaded_b
+                    is_refining_existing = True
+                    print(f"[{req.episode_no}화 Image-to-Image 연속 편집] R2 클라우드 그림({c_name})을 베이스 이미지로 자동 탑재하여 인물/구도를 유지한 채 부분 수정을 수행합니다.")
+                    break
 
-        # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 시안으로 등록
+        # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 R2 시안으로 등록
         if req.direct_use_photo and ref_bytes and not is_refining_existing:
             seed = random.randint(100000, 999999)
             filename = f"{clean_ep}_생성후보.jpg"
             target_path = images_dir / filename
-            print(f"[{req.episode_no}화] 첨부 사진 자체를 300 DPI 여백 보정하여 바로 시안 등록 ({len(ref_bytes)} bytes)")
+            print(f"[{req.episode_no}화] 첨부 사진 자체를 300 DPI 여백 보정하여 바로 R2 시안 등록 ({len(ref_bytes)} bytes)")
             ensure_300dpi_image(ref_bytes, target_path)
             return {
                 "success": True,
@@ -511,7 +502,6 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
             raw_scene_prompt = base_prompt
 
         # [모듈러 블록 아키텍처 조립기 최종 가동]
-        # 블록 A (선택된 화풍 전용 블록) + 블록 B (이전 화풍 오염이 도려내진 순수 정경) + 블록 C (공통 출판 규격)
         modular = build_modular_art_prompt(
             raw_prompt=raw_scene_prompt,
             art_style=art_style,
@@ -526,7 +516,7 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
         filename = f"{clean_ep}_생성후보.jpg"
         target_path = images_dir / filename
 
-        # 단 1회 초고속 생성 (300 DPI 규격 보정, 모듈러 화풍 스킬 블록 적용, Image-to-Image 바이트 전달)
+        # 단 1회 초고속 생성 (300 DPI 인메모리 보정 후 R2 업로드)
         await asyncio.to_thread(
             _download_and_save_candidate,
             modular["clean_scene"],
@@ -548,7 +538,6 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
             "used_prompt": final_used_prompt,
             "image_url": f"/images/{filename}?t={seed}",
             "message": f"[{req.episode_no}] {msg_style} 새 삽화 시안이 생성되었습니다.",
-            # 하위 호환 데이터
             "candidate_a": {
                 "id": "A",
                 "name": "생성 시안",
@@ -568,14 +557,15 @@ async def generate_image_candidates(req: GenerateImageCandidatesRequest):
 @router.post("/api/select_image_candidate")
 async def select_image_candidate(req: SelectImageCandidateRequest):
     """
-    모달 팝업에서 사용자가 선택한 시안을 최종 공식 삽화로 확정 반영합니다.
-    (1면, 2면, 3면, 4면 및 1번/2번 분할 프레임 독립 저장 지원)
+    모달 팝업에서 사용자가 선택한 시안을 최종 공식 삽화로 확정 반영합니다 (100% Cloudflare R2 + Turso DB).
     """
+    from core.r2_storage import r2_storage
     clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
-    images_dir = project_manager.get_active_images_dir()
-    cand_path = images_dir / req.candidate_filename
+    pid = project_manager.get_active_project_id()
+    cand_name = Path(req.candidate_filename).name
+    cand_bytes = r2_storage.get_media_bytes(f"/projects/{pid}/images/{cand_name}")
 
-    if not cand_path.exists():
+    if not cand_bytes:
         raise HTTPException(status_code=404, detail="선택한 시안 이미지 파일을 찾을 수 없습니다.")
 
     p_num = req.page_num
@@ -592,12 +582,10 @@ async def select_image_candidate(req: SelectImageCandidateRequest):
     else:
         final_filename = f"{clean_ep}_삽화_후반.jpg" if is_part2 else f"{clean_ep}_삽화.jpg"
 
-    final_path = images_dir / final_filename
+    # [100% R2 클라우드 일원화] 확정된 삽화 파일을 R2 버킷으로 즉시 전송
+    r2_storage.save_project_image(pid, final_filename, cand_bytes)
 
-    # 선택된 시안을 최종 삽화 파일로 복사
-    shutil.copyfile(cand_path, final_path)
-
-    # 원고(작품집_원고.md)의 해당 회차 이미지 파일명 및 layout_config.pages 갱신
+    # Turso DB의 해당 회차 이미지 파일명 및 layout_config.pages 갱신
     mgr = project_manager.get_active_manuscript_manager()
     works = mgr.load_works()
     for w in works:
@@ -644,11 +632,6 @@ async def select_image_candidate(req: SelectImageCandidateRequest):
             mgr.save_work(w)
             break
 
-    try:
-        build_canva_csv()
-    except Exception:
-        pass
-
     now_t = int(time.time())
     page_desc = f"{p_num}면 {f_idx}번 " if p_num else ("2부 연작 삽화(4면)" if is_part2 else "1부 본 삽화(2면)")
     return {
@@ -670,8 +653,7 @@ async def upload_image(
     frame_idx: Optional[int] = Form(None)
 ):
     """
-    외부 생성 이미지를 드래그 앤 드롭 또는 파일 선택으로 업로드
-    (1면, 2면, 3면, 4면 및 분할 프레임 독립 파일 저장 지원)
+    외부 생성 이미지를 드래그 앤 드롭 또는 파일 선택으로 업로드 (100% Cloudflare R2 + Turso DB)
     """
     clean_ep = re.sub(r'[^0-9]', '', episode_no).zfill(2)
     f_idx = frame_idx or 1
@@ -687,19 +669,17 @@ async def upload_image(
     else:
         filename = f"{clean_ep}_삽화_후반.jpg" if is_part2 else f"{clean_ep}_삽화.jpg"
 
-    images_dir = project_manager.get_active_images_dir()
-    images_dir.mkdir(parents=True, exist_ok=True)
-    target_path = images_dir / filename
+    target_path = project_manager.get_active_images_dir() / filename
 
     try:
         contents = await file.read()
         if len(contents) == 0:
             raise HTTPException(status_code=400, detail="빈 파일입니다.")
 
-        # 300 DPI 출판 인쇄 규격 자동 보정 적용
-        opt_res = ensure_300dpi_image(contents, target_path)
+        # 300 DPI 출판 인쇄 규격 자동 인메모리 보정 및 R2 업로드
+        ensure_300dpi_image(contents, target_path)
 
-        # 활성 원고 및 CSV 자동 갱신
+        # 활성 원고(Turso DB) 자동 갱신
         mgr = project_manager.get_active_manuscript_manager()
         works = mgr.load_works()
         for w in works:
@@ -745,10 +725,6 @@ async def upload_image(
 
                 mgr.save_work(w)
                 break
-        try:
-            build_canva_csv()
-        except Exception:
-            pass
 
         t_rand = random.randint(1000, 9999)
         page_desc = f"{page_num}면 {f_idx}번 " if page_num else ("2부 연작 삽화" if target_slot == "part2" else "삽화")
@@ -767,37 +743,34 @@ async def upload_image(
 @router.post("/api/generate_part2_image")
 async def generate_part2_image(req: GeneratePart2ImageRequest):
     """
-    4P 조판 시 2부(후반부) 좌측면에 배치할 연작 수채화 삽화를 시의 후반부 정경에 맞춰 무료 자동 생성 (미리보기 후 승인 시 반영)
+    4P 조판 시 2부(후반부) 좌측면에 배치할 연작 수채화 삽화를 시의 후반부 정경에 맞춰 무료 자동 생성 (100% R2 클라우드)
     """
     try:
+        from core.r2_storage import r2_storage
         clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2)
         filename = f"{clean_ep}_생성후보_2부.jpg"
         art_style = req.art_style or "watercolor"
-
-        images_dir = project_manager.get_active_images_dir()
-        images_dir.mkdir(parents=True, exist_ok=True)
-        target_path = images_dir / filename
+        pid = project_manager.get_active_project_id()
+        target_path = project_manager.get_active_images_dir() / filename
 
         ref_bytes = _parse_base64_image(req.reference_image)
 
-        # [방법 1: 2부 연속 편집 모드 (Image-to-Image)]
+        # [방법 1: 2부 연속 편집 모드 (Image-to-Image) - R2 클라우드 조회]
         is_refining_existing = False
         custom_guide = (req.custom_guide or "").strip()
         if not ref_bytes and req.use_current_as_base and custom_guide:
-            cand_files = []
+            cand_names = []
             if req.base_image_filename:
-                cand_files.append(images_dir / req.base_image_filename)
-            cand_files.append(images_dir / f"{clean_ep}_생성후보_2부.jpg")
-            cand_files.append(images_dir / f"{clean_ep}_삽화_후반.jpg")
-            for c_path in cand_files:
-                if c_path.exists() and c_path.stat().st_size > 1000:
-                    try:
-                        ref_bytes = c_path.read_bytes()
-                        is_refining_existing = True
-                        print(f"[{req.episode_no}화 2부 Image-to-Image] 기존 2부 그림({c_path.name})을 베이스로 부분 수정을 수행합니다.")
-                        break
-                    except Exception as b_err:
-                        print(f"2부 기존 이미지 로드 실패: {b_err}")
+                cand_names.append(Path(req.base_image_filename).name)
+            cand_names.append(f"{clean_ep}_생성후보_2부.jpg")
+            cand_names.append(f"{clean_ep}_삽화_후반.jpg")
+            for c_name in cand_names:
+                loaded_b = r2_storage.get_media_bytes(f"/projects/{pid}/images/{c_name}")
+                if loaded_b and len(loaded_b) > 1000:
+                    ref_bytes = loaded_b
+                    is_refining_existing = True
+                    print(f"[{req.episode_no}화 2부 Image-to-Image] R2 클라우드 2부 그림({c_name})을 베이스로 부분 수정을 수행합니다.")
+                    break
 
         # [옵션 B] 사진 자체를 300 DPI 순백 여백 보정 후 바로 2부 시안으로 등록
         if req.direct_use_photo and ref_bytes and not is_refining_existing:
@@ -822,7 +795,6 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
 
         prompt_text = (req.prompt or "").strip()
         if custom_guide or ref_bytes or not prompt_text:
-            # ★ 묘책: 시의 후반부(Part 2) 본문을 정밀 분석한 전용 연작 서정 프롬프트 자동 조립!
             if target_work:
                 prompt_text = poetic_engine.generate_sequel_image_prompt(
                     title=target_work.title,
@@ -842,7 +814,6 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
         p_title = getattr(req, "title", None) or (target_work.title if target_work else "고향의 추억")
         p_memory = getattr(req, "memory_anchor", None) or (target_work.memory_anchor if target_work else "")
 
-        # [2부 모듈러 블록 조립] 추가 연출 및 시의 정경을 온전히 보존
         from core.skill_pack import build_modular_art_prompt
         modular_p2 = build_modular_art_prompt(
             raw_prompt=prompt_text,
@@ -855,7 +826,6 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
 
         seed = random.randint(100000, 999999)
 
-        # 다단계 무료 폴백 엔진 & 300 DPI 사방 10% 수채화 블러 비네팅 마스크 자동 적용 (ref_image_bytes 연동)
         await asyncio.to_thread(
             _download_and_save_candidate,
             modular_p2["clean_scene"],
@@ -869,7 +839,6 @@ async def generate_part2_image(req: GeneratePart2ImageRequest):
             modular_dict=modular_p2
         )
 
-        # 원고 즉시 덮어쓰기는 수행하지 않음 (미리보기 창에서 사용자가 [삽화로 삽입]을 누를 때 반영)
         return {
             "success": True,
             "episode_no": req.episode_no,
@@ -896,30 +865,45 @@ async def get_images_status():
 @router.post("/api/images/enhance_300dpi")
 async def enhance_all_images_300dpi():
     """
-    현재 활성 시집 폴더 내의 모든 이미지를 검사하여 300 DPI 미만인 경우 일괄 자동 보정
+    [100% 서버 일원화]
+    현재 활성 시집의 Turso DB 등록 이미지를 Cloudflare R2에서 조회하여
+    300 DPI 미만인 경우 인메모리에서 일괄 자동 보정 후 R2로 재업로드합니다.
     """
-    images_dir = project_manager.get_active_images_dir()
-    if not images_dir.exists():
+    from core.r2_storage import r2_storage
+    pid = project_manager.get_active_project_id()
+    mgr = project_manager.get_manuscript_manager(pid)
+    works = mgr.load_works()
+
+    img_names = []
+    for w in works:
+        for img_f in (w.image_file, getattr(w, "image_file_2", "")):
+            if img_f:
+                nm = Path(img_f.replace("\\", "/")).name
+                if nm and nm not in img_names:
+                    img_names.append(nm)
+
+    if not img_names:
         return {"success": True, "count": 0, "message": "등록된 이미지가 없습니다."}
 
-    supported_exts = {".png", ".jpg", ".jpeg", ".webp"}
-    image_files = sorted([f for f in images_dir.iterdir() if f.suffix.lower() in supported_exts])
-    
     enhanced_count = 0
     results = []
-    for img_path in image_files:
+    images_dir = project_manager.get_active_images_dir()
+    for nm in img_names:
         try:
-            res = await asyncio.to_thread(ensure_300dpi_image, img_path, img_path)
+            raw = r2_storage.get_media_bytes(f"/projects/{pid}/images/{nm}")
+            if not raw:
+                continue
+            res = await asyncio.to_thread(ensure_300dpi_image, raw, images_dir / nm)
             if res.get("was_enhanced"):
                 enhanced_count += 1
             results.append(res)
         except Exception as e:
-            results.append({"path": str(img_path), "success": False, "error": str(e)})
+            results.append({"path": nm, "success": False, "error": str(e)})
 
     return {
         "success": True,
-        "total_images": len(image_files),
+        "total_images": len(img_names),
         "enhanced_count": enhanced_count,
-        "message": f"총 {len(image_files)}개 이미지 중 {enhanced_count}개 이미지가 300 DPI 규격으로 자동 보정되었습니다."
+        "message": f"총 {len(img_names)}개 이미지 중 {enhanced_count}개 이미지가 300 DPI 규격으로 자동 보정되었습니다."
     }
 

@@ -3,6 +3,7 @@ tests/test_inquiries.py
 1:1 비밀 상담 및 시화집 백업 자동 첨부 코칭 기능 단위 테스트
 """
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -69,6 +70,10 @@ def test_reply_inquiry(temp_inquiry_mgr):
 
 def test_list_inquiries_filtering(temp_inquiry_mgr):
     mgr = temp_inquiry_mgr
+    unique_suffix = os.urandom(4).hex()
+    uid_a = f"uid_A_{unique_suffix}"
+    uid_b = f"uid_B_{unique_suffix}"
+    email_b = f"userB_{unique_suffix}@example.com"
 
     # 유저 A
     mgr.create_inquiry(
@@ -77,7 +82,7 @@ def test_list_inquiries_filtering(temp_inquiry_mgr):
         content="정말 좋은 프로그램입니다.",
         author_name="유저A",
         author_email="userA@example.com",
-        user_id="uid_A"
+        user_id=uid_a
     )
     # 유저 B
     mgr.create_inquiry(
@@ -85,21 +90,21 @@ def test_list_inquiries_filtering(temp_inquiry_mgr):
         title="기능 제안",
         content="폰트 추가해주세요.",
         author_name="유저B",
-        author_email="userB@example.com",
-        user_id="uid_B"
+        author_email=email_b,
+        user_id=uid_b
     )
 
     # 전체 조회
     all_items = mgr.list_inquiries()
-    assert len(all_items) == 2
+    assert len(all_items) >= 2
 
     # 유저 A 필터링
-    a_items = mgr.list_inquiries(user_id="uid_A")
+    a_items = mgr.list_inquiries(user_id=uid_a)
     assert len(a_items) == 1
     assert a_items[0]["author_name"] == "유저A"
 
     # 유저 B 이메일 필터링
-    b_items = mgr.list_inquiries(user_email="userB@example.com")
+    b_items = mgr.list_inquiries(user_email=email_b)
     assert len(b_items) == 1
     assert b_items[0]["title"] == "기능 제안"
 

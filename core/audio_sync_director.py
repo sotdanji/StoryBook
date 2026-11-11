@@ -11,6 +11,8 @@ import subprocess
 from difflib import SequenceMatcher
 from typing import List, Dict, Any, Optional
 
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 try:
     from faster_whisper import WhisperModel
     WHISPER_AVAILABLE = True

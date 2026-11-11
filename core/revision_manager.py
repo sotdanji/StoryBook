@@ -1,20 +1,22 @@
 """
 core/revision_manager.py
 시인의 집필실: 퇴고 판본(Revision) 관리 및 판본 간 비교(Diff) 지원 모듈
+- [단일 플랫폼 클라우드 일원화] 모든 퇴고 판본(초고, 2고, 3고...)을 Turso DB `revisions` 테이블에 영구 보존
 """
 
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import difflib
 
 
-def _get_revisions_file(project_dir: Path, episode_no: str) -> Path:
-    rev_dir = project_dir / "revisions"
-    rev_dir.mkdir(parents=True, exist_ok=True)
-    safe_ep = episode_no.replace(" ", "_").replace("/", "_")
-    return rev_dir / f"{safe_ep}.json"
+def _normalize_episode_key(episode_no: str) -> str:
+    digits = re.sub(r"[^0-9]", "", str(episode_no or ""))
+    if digits:
+        return f"제{int(digits):02d}화"
+    return str(episode_no or "제01화").strip().replace(" ", "_").replace("/", "_")
 
 
 def save_revision_snapshot(
@@ -25,23 +27,20 @@ def save_revision_snapshot(
     note: str = ""
 ) -> Dict[str, Any]:
     """
-    현재 시의 제목과 본문을 판본(Revision) 스냅샷으로 저장합니다.
+    현재 시의 제목과 본문을 판본(Revision) 스냅샷으로 Turso DB에 영구 저장합니다.
     이전 최신 판본과 본문이 완전히 동일하면 중복 생성하지 않고 최신 정보를 반환합니다.
     """
-    rev_file = _get_revisions_file(project_dir, episode_no)
-    
-    revisions: List[Dict[str, Any]] = []
-    if rev_file.exists():
-        try:
-            with open(rev_file, "r", encoding="utf-8") as f:
-                revisions = json.load(f)
-        except Exception:
-            revisions = []
+    from core.db_manager import db_manager
+
+    project_id = project_dir.name if isinstance(project_dir, Path) else str(project_dir)
+    ep_key = _normalize_episode_key(episode_no)
+
+    revisions: List[Dict[str, Any]] = get_revisions(project_dir, episode_no)
 
     # 이전 판본과 본문이 동일한지 체크
     if revisions:
         latest = revisions[-1]
-        if latest.get("poem_body", "").strip() == poem_body.strip() and latest.get("title", "").strip() == title.strip():
+        if latest.get("poem_body", "").strip() == (poem_body or "").strip() and latest.get("title", "").strip() == (title or "").strip():
             return {
                 "created": False,
                 "message": "내용 변경이 없어 기존 판본을 유지합니다.",
@@ -53,6 +52,9 @@ def save_revision_snapshot(
     version_name = "초고 (初稿)" if rev_id == 1 else f"{rev_id}고 (改作 {rev_id-1}차)"
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line_cnt = len([ln for ln in (poem_body or "").splitlines() if ln.strip()])
+    char_cnt = len(poem_body or "")
+
     new_rev = {
         "rev_id": rev_id,
         "version_name": version_name,
@@ -60,18 +62,31 @@ def save_revision_snapshot(
         "poem_body": poem_body,
         "note": note,
         "timestamp": now_str,
-        "line_count": len([ln for ln in poem_body.splitlines() if ln.strip()]),
-        "char_count": len(poem_body)
+        "line_count": line_cnt,
+        "char_count": char_cnt
     }
+
+    try:
+        db_manager.save_revision(
+            project_id=project_id,
+            episode_no=ep_key,
+            rev_id=rev_id,
+            version_name=version_name,
+            title=title,
+            poem_body=poem_body,
+            note=note,
+            timestamp=now_str,
+            line_count=line_cnt,
+            char_count=char_cnt
+        )
+    except Exception as e:
+        print(f"[RevisionManager] DB 저장 경고: {e}")
 
     revisions.append(new_rev)
 
-    with open(rev_file, "w", encoding="utf-8") as f:
-        json.dump(revisions, f, ensure_ascii=False, indent=2)
-
     return {
         "created": True,
-        "message": f"[{version_name}] 판본이 안전하게 보관되었습니다.",
+        "message": f"[{version_name}] 판본이 클라우드 서버에 안전하게 보관되었습니다.",
         "new_revision": new_rev,
         "revision_count": len(revisions),
         "revisions": revisions
@@ -79,15 +94,25 @@ def save_revision_snapshot(
 
 
 def get_revisions(project_dir: Path, episode_no: str) -> List[Dict[str, Any]]:
-    """해당 회차의 모든 판본 목록을 반환합니다."""
-    rev_file = _get_revisions_file(project_dir, episode_no)
-    if not rev_file.exists():
-        return []
+    """해당 회차의 모든 판본 목록을 Turso DB에서 직접 반환합니다 (100% 서버 일원화)."""
+    from core.db_manager import db_manager
+
+    project_id = project_dir.name if isinstance(project_dir, Path) else str(project_dir)
+    ep_key = _normalize_episode_key(episode_no)
+
     try:
-        with open(rev_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        db_revs = db_manager.get_revisions(project_id, ep_key)
+        if db_revs:
+            return db_revs
+        raw_key = str(episode_no).replace(" ", "_").replace("/", "_")
+        if raw_key != ep_key:
+            db_revs_raw = db_manager.get_revisions(project_id, raw_key)
+            if db_revs_raw:
+                return db_revs_raw
     except Exception:
-        return []
+        pass
+
+    return []
 
 
 def compare_revisions(

@@ -1,7 +1,7 @@
 import json
 import re
 import shutil
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -22,7 +22,7 @@ class ProjectInfo:
     description: str         # 시집 기획 의도 및 설명
     book_type: str = "illustrated" # "illustrated" (서정 시화집) | "standard" (일반 시집)
     author_type: str = "single"    # "single" (개인 시집) | "collab" (공동/가족 시집)
-    owner_id: str = ""       # 회원 계정 고유 ID (Supabase Auth UID)
+    owner_id: str = ""       # 회원 계정 고유 ID (Turso Auth UID)
     owner_email: str = ""    # 회원 이메일 (소유자 확인용)
     prologue: str = ""       # 시인의 말 / 서문 (Prologue)
     epilogue: str = ""       # 맺음말 / 에필로그 (Epilogue)
@@ -32,6 +32,16 @@ class ProjectInfo:
     published_date: str = "" # 발행일 (예: 2026년 10월)
     price: str = "13,000원"  # 정가
     isbn: str = ""           # ISBN (선택 사항)
+    include_recommendation: bool = False # 옵션 부속지: 추천사 / 축사 포함 여부
+    recommendation_title: str = "추천의 글"
+    recommendation_author: str = ""
+    recommendation_content: str = ""
+    include_commentary: bool = False     # 옵션 부속지: 작품 해설 / 평설 포함 여부
+    commentary_title: str = "작품 해설"
+    commentary_author: str = ""
+    commentary_content: str = ""
+    toc_page_count: int = 2              # 차례(목차) 할당 페이지 수 (기본 2쪽, 작품 수 많을 시 4쪽)
+    section_layouts: Dict[str, Any] = field(default_factory=dict) # 부속지 섹션별 2-Layer 조판 설정
     created_at: str = ""
     updated_at: str = ""
 
@@ -39,67 +49,37 @@ class ProjectInfo:
 class ProjectManager:
     def __init__(self, projects_dir: Path = PROJECTS_DIR):
         self.projects_dir = projects_dir
-        self.projects_dir.mkdir(parents=True, exist_ok=True)
+        self._fallback_active_project: str = "노을빛_기억"
         self._ensure_default_project()
 
     def _ensure_default_project(self):
-        """프로젝트 폴더가 비어있을 경우에만 기본 템플릿 프로젝트 생성"""
-        existing_dirs = [p for p in self.projects_dir.iterdir() if p.is_dir()]
-        
-        # 이미 프로젝트가 하나라도 있으면 새로 만들지 않음
-        if existing_dirs:
-            if not ACTIVE_PROJECT_FILE.exists() or not (self.projects_dir / ACTIVE_PROJECT_FILE.read_text(encoding="utf-8").strip()).exists():
-                self.set_active_project_id(existing_dirs[0].name)
-            return
+        """Turso DB에 시집 프로젝트가 하나도 없을 경우에만 기본 템플릿 프로젝트 생성"""
+        try:
+            from core.db_manager import db_manager
+            metas = db_manager.list_project_metas()
+            if metas:
+                first_id = metas[0].get("id") or metas[0].get("project_id") or "노을빛_기억"
+                self._fallback_active_project = first_id
+                return
 
-        # 프로젝트가 아예 없는 경우: 깨끗한 기본 템플릿 시집 생성
-        default_dir = self.projects_dir / "노을빛_기억"
-        default_dir.mkdir(parents=True, exist_ok=True)
-        (default_dir / "images").mkdir(parents=True, exist_ok=True)
+            default_meta = ProjectInfo(
+                id="노을빛_기억",
+                name="노을빛 기억",
+                subtitle="황혼과 유년의 서정 시화집",
+                author="김서정 시인",
+                target_count=35,
+                description="고향 마을의 저녁 노을과 유년기 따스한 추억들",
+                book_type="illustrated",
+                created_at=datetime.now().strftime("%Y-%m-%d"),
+                updated_at=datetime.now().strftime("%Y-%m-%d")
+            )
+            db_manager.save_project_meta("노을빛_기억", asdict(default_meta))
+            self._fallback_active_project = "노을빛_기억"
+        except Exception:
+            self._fallback_active_project = "노을빛_기억"
 
-        meta_file = default_dir / "project.json"
-        default_meta = ProjectInfo(
-            id="노을빛_기억",
-            name="노을빛 기억",
-            subtitle="황혼과 유년의 서정 시화집",
-            author="김서정 시인",
-            target_count=35,
-            description="고향 마을의 저녁 노을과 유년기 따스한 추억들",
-            book_type="illustrated",
-            created_at=datetime.now().strftime("%Y-%m-%d"),
-            updated_at=datetime.now().strftime("%Y-%m-%d")
-        )
-        meta_file.write_text(json.dumps(asdict(default_meta), ensure_ascii=False, indent=2), encoding="utf-8")
-
-        # 원고 초기화
-        manuscript_file = default_dir / "작품집_원고.md"
-        manuscript_file.write_text(
-            f"# {default_meta.name} 원고 (진행 현황: 0 / {default_meta.target_count}편 완료)\n\n"
-            f"> **지은이**: {default_meta.author}  \n"
-            f"> **부제**: {default_meta.subtitle}  \n"
-            f"> **기획**: {default_meta.description}  \n\n---\n",
-            encoding="utf-8"
-        )
-
-        self.set_active_project_id("노을빛_기억")
-
-    def get_active_project_id(self) -> str:
-        if ACTIVE_PROJECT_FILE.exists():
-            active_id = ACTIVE_PROJECT_FILE.read_text(encoding="utf-8").strip()
-            if (self.projects_dir / active_id).exists():
-                return active_id
-        
-        # 없으면 첫 번째 프로젝트 폴더 사용
-        existing = [p.name for p in self.projects_dir.iterdir() if p.is_dir()]
-        if existing:
-            self.set_active_project_id(existing[0])
-            return existing[0]
-            
-        self._ensure_default_project()
-        return "노을빛_기억"
-
-    def _safe_project_dir(self, project_id: str) -> Path:
-        """project_id가 projects 폴더 바로 아래 단일 폴더명인지 검증 (경로 탈출 차단)"""
+    def _resolve_project_id(self, project_id: str) -> str:
+        """프로젝트 ID 또는 이름 별칭을 Turso DB 기준으로 안전하게 정규화"""
         pid = (project_id or "").strip()
         if (
             not pid
@@ -108,30 +88,134 @@ class ProjectManager:
             or ".." in pid
         ):
             raise ValueError(f"잘못된 시집 프로젝트 식별자입니다: {project_id}")
+
+        try:
+            from core.db_manager import db_manager
+            if db_manager.get_project_meta(pid):
+                return pid
+            clean_target = re.sub(r"[^0-9a-zA-Z가-힣]", "", pid)
+            if clean_target:
+                for m in db_manager.list_project_metas():
+                    cid = m.get("id") or m.get("project_id") or ""
+                    cname = m.get("name") or ""
+                    if re.sub(r"[^0-9a-zA-Z가-힣]", "", cid) == clean_target or re.sub(r"[^0-9a-zA-Z가-힣]", "", cname) == clean_target:
+                        return cid
+        except Exception:
+            pass
+        return pid
+
+    def get_active_project_id(self) -> str:
+        """
+        [다중 사용자 격리]
+        1순위: 현재 브라우저 요청 쿠키(sb_active_project)
+        2순위: 현재 로그인한 회원의 Turso DB active_project_id
+        3순위: 서버 기본 활성 프로젝트
+        """
+        try:
+            from core.auth_manager import get_request_active_project, auth_manager
+            from core.db_manager import db_manager
+
+            req_proj = get_request_active_project()
+            if req_proj and db_manager.get_project_meta(req_proj):
+                return req_proj
+
+            user = auth_manager.get_current_user()
+            if user and user.get("active_project_id"):
+                u_proj = user["active_project_id"]
+                if db_manager.get_project_meta(u_proj):
+                    return u_proj
+
+            if self._fallback_active_project and db_manager.get_project_meta(self._fallback_active_project):
+                return self._fallback_active_project
+
+            metas = db_manager.list_project_metas()
+            if metas:
+                first_id = metas[0].get("id") or metas[0].get("project_id") or "노을빛_기억"
+                self._fallback_active_project = first_id
+                return first_id
+        except Exception:
+            pass
+
+        self._ensure_default_project()
+        return self._fallback_active_project or "노을빛_기억"
+
+    def _safe_project_dir(self, project_id: str) -> Path:
+        """가상 식별 경로 Path 반환 (로컬 폴더를 생성하지 않음)"""
+        resolved_id = self._resolve_project_id(project_id)
         base = self.projects_dir.resolve()
-        target = (base / pid).resolve()
+        target = (base / resolved_id).resolve()
         if target.parent != base:
             raise ValueError(f"잘못된 시집 프로젝트 식별자입니다: {project_id}")
-        return base / pid
+        return target
 
     def set_active_project_id(self, project_id: str):
-        target_dir = self._safe_project_dir(project_id)
-        if not target_dir.exists():
+        """현재 접속자의 활성 프로젝트를 브라우저 쿠키 컨텍스트 및 Turso DB 회원 정보에 격리 저장"""
+        resolved_id = self._resolve_project_id(project_id)
+        from core.db_manager import db_manager
+        if not db_manager.get_project_meta(resolved_id):
             raise ValueError(f"존재하지 않는 시집 프로젝트입니다: {project_id}")
-        ACTIVE_PROJECT_FILE.write_text(project_id.strip(), encoding="utf-8")
+
+        self._fallback_active_project = resolved_id
+        try:
+            from core.auth_manager import get_request_session_token, set_request_context, auth_manager
+            set_request_context(session_token=get_request_session_token(), active_project_id=resolved_id)
+            user = auth_manager.get_current_user()
+            if user and user.get("user_id"):
+                db_manager.set_user_active_project(user["user_id"], resolved_id)
+        except Exception:
+            pass
+
+    def _save_info_and_sync_db(self, pdir: Path, info: ProjectInfo) -> None:
+        """100% Turso 마스터 DB의 project_meta 테이블에 영구 저장 (로컬 파일 동시 백업)"""
+        try:
+            pdir.mkdir(parents=True, exist_ok=True)
+            pfile = pdir / "project.json"
+            pfile.write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"[ProjectManager] 로컬 project.json 백업 오류: {e}")
+
+        try:
+            from core.db_manager import db_manager
+            db_manager.save_project_meta(info.id, asdict(info))
+        except Exception as e:
+            print(f"[ProjectManager] DB 메타 저장 오류: {e}")
+
+    def _hydrate_projects_from_db(self) -> None:
+        """하위 호환용 노옵(No-op)"""
+        return None
 
     def get_project_dir(self, project_id: Optional[str] = None) -> Path:
         pid = project_id or self.get_active_project_id()
         return self._safe_project_dir(pid)
 
     def get_project_info(self, project_id: Optional[str] = None) -> ProjectInfo:
-        pdir = self.get_project_dir(project_id)
-        meta_file = pdir / "project.json"
-        if meta_file.exists():
-            data = json.loads(meta_file.read_text(encoding="utf-8"))
+        pid = self._resolve_project_id(project_id or self.get_active_project_id())
+        data = None
+
+        # [100% Turso DB 일원화] 마스터 DB에서 최신 메타데이터를 조회 (오프라인/로컬 fallback 지원)
+        try:
+            from core.db_manager import db_manager
+            db_data = db_manager.get_project_meta(pid)
+            if db_data and isinstance(db_data, dict) and db_data.get("name"):
+                data = db_data
+        except Exception:
+            pass
+
+        if not data:
+            try:
+                pdir = self._safe_project_dir(pid)
+                pfile = pdir / "project.json"
+                if pfile.exists():
+                    f_data = json.loads(pfile.read_text(encoding="utf-8"))
+                    if isinstance(f_data, dict) and f_data.get("name"):
+                        data = f_data
+            except Exception:
+                pass
+
+        if data:
             return ProjectInfo(
-                id=data.get("id", pdir.name),
-                name=data.get("name", pdir.name),
+                id=data.get("id", pid),
+                name=data.get("name", pid),
                 subtitle=data.get("subtitle", "서정 시화집"),
                 author=data.get("author", "기억의 작가"),
                 target_count=data.get("target_count", 35),
@@ -148,12 +232,20 @@ class ProjectManager:
                 published_date=data.get("published_date", datetime.now().strftime("%Y년 %m월")),
                 price=data.get("price", "13,000원"),
                 isbn=data.get("isbn", ""),
+                include_recommendation=bool(data.get("include_recommendation", False)),
+                recommendation_title=data.get("recommendation_title", "추천의 글"),
+                recommendation_author=data.get("recommendation_author", ""),
+                recommendation_content=data.get("recommendation_content", ""),
+                include_commentary=bool(data.get("include_commentary", False)),
+                commentary_title=data.get("commentary_title", "작품 해설"),
+                commentary_author=data.get("commentary_author", ""),
+                commentary_content=data.get("commentary_content", ""),
+                toc_page_count=int(data.get("toc_page_count", 2) or 2),
+                section_layouts=data.get("section_layouts", {}) if isinstance(data.get("section_layouts"), dict) else {},
                 created_at=data.get("created_at", datetime.now().strftime("%Y-%m-%d")),
                 updated_at=data.get("updated_at", datetime.now().strftime("%Y-%m-%d"))
             )
-        
-        # 메타 파일이 없을 경우 기본값 생성
-        pid = pdir.name
+
         return ProjectInfo(
             id=pid,
             name=pid,
@@ -171,27 +263,30 @@ class ProjectManager:
             published_date=datetime.now().strftime("%Y년 %m월"),
             price="13,000원",
             isbn="",
+            include_recommendation=False,
+            recommendation_title="추천의 글",
+            recommendation_author="",
+            recommendation_content="",
+            include_commentary=False,
+            commentary_title="작품 해설",
+            commentary_author="",
+            commentary_content="",
+            toc_page_count=2,
+            section_layouts={},
             created_at=datetime.now().strftime("%Y-%m-%d"),
             updated_at=datetime.now().strftime("%Y-%m-%d")
         )
 
     def claim_project(self, project_id: str, user_id: str, user_email: str) -> bool:
-        """
-        게스트나 미할당 상태의 시집 프로젝트를 로그인한 회원의 계정으로 안전하게 귀속합니다.
-        """
+        """게스트나 미할당 상태의 시집 프로젝트를 로그인한 회원의 계정으로 안전하게 귀속합니다 (100% Turso DB 기반)."""
         try:
-            pdir = self.get_project_dir(project_id)
-            meta_file = pdir / "project.json"
-            if not meta_file.exists():
-                return False
-
-            info = self.get_project_info(project_id)
-            # 이미 다른 사람이 소유한 프로젝트가 아니라면 현재 로그인 회원으로 귀속
+            pid = self._resolve_project_id(project_id)
+            info = self.get_project_info(pid)
             if not info.owner_id or info.owner_id == user_id:
                 info.owner_id = user_id
                 info.owner_email = user_email
                 info.updated_at = datetime.now().strftime("%Y-%m-%d")
-                meta_file.write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
+                self._save_info_and_sync_db(self.projects_dir / pid, info)
                 return True
             return False
         except Exception as e:
@@ -200,30 +295,32 @@ class ProjectManager:
 
     def list_projects(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        프로젝트 목록 조회 (user_id가 지정된 경우 내 프로젝트 및 미할당 프로젝트만 필터링)
+        [100% Turso DB 일원화]
+        Turso DB의 project_meta 테이블에서 직접 시집 목록을 조회합니다.
         """
         active_id = self.get_active_project_id()
         projects = []
 
-        for pdir in self.projects_dir.iterdir():
-            if not pdir.is_dir():
-                continue
-            info = self.get_project_info(pdir.name)
+        from core.db_manager import db_manager
+        db_metas = db_manager.list_project_metas()
 
-            # 사용자 분리: 다른 회원의 시집은 목록에서 보호(숨김)
+        for meta in db_metas:
+            pid = meta.get("id") or meta.get("project_id")
+            if not pid:
+                continue
+            info = self.get_project_info(pid)
+
             if user_id:
                 if info.owner_id and info.owner_id != user_id:
-                    # 기본 시집이거나 활성 시집, 또는 예시 계정 소유 시집인 경우 현재 로그인 사용자로 자동 귀속
-                    if pdir.name == "노을빛_기억" or info.id == active_id or info.owner_id == "poet_kim_123":
-                        self.claim_project(pdir.name, user_id, "")
+                    if pid in ("노을빛_기억", "샘플_기억상자") or info.id == active_id or info.owner_id == "poet_kim_123":
+                        self.claim_project(pid, user_id, "")
                     else:
                         continue
-            
-            # 원고 진행 상태 계산
-            manuscript_file = pdir / "작품집_원고.md"
-            mgr = ManuscriptManager(file_path=manuscript_file)
-            completed = mgr.get_completed_count()
-            total_works = len(mgr.load_works())
+
+            mgr = self.get_manuscript_manager(pid)
+            works = mgr.load_works()
+            completed = sum(1 for w in works if "완성" in w.status)
+            total_works = len(works)
 
             projects.append({
                 "id": info.id,
@@ -244,7 +341,6 @@ class ProjectManager:
                 "updated_at": info.updated_at
             })
 
-        # 활성 프로젝트 우선, 그다음 최신순 정렬
         projects.sort(key=lambda x: (not x["is_active"], x["created_at"]), reverse=False)
         return projects
 
@@ -260,20 +356,17 @@ class ProjectManager:
         owner_id: str = "",
         owner_email: str = ""
     ) -> ProjectInfo:
-        """새로운 시집 프로젝트를 생성하고 기본 구조 초기화"""
-        # 폴더용 ID 생성 (한글/영문 안전 변환)
+        """새로운 시집 프로젝트를 Turso DB에 즉시 생성 (로컬 파일 생성 불필요)"""
+        from core.db_manager import db_manager
+
         safe_name = re.sub(r'[^a-zA-Z0-9가-힣]', '_', name).strip('_')
         base_id = safe_name.lower() if safe_name else "poem_book"
-        
+
         project_id = base_id
         counter = 1
-        while (self.projects_dir / project_id).exists():
+        while db_manager.get_project_meta(project_id) is not None:
             project_id = f"{base_id}_{counter}"
             counter += 1
-
-        pdir = self.projects_dir / project_id
-        pdir.mkdir(parents=True, exist_ok=True)
-        (pdir / "images").mkdir(parents=True, exist_ok=True)
 
         info = ProjectInfo(
             id=project_id,
@@ -290,28 +383,7 @@ class ProjectManager:
             updated_at=datetime.now().strftime("%Y-%m-%d")
         )
 
-        # metadata 저장
-        (pdir / "project.json").write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
-
-        # 템플릿 작품집_원고.md 생성
-        author_label = "지은이" if info.author_type == "single" else "엮은이"
-        template_md = f"""# {info.name} 원고 (진행 현황: 0 / {info.target_count}편 완료)
-
-> **{author_label}**: {info.author}  
-> **부제**: {info.subtitle}  
-> **도서 형태**: {'서정 시화집' if info.book_type == 'illustrated' else '일반 시집'}  
-> **시집 성격**: {'개인 시집' if info.author_type == 'single' else '공동·가족 시집 (앤솔로지)'}  
-> **기획**: {info.description}  
-
----
-"""
-        (pdir / "작품집_원고.md").write_text(template_md, encoding="utf-8")
-
-        # 기본 CSV 헤더 생성
-        headers = "Episode_No,Title,Poem_Body,Memory_Anchor,Image_File\n"
-        (pdir / "시화집_본문데이터.csv").write_text(headers, encoding="utf-8-sig")
-
-        # 새 프로젝트를 활성 프로젝트로 설정
+        self._save_info_and_sync_db(self.projects_dir / project_id, info)
         self.set_active_project_id(project_id)
         return info
 
@@ -326,10 +398,10 @@ class ProjectManager:
         book_type: Optional[str] = None,
         author_type: Optional[str] = None
     ) -> ProjectInfo:
-        """기존 시집 프로젝트의 메타데이터 수정 (제목 변경 시 폴더명도 안전하게 자동 리네이밍)"""
-        pid = project_id or self.get_active_project_id()
-        pdir = self.get_project_dir(pid)
-        if not pdir.exists():
+        """기존 시집 프로젝트의 메타데이터를 Turso DB에서 수정"""
+        pid = self._resolve_project_id(project_id or self.get_active_project_id())
+        from core.db_manager import db_manager
+        if not db_manager.get_project_meta(pid):
             raise ValueError(f"존재하지 않는 프로젝트입니다: {pid}")
 
         info = self.get_project_info(pid)
@@ -345,73 +417,42 @@ class ProjectManager:
             info.author_type = author_type
         info.updated_at = datetime.now().strftime("%Y-%m-%d")
 
-        # 폴더명 리네이밍 (새 제목 기반)
-        was_active = (self.get_active_project_id() == pid)
-        safe_id = re.sub(r'[^\w가-힣]+', '_', cleaned_name).strip('_')
-        if safe_id and safe_id != pid:
-            new_pdir = self.projects_dir / safe_id
-            if not new_pdir.exists():
-                try:
-                    pdir.rename(new_pdir)
-                    pdir = new_pdir
-                    pid = safe_id
-                    info.id = safe_id
-                    if was_active:
-                        self.set_active_project_id(safe_id)
-                except Exception:
-                    pass  # 파일 락 등으로 실패 시 기존 폴더 유지
-
-        # project.json 저장
-        (pdir / "project.json").write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-        # 작품집_원고.md 상단 메타데이터 동기화 (기존 시 본문은 보존)
-        manuscript_file = pdir / "작품집_원고.md"
-        if manuscript_file.exists():
-            content = manuscript_file.read_text(encoding="utf-8")
-            # 상단 제목 및 메타 라인 교체
-            mgr = ManuscriptManager(file_path=manuscript_file)
-            completed = mgr.get_completed_count()
-            
-            # 본문 분리 (첫 번째 --- 이후)
-            parts = content.split("\n---\n", 1)
-            body_content = parts[1] if len(parts) > 1 else ""
-            
-            new_header = f"""# {info.name} 원고 (진행 현황: {completed} / {info.target_count}편 완료)
-
-> **지은이**: {info.author}  
-> **부제**: {info.subtitle}  
-> **기획**: {info.description}  
-"""
-            updated_md = new_header + "\n---\n" + body_content
-            manuscript_file.write_text(updated_md, encoding="utf-8")
+        self._save_info_and_sync_db(self.projects_dir / pid, info)
         return info
 
     def delete_project(self, project_id: str) -> bool:
-        """시집 프로젝트 삭제 (서재에 최소 1권은 보존)"""
-        existing = [p.name for p in self.projects_dir.iterdir() if p.is_dir()]
+        """시집 프로젝트 삭제 (Turso DB 메타/작품 삭제 및 R2 에셋 정리, 최소 1권 보존)"""
+        from core.db_manager import db_manager
+        pid = self._resolve_project_id(project_id)
+        metas = db_manager.list_project_metas()
+        existing = [m.get("id") or m.get("project_id") for m in metas if (m.get("id") or m.get("project_id"))]
         if len(existing) <= 1:
             raise ValueError("서재에 최소 1권의 시집 프로젝트는 보관되어야 하므로 삭제할 수 없습니다.")
-
-        target_dir = self._safe_project_dir(project_id)
-        if not target_dir.exists() or not target_dir.is_dir():
+        if pid not in existing:
             raise ValueError(f"존재하지 않는 시집 프로젝트입니다: {project_id}")
 
-        # 현재 활성 프로젝트를 삭제하는 경우 남아있는 다른 프로젝트로 자동 복귀
-        if self.get_active_project_id() == project_id:
-            remaining = [p for p in existing if p != project_id]
-            self.set_active_project_id(remaining[0])
+        if self.get_active_project_id() == pid:
+            remaining = [p for p in existing if p != pid]
+            if remaining:
+                self.set_active_project_id(remaining[0])
 
-        shutil.rmtree(target_dir)
+        # R2 미디어 정리
+        try:
+            from core.r2_storage import r2_storage
+            mgr = self.get_manuscript_manager(pid)
+            for w in mgr.load_works():
+                for mf in (w.image_file, getattr(w, "image_file_2", ""), getattr(w, "recite_file", ""), getattr(w, "music_file", ""), getattr(w, "video_file", "")):
+                    if mf and not mf.startswith("http"):
+                        r2_storage.delete_file(f"{pid}/{mf.lstrip('./')}")
+        except Exception:
+            pass
+
+        db_manager.delete_project_meta(pid)
         return True
 
     def update_book_extras(self, project_id: Optional[str], extras: dict) -> ProjectInfo:
-        """시인의 말, 에필로그, 뒷표지 카피, 판권지 정보 등 본문 외 출판 메타데이터 저장"""
-        pid = project_id or self.get_active_project_id()
-        pdir = self.get_project_dir(pid)
-        if not pdir.exists():
-            raise ValueError(f"존재하지 않는 프로젝트입니다: {pid}")
-
+        """시인의 말, 에필로그, 뒷표지 카피, 판권지 정보 등 본문 외 출판 메타데이터를 Turso DB에 저장"""
+        pid = self._resolve_project_id(project_id or self.get_active_project_id())
         info = self.get_project_info(pid)
         if "prologue" in extras:
             info.prologue = str(extras["prologue"]).strip()
@@ -431,74 +472,293 @@ class ProjectManager:
             info.isbn = str(extras["isbn"]).strip()
 
         info.updated_at = datetime.now().strftime("%Y-%m-%d")
-
-        meta_file = pdir / "project.json"
-        meta_file.write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
+        self._save_info_and_sync_db(self.projects_dir / pid, info)
         return info
 
+    def _collect_project_media_into_dir(self, pid: str, works: list, info: ProjectInfo, dest_dir: Path, include_videos: bool = True, include_songs: bool = True) -> None:
+        """
+        [100% R2 클라우드 온디맨드 에셋 수집기]
+        Cloudflare R2 스토리지에서 해당 시집의 삽화 및 음원을
+        임시 조립 폴더(dest_dir)로 수집합니다.
+        갤러리용 경량 패키징 시에는 include_videos=False, include_songs=False로 시낭송만 수집합니다.
+        """
+        from core.r2_storage import r2_storage
+
+        media_rel_paths = set()
+        if getattr(info, "cover_image", ""):
+            ci = info.cover_image.lstrip("./")
+            media_rel_paths.add(ci if "/" in ci else f"images/{ci}")
+
+        for w in works:
+            for img_f in (w.image_file, getattr(w, "image_file_2", "")):
+                if img_f and not img_f.startswith("http"):
+                    clean_f = img_f.lstrip("./")
+                    media_rel_paths.add(clean_f if "/" in clean_f else f"images/{clean_f}")
+            
+            # 시낭송 오디오 수집 (초경량 갤러리 지원)
+            for aud_f in (
+                getattr(w, "voice_user_file", ""),
+                getattr(w, "voice_tts_file", ""),
+                getattr(w, "recite_file", "")
+            ):
+                if aud_f and not aud_f.startswith("http"):
+                    clean_a = aud_f.lstrip("./")
+                    media_rel_paths.add(clean_a if "/" in clean_a else f"music/{clean_a}")
+
+            # 대용량 노래 음원 수집 (전체 백업 시에만 수집)
+            if include_songs:
+                for aud_f in (
+                    getattr(w, "music_file", ""),
+                    getattr(w, "audio_file", ""),
+                    getattr(w, "voice_suno_file", ""),
+                    getattr(w, "voice_bgm_file", "")
+                ):
+                    if aud_f and not aud_f.startswith("http"):
+                        clean_a = aud_f.lstrip("./")
+                        media_rel_paths.add(clean_a if "/" in clean_a else f"music/{clean_a}")
+
+            # 대용량 동영상 수집 (전체 백업 시에만 수집)
+            if include_videos:
+                for vid_f in (getattr(w, "video_file", ""), getattr(w, "video_preview", "")):
+                    if vid_f and not vid_f.startswith("http"):
+                        clean_v = vid_f.lstrip("./")
+                        media_rel_paths.add(clean_v if "/" in clean_v else f"videos/{clean_v}")
+
+        # R2에서 에셋 바이트 조회 후 임시 폴더에 기록
+        for rel_p in media_rel_paths:
+            raw = r2_storage.get_media_bytes(f"/projects/{pid}/{rel_p}")
+            if raw:
+                out_f = dest_dir / rel_p
+                out_f.parent.mkdir(parents=True, exist_ok=True)
+                out_f.write_bytes(raw)
+
     def export_project_zip(self, project_id: Optional[str] = None) -> Path:
-        """시집 전체 데이터(원고, CSV, PDF, 삽화)를 ZIP 압축 파일로 패키징"""
+        """
+        [온디맨드 서버 일원화 백업 패키저]
+        사용자가 [전체백업.zip 다운로드]를 요청할 때 Turso DB(원고·메타·목차·퇴고이력)와
+        Cloudflare R2(삽화·음원·영상)에서 최신 데이터를 임시 버퍼(/tmp)로 즉시 조립하여 ZIP으로 반환합니다.
+        """
         import zipfile
-        pdir = self.get_project_dir(project_id)
-        info = self.get_project_info(project_id)
+        import tempfile
+        from core.db_manager import db_manager
+        from core.csv_builder import build_canva_csv, build_canva_publishing_metadata_csv
+
+        pid = self._resolve_project_id(project_id or self.get_active_project_id())
+        info = self.get_project_info(pid)
+        mgr = self.get_manuscript_manager(pid)
+        works = mgr.load_works()
 
         export_dir = BASE_DIR / ".exports"
         export_dir.mkdir(parents=True, exist_ok=True)
         zip_path = export_dir / f"{info.id}_backup.zip"
 
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file in pdir.rglob("*"):
-                if file.is_file():
-                    arcname = file.relative_to(pdir)
-                    zf.write(file, arcname)
+        with tempfile.TemporaryDirectory() as tmp_dir_str:
+            stage_dir = Path(tmp_dir_str)
+
+            # 1. project.json 생성
+            (stage_dir / "project.json").write_text(json.dumps(asdict(info), ensure_ascii=False, indent=2), encoding="utf-8")
+
+            # 2. 작품집_원고.md 생성
+            (stage_dir / "작품집_원고.md").write_text(mgr.render_markdown_text(works), encoding="utf-8")
+
+            # 3. works_db.json & toc.json 생성
+            db_manager.export_json_manifest(pid, target_dir=stage_dir)
+            db_manager.export_toc_json(pid, target_dir=stage_dir)
+
+            # 4. 퇴고 판본(revisions/*.json) 복원 포함
+            revs_by_ep = db_manager.list_project_revisions(pid)
+            if revs_by_ep:
+                rev_dir = stage_dir / "revisions"
+                rev_dir.mkdir(parents=True, exist_ok=True)
+                for ep_key, rev_list in revs_by_ep.items():
+                    safe_ep = str(ep_key).replace(" ", "_").replace("/", "_")
+                    (rev_dir / f"{safe_ep}.json").write_text(json.dumps(rev_list, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            # 5. Canva CSV 2종 즉석 생성
+            try:
+                build_canva_csv(output_file=stage_dir / "시화집_본문데이터.csv", manuscript_manager=mgr)
+                build_canva_publishing_metadata_csv(output_file=stage_dir / "시화집_출판구성데이터.csv", project_id=pid)
+            except Exception:
+                pass
+
+            # 6. R2 및 캐시에서 삽화/음원/영상 수집
+            self._collect_project_media_into_dir(pid, works, info, stage_dir)
+
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for file in stage_dir.rglob("*"):
+                    if file.is_file():
+                        arcname = file.relative_to(stage_dir)
+                        zf.write(file, arcname)
 
         return zip_path
 
+    def import_project_zip(
+        self,
+        zip_bytes: bytes,
+        owner_id: str = "",
+        owner_email: str = ""
+    ) -> ProjectInfo:
+        """
+        [신규: 내 시집 전체백업.zip 업로드 복원(Import) 엔진]
+        사용자가 PC에 보관하던 `{시집명}_전체백업.zip`을 업로드하면,
+        메타데이터·원고·목차·퇴고 판본은 Turso DB로, 삽화·음원·영상은 Cloudflare R2로 일괄 복원합니다.
+        """
+        import io
+        import zipfile
+        import tempfile
+        from core.db_manager import db_manager, PieceData
+        from core.r2_storage import r2_storage
+
+        with tempfile.TemporaryDirectory() as tmp_dir_str:
+            stage_dir = Path(tmp_dir_str)
+            raw_zip_bytes = Path(zip_bytes).read_bytes() if isinstance(zip_bytes, (str, Path)) else zip_bytes
+            with zipfile.ZipFile(io.BytesIO(raw_zip_bytes), "r") as zf:
+                zf.extractall(stage_dir)
+
+            # ZIP 내부에 상위 폴더 하나가 감싸져 있는 경우 대응
+            meta_file = stage_dir / "project.json"
+            if not meta_file.exists():
+                found_metas = list(stage_dir.rglob("project.json"))
+                if found_metas:
+                    stage_dir = found_metas[0].parent
+                    meta_file = stage_dir / "project.json"
+
+            meta_dict = {}
+            if meta_file.exists():
+                try:
+                    meta_dict = json.loads(meta_file.read_text(encoding="utf-8"))
+                except Exception:
+                    meta_dict = {}
+
+            raw_name = meta_dict.get("name") or "복원된_시화집"
+            safe_id = re.sub(r"[^a-zA-Z0-9가-힣]", "_", meta_dict.get("id") or raw_name).strip("_") or "restored_book"
+
+            # 동일 ID가 이미 존재하면 덮어쓰기 또는 안전하게 유지
+            pid = safe_id
+            info = ProjectInfo(
+                id=pid,
+                name=raw_name,
+                subtitle=meta_dict.get("subtitle", "서정 시화집"),
+                author=meta_dict.get("author", "기억의 작가"),
+                target_count=int(meta_dict.get("target_count", 35) or 35),
+                description=meta_dict.get("description", ""),
+                book_type=meta_dict.get("book_type", "illustrated"),
+                author_type=meta_dict.get("author_type", "single"),
+                owner_id=owner_id or meta_dict.get("owner_id", ""),
+                owner_email=owner_email or meta_dict.get("owner_email", ""),
+                prologue=meta_dict.get("prologue", ""),
+                epilogue=meta_dict.get("epilogue", ""),
+                back_cover_blurb=meta_dict.get("back_cover_blurb", ""),
+                cover_image=meta_dict.get("cover_image", ""),
+                publisher=meta_dict.get("publisher", "부크크 (Bookk) 자가출판"),
+                published_date=meta_dict.get("published_date", datetime.now().strftime("%Y년 %m월")),
+                price=meta_dict.get("price", "13,000원"),
+                isbn=meta_dict.get("isbn", ""),
+                created_at=meta_dict.get("created_at") or datetime.now().strftime("%Y-%m-%d"),
+                updated_at=datetime.now().strftime("%Y-%m-%d")
+            )
+            db_manager.save_project_meta(pid, asdict(info))
+
+            # 1. 작품 및 목차 복원 (works_db.json 우선, 없으면 작품집_원고.md 파싱)
+            works_json_file = stage_dir / "works_db.json"
+            toc_json_file = stage_dir / "toc.json"
+            md_file = stage_dir / "작품집_원고.md"
+
+            if works_json_file.exists():
+                wdata = json.loads(works_json_file.read_text(encoding="utf-8"))
+                pieces_map = wdata.get("pieces", {})
+                for piece_id, p_dict in pieces_map.items():
+                    p_dict["project_id"] = pid
+                    valid_fields = {k: v for k, v in p_dict.items() if k in PieceData.__dataclass_fields__}
+                    db_manager.save_piece(PieceData(**valid_fields))
+                if toc_json_file.exists():
+                    tdata = json.loads(toc_json_file.read_text(encoding="utf-8"))
+                    db_manager.set_toc(pid, tdata.get("items", []))
+            elif md_file.exists():
+                md_text = md_file.read_text(encoding="utf-8")
+                target_mgr = self.get_manuscript_manager(pid)
+                for w in ManuscriptManager.parse_markdown_text(md_text):
+                    w.piece_id = ""
+                    target_mgr.save_work(w)
+
+            # 2. 퇴고 판본(revisions/*.json) 복원
+            rev_dir = stage_dir / "revisions"
+            if rev_dir.exists() and rev_dir.is_dir():
+                for rf in rev_dir.glob("*.json"):
+                    try:
+                        rev_list = json.loads(rf.read_text(encoding="utf-8"))
+                        ep_key = rf.stem
+                        for r in rev_list:
+                            db_manager.save_revision(
+                                project_id=pid,
+                                episode_no=ep_key,
+                                rev_id=int(r.get("rev_id", 1)),
+                                version_name=r.get("version_name", ""),
+                                title=r.get("title", ""),
+                                poem_body=r.get("poem_body", ""),
+                                note=r.get("note", ""),
+                                timestamp=r.get("timestamp", ""),
+                                line_count=int(r.get("line_count", 0)),
+                                char_count=int(r.get("char_count", 0))
+                            )
+                    except Exception:
+                        pass
+
+            # 3. 미디어 파일(images, music, videos) Cloudflare R2 일괄 업로드
+            for folder_name in ("images", "music", "videos", "media"):
+                fdir = stage_dir / folder_name
+                if fdir.exists() and fdir.is_dir():
+                    for media_file in fdir.rglob("*"):
+                        if media_file.is_file():
+                            rel_path = media_file.relative_to(stage_dir).as_posix()
+                            r2_storage.upload_bytes(
+                                media_file.read_bytes(),
+                                f"{pid}/{rel_path}"
+                            )
+
+        self.set_active_project_id(pid)
+        return info
+
     def export_gallery_web_zip(self, project_id: Optional[str] = None) -> Path:
         """
-        웹 배포용 단일 정적 갤러리 ZIP 패키지 생성:
-        - 시화집_갤러리.html -> index.html
-        - images/, music/, videos/ 에셋 포함
-        - Netlify, GitHub Pages, Vercel 등에 바로 배포 가능한 구조
+        [온디맨드 웹 갤러리 ZIP 생성기]
+        - Turso DB와 Cloudflare R2에서 최신 원고 및 에셋을 임시 폴더로 수집하여
+          Netlify, GitHub Pages, Vercel 등에 바로 배포 가능한 index.html 패키지를 조립합니다.
         """
         import zipfile
-        from core.gallery_builder import sync_project_gallery_html
+        import tempfile
+        from core.gallery_builder import render_project_gallery_html
 
-        pid = project_id or self.get_active_project_id()
-        pdir = self.get_project_dir(pid)
+        pid = self._resolve_project_id(project_id or self.get_active_project_id())
         info = self.get_project_info(pid)
-
-        # 최신 갤러리 HTML 동기화
-        try:
-            sync_project_gallery_html(pid)
-        except Exception as e:
-            print(f"Gallery sync error before export: {e}")
+        mgr = self.get_manuscript_manager(pid)
+        works = mgr.load_works()
 
         export_dir = BASE_DIR / ".exports"
         export_dir.mkdir(parents=True, exist_ok=True)
         zip_path = export_dir / f"{info.id}_web_gallery.zip"
 
-        gallery_html = pdir / "시화집_갤러리.html"
-
-        # 웹 배포 가이드 문서 생성
+        gallery_html_str = render_project_gallery_html(pid, relative_paths=True)
         guide_html = self._generate_deployment_guide_html(info)
         guide_txt = self._generate_deployment_guide_txt(info)
 
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            if gallery_html.exists():
-                zf.write(gallery_html, "index.html")
+        with tempfile.TemporaryDirectory() as tmp_dir_str:
+            stage_dir = Path(tmp_dir_str)
+            # [초경량 5~8MB 웹 갤러리 패키지] 비디오 및 무거운 노래 음원 완전 배제, 오직 삽화 및 시낭송만 수집
+            self._collect_project_media_into_dir(pid, works, info, stage_dir, include_videos=False, include_songs=False)
 
-            # 배포 가이드 문서 동봉
-            zf.writestr("배포가이드_클릭하여열기.html", guide_html.encode("utf-8"))
-            zf.writestr("README_웹배포_안내.txt", guide_txt.encode("utf-8"))
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("index.html", gallery_html_str.encode("utf-8"))
+                zf.writestr("배포가이드_클릭하여열기.html", guide_html.encode("utf-8"))
+                zf.writestr("README_웹배포_안내.txt", guide_txt.encode("utf-8"))
 
-            for folder_name in ("images", "music", "videos"):
-                folder_path = pdir / folder_name
-                if folder_path.exists() and folder_path.is_dir():
-                    for file in folder_path.rglob("*"):
-                        if file.is_file():
-                            arcname = file.relative_to(pdir)
-                            zf.write(file, arcname)
+                for folder_name in ("images", "music"):
+                    folder_path = stage_dir / folder_name
+                    if folder_path.exists() and folder_path.is_dir():
+                        for file in folder_path.rglob("*"):
+                            if file.is_file():
+                                arcname = file.relative_to(stage_dir)
+                                zf.write(file, arcname)
 
         return zip_path
 
@@ -873,7 +1133,7 @@ class ProjectManager:
             "author": info.author or "",
             "status": "completed" if has_prologue else "empty",
             "page_start": current_page,
-            "page_count": 1,
+            "page_count": 2,
             "episode_no": "",
             "chapter": "",
             "data": {
@@ -881,9 +1141,34 @@ class ProjectManager:
                 "author": info.author or ""
             }
         })
-        current_page += 1
+        current_page += 2
 
-        # 1-4. 차례 (시집 목차 - Page 4~5)
+        # 1-3-B. [옵션] 추천사 / 축사 (Recommendation)
+        include_rec = getattr(info, "include_recommendation", False)
+        if include_rec:
+            rec_text = (getattr(info, "recommendation_content", "") or "").strip()
+            sections.append({
+                "id": "recommendation",
+                "section_type": "recommendation",
+                "group": "front_matter",
+                "title": getattr(info, "recommendation_title", "추천의 글") or "추천의 글",
+                "subtitle": "Recommendation",
+                "author": getattr(info, "recommendation_author", "") or "",
+                "status": "completed" if rec_text else "empty",
+                "page_start": current_page,
+                "page_count": 2,
+                "episode_no": "",
+                "chapter": "",
+                "data": {
+                    "content": rec_text,
+                    "author": getattr(info, "recommendation_author", "") or "",
+                    "title": getattr(info, "recommendation_title", "추천의 글") or "추천의 글"
+                }
+            })
+            current_page += 2
+
+        # 1-4. 차례 (시집 목차)
+        toc_page_count = getattr(info, "toc_page_count", 2) or 2
         sections.append({
             "id": "toc",
             "section_type": "toc",
@@ -893,14 +1178,15 @@ class ProjectManager:
             "author": "",
             "status": "completed",
             "page_start": current_page,
-            "page_count": 2,
+            "page_count": toc_page_count,
             "episode_no": "",
             "chapter": "",
             "data": {
-                "works_count": len(works)
+                "works_count": len(works),
+                "toc_page_count": toc_page_count
             }
         })
-        current_page += 2
+        current_page += toc_page_count
 
         # -------------------------------------------------------------
         # 2. Body Matter (부 간지 & 시화 본문)
@@ -913,20 +1199,44 @@ class ProjectManager:
             # 새로운 부(Chapter)가 등장하고 비어있지 않은 경우 부 간지(Part Divider) 자동 배치
             if ch and ch != current_chapter:
                 current_chapter = ch
+                # '제1부: 솜꽃의 전설' 또는 '제1부' 분리 파싱
+                part_no = f"제{part_idx}부"
+                part_title = ""
+                part_author = getattr(w, "author", "") or ""
+                
+                # 1) 작가 분리: (지은이: ...) 또는 (홍길동) 형태 매칭
+                clean_ch = ch
+                m_auth = re.search(r'\((?:지은이\s*[:|]?\s*)?([^\)]+)\)$', clean_ch)
+                if m_auth:
+                    part_author = m_auth.group(1).strip()
+                    clean_ch = clean_ch[:m_auth.start()].strip()
+                
+                # 2) 부 번호 및 제목 분리: '제1부: 솜꽃의 전설' 또는 '제 1 부'
+                m_part = re.match(r'^(제\s*\d+\s*부|특별부|외전)\s*[:|-]?\s*(.*)$', clean_ch)
+                if m_part:
+                    part_no = m_part.group(1).strip()
+                    part_title = m_part.group(2).strip()
+                else:
+                    part_title = clean_ch.strip()
+
                 sections.append({
                     "id": f"part_{part_idx}",
                     "section_type": "part_divider",
                     "group": "body_matter",
                     "title": ch,
-                    "subtitle": f"제{part_idx}부",
-                    "author": "",
+                    "subtitle": part_no,
+                    "part_title": part_title,
+                    "author": part_author,
                     "status": "completed",
                     "page_start": current_page,
                     "page_count": 2,
                     "episode_no": "",
                     "chapter": ch,
                     "data": {
-                        "chapter_title": ch
+                        "chapter_title": ch,
+                        "part_no": part_no,
+                        "part_title": part_title,
+                        "author": part_author
                     }
                 })
                 current_page += 2
@@ -982,7 +1292,7 @@ class ProjectManager:
             "author": info.author or "",
             "status": "completed" if has_epilogue else "empty",
             "page_start": current_page,
-            "page_count": 1,
+            "page_count": 2,
             "episode_no": "",
             "chapter": "",
             "data": {
@@ -990,7 +1300,31 @@ class ProjectManager:
                 "author": info.author or ""
             }
         })
-        current_page += 1
+        current_page += 2
+
+        # 3-1-B. [옵션] 작품 해설 / 평설 (Commentary)
+        include_com = getattr(info, "include_commentary", False)
+        if include_com:
+            com_text = (getattr(info, "commentary_content", "") or "").strip()
+            sections.append({
+                "id": "commentary",
+                "section_type": "commentary",
+                "group": "back_matter",
+                "title": getattr(info, "commentary_title", "작품 해설") or "작품 해설",
+                "subtitle": "Commentary",
+                "author": getattr(info, "commentary_author", "") or "",
+                "status": "completed" if com_text else "empty",
+                "page_start": current_page,
+                "page_count": 2,
+                "episode_no": "",
+                "chapter": "",
+                "data": {
+                    "content": com_text,
+                    "author": getattr(info, "commentary_author", "") or "",
+                    "title": getattr(info, "commentary_title", "작품 해설") or "작품 해설"
+                }
+            })
+            current_page += 2
 
         # 3-2. 정식 출판 판권지 (Colophon)
         sections.append({
@@ -1002,7 +1336,7 @@ class ProjectManager:
             "author": info.author or "",
             "status": "completed",
             "page_start": current_page,
-            "page_count": 1,
+            "page_count": 2,
             "episode_no": "",
             "chapter": "",
             "data": {
@@ -1014,7 +1348,7 @@ class ProjectManager:
                 "author": info.author or ""
             }
         })
-        current_page += 1
+        current_page += 2
 
         # 3-3. 뒤표지 (Back Cover)
         blurb_text = (getattr(info, "back_cover_blurb", "") or "").strip()
@@ -1028,7 +1362,7 @@ class ProjectManager:
             "author": "",
             "status": "completed" if has_blurb else "empty",
             "page_start": current_page,
-            "page_count": 1,
+            "page_count": 2,
             "episode_no": "",
             "chapter": "",
             "data": {
@@ -1039,12 +1373,14 @@ class ProjectManager:
         })
 
         # 각 섹션 표준 필드 정규화 (프론트엔드 호환용 start_page, end_page, status_icon, group_label 등)
+        layouts_map = getattr(info, "section_layouts", {}) if isinstance(getattr(info, "section_layouts", None), dict) else {}
         for s in sections:
             p_start = s.get("page_start", 0)
             p_cnt = s.get("page_count", 1)
             s["start_page"] = p_start
             s["end_page"] = max(p_start, p_start + p_cnt - 1)
             s["category"] = s.get("section_type", "")
+            s["layout_config"] = layouts_map.get(s.get("id"))
             
             st = s.get("status", "empty")
             if st == "completed":
@@ -1111,6 +1447,22 @@ class ProjectManager:
             if "content" in payload: info.epilogue = payload["content"]
             if "author" in payload and payload["author"]: info.author = payload["author"]
             updated = True
+        elif section_id == "recommendation":
+            if "content" in payload: info.recommendation_content = payload["content"]
+            if "author" in payload and payload["author"]: info.recommendation_author = payload["author"]
+            if "title" in payload and payload["title"]: info.recommendation_title = payload["title"]
+            if "enabled" in payload: info.include_recommendation = bool(payload["enabled"])
+            updated = True
+        elif section_id == "commentary":
+            if "content" in payload: info.commentary_content = payload["content"]
+            if "author" in payload and payload["author"]: info.commentary_author = payload["author"]
+            if "title" in payload and payload["title"]: info.commentary_title = payload["title"]
+            if "enabled" in payload: info.include_commentary = bool(payload["enabled"])
+            updated = True
+        elif section_id == "toc":
+            if "toc_page_count" in payload:
+                info.toc_page_count = max(2, int(payload["toc_page_count"]))
+            updated = True
         elif section_id == "back_cover":
             if "blurb" in payload: info.back_cover_blurb = payload["blurb"]
             if "price" in payload: info.price = payload["price"]
@@ -1131,9 +1483,35 @@ class ProjectManager:
             if "author" in payload and payload["author"]: info.author = payload["author"]
             if "publisher" in payload and payload["publisher"]: info.publisher = payload["publisher"]
             updated = True
+        elif section_id.startswith("part_") or payload.get("section_type") == "part_divider":
+            # 📚 부/챕터 간지(Part Divider) 명칭 변경 일괄 동기화
+            old_title = payload.get("old_part_title") or payload.get("old_title")
+            new_title = payload.get("part_title") or payload.get("title")
+            if new_title and new_title.strip():
+                new_title = new_title.strip()
+                if not old_title:
+                    curr_struct = self.get_book_structure(project_id)
+                    for s in curr_struct.get("sections", []):
+                        if s.get("id") == section_id:
+                            old_title = s.get("title") or s.get("chapter")
+                            break
+                if old_title and old_title != new_title:
+                    pid = project_id or self.get_active_project_id()
+                    try:
+                        from core.db_manager import db_manager
+                        db_manager.rename_chapter(pid, old_title.strip(), new_title)
+                    except Exception as e:
+                        print(f"Failed to rename chapter in db_manager: {e}")
+                    updated = True
+
+        if "layout_config" in payload:
+            if not hasattr(info, "section_layouts") or not isinstance(info.section_layouts, dict):
+                info.section_layouts = {}
+            info.section_layouts[section_id] = payload["layout_config"]
+            updated = True
 
         if updated:
-            self.update_project_info(info.id, asdict(info))
+            self._save_info_and_sync_db(self.projects_dir / info.id, info)
 
         return self.get_book_structure(project_id)
 

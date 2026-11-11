@@ -20,3 +20,11 @@ projects/
 .active_project
 .exports/
 
+# 임시 및 테스트 파일
+temp_*
+candidate_*
+*.sqlite
+*.sqlite3
+샘플_기억상자
+
+

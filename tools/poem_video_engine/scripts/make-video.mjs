@@ -83,7 +83,10 @@ try {
     await writeFile(path.join(run,'result.json'),JSON.stringify({status:'complete',output,preview:path.join(run,'preview.png'),duration:input.duration,aspectRatio,spectrumStyle,videoType,lyricMode},null,2));
   }
 }catch(error){
-  detail(error.stack);if(error.cause)detail(error.cause.stack||error.cause);if(error.stderr)detail(String(error.stderr));
+  detail(JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+  if(error?.stack)detail(error.stack);
+  if(error?.cause)detail(JSON.stringify(error.cause, Object.getOwnPropertyNames(error.cause || {}), 2));
+  if(error?.stderr)detail(String(error.stderr));
   console.error(`\n${error instanceof UserError?error.message:`${stage} 중 문제가 생겼습니다. 원본 파일은 변경하지 않았습니다.`}`);
   console.error(`제작 기록: ${path.join(run,'details.log')}`);process.exitCode=1;
 }finally{

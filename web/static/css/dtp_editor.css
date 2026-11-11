@@ -6,7 +6,7 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  max-width: 960px;
+  max-width: min(1260px, 100%);
   margin: 14px auto 0 auto;
   padding: 0 4px;
   box-sizing: border-box;
@@ -422,7 +422,8 @@
   flex-direction: column;
   justify-content: flex-start;
   padding: 14px 10px;
-  overflow: visible !important; /* 리사이즈 핸들이 박스 바깥으로 돌출되어 선명하게 보이도록 보장 */
+  overflow: visible !important;
+  /* 리사이즈 핸들이 박스 바깥으로 돌출되어 선명하게 보이도록 보장 */
 }
 
 .dtp-body-content {
@@ -773,7 +774,7 @@
   display: flex !important;
   position: relative !important;
   width: 100% !important;
-  max-width: 980px !important;
+  max-width: min(1260px, 100%) !important;
   aspect-ratio: 1.414 / 1 !important;
   min-height: 580px !important;
   margin: 0 auto !important;
@@ -1053,7 +1054,8 @@
   padding: 14px 12px !important;
   display: flex;
   flex-direction: column !important;
-  overflow: visible !important; /* 상·하·좌·우 리사이즈 핸들이 잘리지 않도록 overflow: visible 보장 */
+  overflow: visible !important;
+  /* 상·하·좌·우 리사이즈 핸들이 잘리지 않도록 overflow: visible 보장 */
   margin-bottom: 0 !important;
 }
 
@@ -1600,10 +1602,11 @@
   flex-wrap: nowrap !important;
   align-items: flex-start !important;
   justify-content: center !important;
-  gap: 24px !important;
+  gap: 20px !important;
   width: 100% !important;
-  max-width: 1440px !important;
+  max-width: 100% !important;
   margin: 0 auto !important;
+  padding: 0 16px !important;
   position: relative !important;
   box-sizing: border-box !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -1617,10 +1620,23 @@
   align-items: center !important;
   justify-content: flex-start !important;
   min-width: 0 !important;
+  width: 100% !important;
   position: relative !important;
 }
 
-/* 2. 도구상자 메인 패널 (Canva / InDesign 스타일 우측 인스펙터 사이드바) */
+/* [StoryBook DTP] 상단 툴바 (2면 책장 조판틀 위에 1:1 수직 정렬 안착) */
+#bookLayoutToolbar.book-toolbar.layout-toolbar {
+  width: 100% !important;
+  max-width: min(1260px, 100%) !important;
+  margin: 0 auto 10px auto !important;
+  padding: 6px 4px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. 도구상자 메인 패널 (화면 상단 풀하이트 & 슬림 320px 우측 사이드바) */
 .dtp-toolbox-panel {
   width: 320px;
   min-width: 320px;
@@ -1634,10 +1650,64 @@
   flex-direction: column;
   overflow: hidden;
   position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 120px);
+  top: 0;
+  height: calc(100vh - 65px);
+  max-height: calc(100vh - 65px);
   z-index: 40;
   transition: width 0.28s ease, min-width 0.28s ease, transform 0.28s ease, opacity 0.28s ease;
+}
+
+/* 글·그림 2단 분할 레이아웃 (좌측: 글 스튜디오 / 우측: 그림 스튜디오) */
+.dtp-two-column-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dtp-col-text {
+  border-right: 1.5px dashed #E6D8C8;
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dtp-col-image {
+  padding-left: 2px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dtp-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 9px;
+  margin-bottom: 8px;
+  background: #F7EFE4;
+  border-radius: 6px;
+  border: 1px solid #EBDDCB;
+}
+
+.dtp-col-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #4A3319;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dtp-col-badge {
+  font-size: 0.65rem;
+  color: #8C6A4F;
+  background: #FFF;
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid #D5C2B0;
+  font-weight: 600;
 }
 
 /* 접힌 상태 (Collapsed - 우측 가장자리 밀착) */
@@ -1750,11 +1820,11 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 14px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-height: calc(100vh - 220px);
+  gap: 4px;
+  max-height: none;
 }
 
 .dtp-toolbox-body::-webkit-scrollbar {
@@ -1898,7 +1968,7 @@
 .dtp-tab-content {
   display: none !important;
   flex-direction: column !important;
-  gap: 8px !important;
+  gap: 4px !important;
   width: 100% !important;
 }
 
@@ -1910,11 +1980,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   background: #FFFFFF;
   border: 1px solid #EFE6D8;
-  border-radius: 7px;
+  border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
@@ -3032,9 +3102,9 @@
 .dtp-master-presets-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  gap: 5px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px dashed #E2D9CF;
 }
 
@@ -3043,12 +3113,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 7px 4px;
+  padding: 4px 2px;
   border: 1px solid #D6C7B2;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #FCFBF9;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   text-align: center;
 }
 
@@ -3086,7 +3156,8 @@
    ======================================================== */
 .dtp-box-body-sub {
   border-style: dashed !important;
-  border-color: #D97706 !important; /* 호박색 점선 테두리로 1단과 시각적 구분 */
+  border-color: #D97706 !important;
+  /* 호박색 점선 테두리로 1단과 시각적 구분 */
 }
 
 .dtp-box-toolbar {
@@ -3239,3 +3310,344 @@
   border-bottom-right-radius: 6px !important;
 }
 
+/* ==========================================================================
+   부간지 (Part Divider) 2-Layer 네이티브 고품격 타이포그래피 템플릿
+   ========================================================================== */
+.dtp-body-text .part-no-line,
+.poem-line.part-no-line,
+.poem-line.part-no-line .line-text {
+  font-size: 2.15rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 5px !important;
+  color: #2C1D11 !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
+}
+
+.dtp-body-text .part-no-line,
+.poem-line.part-no-line {
+  margin-top: 6px !important;
+  margin-bottom: 16px !important;
+}
+
+.dtp-body-text .part-title-line,
+.poem-line.part-title-line,
+.poem-line.part-title-line .line-text {
+  font-size: 1.55rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 2px !important;
+  color: #3A2A1E !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+}
+
+.dtp-body-text .part-title-line,
+.poem-line.part-title-line {
+  margin-bottom: 16px !important;
+}
+
+.dtp-body-text .part-author-line,
+.poem-line.part-author-line,
+.poem-line.part-author-line .line-text {
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 2.5px !important;
+  color: #8C6A4F !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+}
+
+.dtp-body-text .part-author-line,
+.poem-line.part-author-line {
+  margin-bottom: 20px !important;
+}
+
+.dtp-body-text .part-divider-line,
+.poem-line.part-divider-line,
+.poem-line.part-divider-line .line-text {
+  font-size: 1.15rem !important;
+  color: #B89A7E !important;
+  letter-spacing: 4px !important;
+  line-height: 1.0 !important;
+  text-align: center !important;
+  user-select: none;
+}
+
+.dtp-body-text .part-divider-line,
+.poem-line.part-divider-line {
+  margin-bottom: 26px !important;
+}
+
+.dtp-body-text .part-desc-line,
+.poem-line.part-desc-line,
+.poem-line.part-desc-line .line-text {
+  font-size: 0.95rem !important;
+  line-height: 2.2 !important;
+  font-style: italic !important;
+  color: #5A4A3A !important;
+  text-align: center !important;
+  letter-spacing: 0.3px !important;
+}
+
+.dtp-body-text .part-empty-line,
+.poem-line.part-empty-line {
+  min-height: 14px !important;
+  line-height: 14px !important;
+}
+
+/* ==========================================================================
+   출판 표지 전용 책등 (Spine) 및 일체형 표지 조판 스타일 (Wrap-around Cover)
+   ========================================================================== */
+.dtp-spine-bar {
+  width: 38px;
+  min-width: 38px;
+  max-width: 38px;
+  height: 520px;
+  background: linear-gradient(90deg, #E6DDD0 0%, #F5F0E8 25%, #FAF7F2 50%, #F5F0E8 75%, #E6DDD0 100%);
+  border-left: 1px solid #D4C2AF;
+  border-right: 1px solid #D4C2AF;
+  box-shadow: inset 3px 0 6px rgba(0, 0, 0, 0.06), inset -3px 0 6px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  user-select: none;
+  overflow: hidden;
+}
+
+.dtp-spine-bar .spine-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  background: #8C6A4F;
+  color: #FFFFFF;
+  padding: 2px 5px;
+  border-radius: 8px;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  margin-bottom: 8px;
+}
+
+.dtp-spine-bar .spine-content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 12px 0;
+  cursor: text;
+}
+
+.dtp-spine-bar .spine-text-title,
+.dtp-spine-bar .spine-text-author,
+.dtp-spine-bar .spine-text-publisher {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.dtp-spine-bar .spine-text-title {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2C1D11;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+
+.dtp-spine-bar .spine-text-author {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #553412;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.dtp-spine-bar .spine-text-publisher {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #8C6A4F;
+  letter-spacing: 1.5px;
+  line-height: 1;
+}
+
+/* 표지 모드일 때 스프레드 책등 밀착 뷰 */
+.dtp-spread-view.is-cover-spread .dtp-page-left {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+}
+
+.dtp-spread-view.is-cover-spread .dtp-page-right {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-left: none !important;
+}
+
+/* ==========================================================================
+   앞표지 / 뒤표지 2-Layer 네이티브 고품격 템플릿
+   ========================================================================== */
+.dtp-body-text .cover-collection-badge {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 3px !important;
+  color: #8C6A4F !important;
+  text-transform: uppercase;
+  margin-bottom: 12px !important;
+  text-align: center !important;
+}
+
+.dtp-body-text .cover-front-title,
+.dtp-body-text .cover-front-title .line-text {
+  font-family: 'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif;
+  font-size: 2.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px !important;
+  color: #2C1D11 !important;
+  line-height: 1.25 !important;
+  text-align: center !important;
+  margin-bottom: 8px !important;
+}
+
+.dtp-body-text .cover-front-subtitle,
+.dtp-body-text .cover-front-subtitle .line-text {
+  font-size: 0.96rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  color: #8C6A4F !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+  margin-bottom: 12px !important;
+}
+
+.dtp-body-text .cover-front-author,
+.dtp-body-text .cover-front-author .line-text {
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 2px !important;
+  color: #553412 !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+  margin-bottom: 18px !important;
+}
+
+.dtp-body-text .cover-front-publisher,
+.dtp-body-text .cover-front-publisher .line-text {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  color: #553412 !important;
+  line-height: 1.3 !important;
+  text-align: center !important;
+  margin-top: 14px !important;
+}
+
+/* 뒤표지 전용 */
+.dtp-body-text .cover-back-blurb {
+  font-size: 0.95rem !important;
+  line-height: 2.15 !important;
+  color: #4A3A2C !important;
+  text-align: center !important;
+  letter-spacing: 0.2px !important;
+  padding: 0 10px;
+}
+
+.dtp-body-text .cover-back-footer {
+  border-top: 1.5px solid #D8C7B5;
+  padding-top: 14px;
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 0.80rem;
+  color: #7A6553;
+  width: 100%;
+}
+
+/* ========================================================
+   [StoryBook DTP] 슬라이더 (Range Slider) 미니멀 모던 스타일
+   - 왼쪽 파란색 채움(Fill) 완전 제거: 단일 중립 베이지 트랙
+   - 단정한 원형 핸들(Thumb)로 위치만 깔끔하게 특정
+   ======================================================== */
+.dtp-toolbox-panel input[type="range"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  height: 18px !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.dtp-toolbox-panel input[type="range"]:focus {
+  outline: none !important;
+}
+
+/* 트랙 (단일 중립 베이지 트랙) */
+.dtp-toolbox-panel input[type="range"]::-webkit-slider-runnable-track {
+  width: 100% !important;
+  height: 3px !important;
+  background: #E5DCD0 !important;
+  border-radius: 2px !important;
+  border: none !important;
+}
+
+.dtp-toolbox-panel input[type="range"]::-moz-range-track {
+  width: 100% !important;
+  height: 3px !important;
+  background: #E5DCD0 !important;
+  border-radius: 2px !important;
+  border: none !important;
+}
+
+.dtp-toolbox-panel input[type="range"]::-moz-range-progress {
+  background: #E5DCD0 !important;
+}
+
+/* 원형 핸들 (클린 화이트 + 서정 브라운 림) */
+.dtp-toolbox-panel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #FFFFFF !important;
+  border: 2px solid #8C5335 !important;
+  box-shadow: 0 1px 3px rgba(100, 60, 25, 0.22) !important;
+  margin-top: -4.5px !important;
+  cursor: pointer !important;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease !important;
+}
+
+.dtp-toolbox-panel input[type="range"]:hover::-webkit-slider-thumb {
+  background: #8C5335 !important;
+  border-color: #643E19 !important;
+  transform: scale(1.18) !important;
+}
+
+.dtp-toolbox-panel input[type="range"]:active::-webkit-slider-thumb {
+  background: #643E19 !important;
+  border-color: #553412 !important;
+  transform: scale(1.22) !important;
+}
+
+.dtp-toolbox-panel input[type="range"]::-moz-range-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #FFFFFF !important;
+  border: 2px solid #8C5335 !important;
+  box-shadow: 0 1px 3px rgba(100, 60, 25, 0.22) !important;
+  cursor: pointer !important;
+}

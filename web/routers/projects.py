@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List
 import logging
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form, Body
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -75,37 +75,45 @@ def _safe_child(base: Path, rel: str):
         return None
 
 
-# 동적 이미지 서빙 (활성 프로젝트 폴더 내 images 서빙)
+# 동적 이미지 서빙 (100% Cloudflare R2 클라우드 오브젝트 스토리지)
 @router.get("/images/{image_path:path}")
 async def serve_image(image_path: str):
+    from fastapi.responses import Response
+    from core.r2_storage import r2_storage
+    r2_storage.reload_config()
+    pid = project_manager.get_active_project_id()
     img_name = Path(image_path.replace("\\", "/")).name
 
-    # 1. 활성 프로젝트의 images 디렉토리
-    p_img = _safe_child(project_manager.get_active_images_dir(), img_name)
-    if p_img:
-        return FileResponse(str(p_img))
+    if r2_storage.public_url:
+        rel_key = f"{pid}/images/{img_name}"
+        return RedirectResponse(url=f"{r2_storage.public_url}/{urllib.parse.quote(rel_key, safe='/~')}", status_code=307)
 
-    # 2. 프로젝트 폴더 내 상대경로
-    p_direct = _safe_child(project_manager.get_project_dir(), image_path)
-    if p_direct:
-        return FileResponse(str(p_direct))
+    raw_bytes = r2_storage.get_media_bytes(f"/projects/{pid}/images/{img_name}")
+    if raw_bytes:
+        ext = Path(img_name).suffix.lower()
+        mime = "image/png" if ext == ".png" else ("image/webp" if ext == ".webp" else "image/jpeg")
+        return Response(content=raw_bytes, media_type=mime)
 
     raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다.")
 
-# 동적 오디오 음원 서빙 (활성 프로젝트 및 프로젝트별 music 서빙)
+# 동적 오디오 음원 서빙 (100% Cloudflare R2 클라우드 오브젝트 스토리지)
 @router.get("/music/{audio_path:path}")
 async def serve_audio(audio_path: str):
+    from fastapi.responses import Response
+    from core.r2_storage import r2_storage
+    r2_storage.reload_config()
+    pid = project_manager.get_active_project_id()
     audio_name = Path(audio_path.replace("\\", "/")).name
 
-    # 1. 활성 프로젝트의 music 디렉토리
-    p_music = _safe_child(project_manager.get_project_dir() / "music", audio_name)
-    if p_music:
-        return FileResponse(str(p_music))
+    if r2_storage.public_url:
+        rel_key = f"{pid}/music/{audio_name}"
+        return RedirectResponse(url=f"{r2_storage.public_url}/{urllib.parse.quote(rel_key, safe='/~')}", status_code=307)
 
-    # 2. 프로젝트 폴더 내 상대경로
-    p_direct = _safe_child(project_manager.get_project_dir(), audio_path)
-    if p_direct:
-        return FileResponse(str(p_direct))
+    raw_bytes = r2_storage.get_media_bytes(f"/projects/{pid}/music/{audio_name}")
+    if raw_bytes:
+        ext = Path(audio_name).suffix.lower()
+        mime = "audio/wav" if ext == ".wav" else ("audio/webm" if ext == ".webm" else "audio/mpeg")
+        return Response(content=raw_bytes, media_type=mime)
 
     raise HTTPException(status_code=404, detail="음원 파일을 찾을 수 없습니다.")
 
@@ -128,10 +136,19 @@ async def get_projects():
     }
 
 @router.post("/api/projects/select")
-async def select_project(req: ProjectSelectRequest):
+async def select_project(req: ProjectSelectRequest, response: Response):
     try:
         project_manager.set_active_project_id(req.project_id)
         info = project_manager.get_active_project_info()
+        import urllib.parse
+        response.set_cookie(
+            key="sb_active_project",
+            value=urllib.parse.quote(info.id),
+            max_age=30 * 24 * 3600,
+            httponly=False,
+            samesite="lax",
+            path="/"
+        )
         return {"success": True, "active_project": asdict(info)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -212,6 +229,35 @@ async def export_project_zip(project_id: Optional[str] = None):
         raise HTTPException(status_code=500, detail=f"백업 생성 실패: {str(e)}")
 
 
+@router.post("/api/projects/import_zip")
+async def import_project_zip_endpoint(zip_file: UploadFile = File(...)):
+    """
+    [내 시집 전체백업.zip 업로드 복원 API]
+    사용자가 PC에 내려받았던 `{시집명}_전체백업.zip` 사본을 다시 서버(Turso DB + Cloudflare R2)로 일괄 복원합니다.
+    """
+    if not zip_file.filename or not zip_file.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="유효한 .zip 백업 파일을 선택해주세요.")
+    try:
+        zip_bytes = await zip_file.read()
+        current_user = auth_manager.get_current_user()
+        owner_id = current_user.get("user_id", "") if current_user else ""
+        owner_email = current_user.get("email", "") if current_user else ""
+
+        restored_info = await asyncio.to_thread(
+            project_manager.import_project_zip,
+            zip_bytes,
+            owner_id,
+            owner_email
+        )
+        return {
+            "success": True,
+            "project": asdict(restored_info),
+            "message": f"「{restored_info.name}」 시집이 클라우드 서버(Turso DB + R2)로 완벽히 복원되었습니다!"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"백업 ZIP 복원 실패: {str(e)}")
+
+
 # -------------------------------------------------------------
 # 현재 활성 프로젝트 상태 및 창작 API
 # -------------------------------------------------------------
@@ -260,11 +306,13 @@ async def get_gallery_data(project_id: Optional[str] = None):
         mgr = project_manager.get_manuscript_manager(pid)
         works = mgr.load_works()
 
-        safe_name = info.name.replace(" ", "_")
+        safe_name = info.id or info.name.replace(" ", "_")
         episodes = []
         for w in works:
             img_file = (w.image_file or "").replace("./", "").lstrip("/")
-            if img_file.startswith("images/"):
+            if img_file.startswith("http://") or img_file.startswith("https://") or img_file.startswith("/projects/"):
+                img_path = img_file
+            elif img_file.startswith("images/") or img_file.startswith("media/"):
                 img_path = f"/projects/{safe_name}/{img_file}"
             elif img_file:
                 img_path = f"/projects/{safe_name}/images/{img_file}"
@@ -273,7 +321,6 @@ async def get_gallery_data(project_id: Optional[str] = None):
 
             recite_f = getattr(w, "recite_file", "") or ""
             music_f = getattr(w, "music_file", "") or ""
-            # 하위 호환 매핑
             if not recite_f and not music_f:
                 old_a = getattr(w, "audio_file", "") or ""
                 if "낭송" in old_a or old_a.endswith(".webm"):
@@ -281,68 +328,32 @@ async def get_gallery_data(project_id: Optional[str] = None):
                 else:
                     music_f = old_a
 
-            # 🎵 실제 파일 시스템의 3대 음원 자동 탐색 (육성 / AI낭송 / 노래)
-            import re
-            ep_digits = re.sub(r'[^0-9]', '', w.episode_no or '').zfill(2)
-            proj_dir = project_manager.get_project_dir(pid)
-            music_dir = proj_dir / "music"
-
             def _clean_audio_url(f_path):
                 if not f_path:
                     return ""
+                if f_path.startswith("http://") or f_path.startswith("https://") or f_path.startswith("/projects/"):
+                    return f_path
                 f_clean = f_path.replace("./", "").lstrip("/")
                 return f"/projects/{safe_name}/{f_clean}"
 
-            # 1) 육성 시 낭송 (내 목소리 직접 녹음)
-            voice_f = ""
-            for ext in ["wav", "webm", "mp3", "m4a"]:
-                cand = music_dir / f"{ep_digits}_육성.{ext}"
-                if cand.exists():
-                    voice_f = f"music/{cand.name}"
-                    break
+            # 1) 육성 시 낭송 (100% Turso DB 메타데이터)
+            voice_f = getattr(w, "voice_user_file", "") or ""
             if not voice_f and recite_f and ("육성" in recite_f or recite_f.endswith(".webm")):
                 voice_f = recite_f
 
-            # 2) AI 시 낭송 (AI TTS 성우)
-            ai_recite_f = ""
-            for ext in ["wav", "mp3", "m4a"]:
-                for tag in ["낭송", "AI낭송"]:
-                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
-                    if cand.exists():
-                        ai_recite_f = f"music/{cand.name}"
-                        break
-                if ai_recite_f:
-                    break
+            # 2) AI 시 낭송 (100% Turso DB 메타데이터)
+            ai_recite_f = getattr(w, "voice_tts_file", "") or ""
             if not ai_recite_f and recite_f and "육성" not in recite_f and "음악" not in recite_f:
                 ai_recite_f = recite_f
 
-            # 3) 음악 시 낭송 (Suno 배경음악 낭송 / Spoken Word)
-            music_recite_f = ""
-            for ext in ["mp3", "m4a", "wav"]:
-                for tag in ["음악낭송", "음악시낭송"]:
-                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
-                    if cand.exists():
-                        music_recite_f = f"music/{cand.name}"
-                        break
-                if music_recite_f:
-                    break
+            # 3) 음악 시 낭송 (100% Turso DB 메타데이터)
+            music_recite_f = getattr(w, "voice_suno_file", "") or getattr(w, "voice_bgm_file", "") or ""
             if not music_recite_f and recite_f and "음악" in recite_f:
                 music_recite_f = recite_f
 
-            # 4) 노래 듣기 (가창 노래)
-            song_f = ""
-            for ext in ["mp3", "m4a", "wav"]:
-                for tag in ["노래", "음원", "music"]:
-                    cand = music_dir / f"{ep_digits}_{tag}.{ext}"
-                    if cand.exists():
-                        song_f = f"music/{cand.name}"
-                        break
-                if song_f:
-                    break
-            if not song_f and music_f:
-                song_f = music_f
+            # 4) 노래 듣기 (100% Turso DB 메타데이터)
+            song_f = music_f or ""
 
-            # 하위 호환 매핑
             recite_f = voice_f or ai_recite_f or music_recite_f
             music_f = song_f
 
@@ -353,21 +364,11 @@ async def get_gallery_data(project_id: Optional[str] = None):
             music_recite_path = _clean_audio_url(music_recite_f)
             song_path = _clean_audio_url(song_f)
 
-            # 🎬 비디오 파일(낭송 영상 및 노래 영상 각각) 감지
-            poem_video_path = ""
-            song_video_path = ""
-            videos_dir = proj_dir / "videos"
-            if videos_dir.exists() and ep_digits:
-                # 노래 영상
-                matched_song_v = list(videos_dir.glob(f"*{ep_digits}*music*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*노래*.mp4"))
-                if matched_song_v:
-                    latest_song = max(matched_song_v, key=os.path.getmtime)
-                    song_video_path = f"/api/poem_video/stream/{safe_name}/{latest_song.name}"
-                # 낭송 영상
-                matched_poem_v = list(videos_dir.glob(f"*{ep_digits}*recite*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*낭송*.mp4")) or list(videos_dir.glob(f"{ep_digits}_*.mp4"))
-                if matched_poem_v:
-                    latest_poem = max(matched_poem_v, key=os.path.getmtime)
-                    poem_video_path = f"/api/poem_video/stream/{safe_name}/{latest_poem.name}"
+            # 🎬 비디오 파일 감지 (100% Turso DB 메타데이터)
+            poem_video_path = getattr(w, "video_file", "") or ""
+            if poem_video_path and not (poem_video_path.startswith("http") or poem_video_path.startswith("/")):
+                poem_video_path = f"/projects/{safe_name}/{poem_video_path.lstrip('./')}"
+            song_video_path = poem_video_path if "노래" in poem_video_path else ""
 
             has_video = bool(poem_video_path or song_video_path)
             default_video = song_video_path or poem_video_path
@@ -448,46 +449,219 @@ async def update_book_section_api(payload: Dict[str, Any] = Body(...), project_i
             return {"success": False, "error": "section_id is required"}
         data = payload.get("data", {})
         struct = project_manager.update_section_content(section_id, data, project_id)
-        try:
-            from core.gallery_builder import sync_project_gallery_html
-            sync_project_gallery_html(project_id)
-        except Exception:
-            pass
         return {"success": True, "data": struct}
     except Exception as e:
         logger.error(f"Failed to update book section: {e}")
         return {"success": False, "error": str(e)}
 
 
+@router.post("/api/book/structure/toggle_optional_section")
+async def toggle_optional_section_api(payload: Dict[str, Any] = Body(...), project_id: Optional[str] = None):
+    """
+    옵션 부속지(추천사, 작품 해설 등)를 원클릭으로 활성화/비활성화하고 최신 책 구조를 반환합니다.
+    """
+    try:
+        section_type = payload.get("section_type")  # "recommendation" or "commentary"
+        enabled = bool(payload.get("enabled", False))
+        if section_type not in ("recommendation", "commentary"):
+            return {"success": False, "error": "Invalid section_type"}
+
+        struct = project_manager.update_section_content(
+            section_type,
+            {"enabled": enabled, **payload.get("data", {})},
+            project_id
+        )
+        return {"success": True, "data": struct}
+    except Exception as e:
+        logger.error(f"Failed to toggle optional section: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # -------------------------------------------------------------
-# 시화 갤러리 웹 서빙 & 독립 웹 배포용 패키징 API
+# 모둠솥 공용 서가 (Bookshelf) & 시화 갤러리 웹 서빙
 # -------------------------------------------------------------
 @router.get("/gallery", response_class=HTMLResponse)
+async def view_gallery_portal_or_book(request: Request, project_id: Optional[str] = None, view: Optional[str] = None):
+    """
+    - 기본 접속(/gallery): 모둠솥 공용 서가 포털(bookshelf_portal.html) 서빙
+    - 개별 시집 감상 파라미터(?view=1 또는 ?project_id=...): 3D 넘겨보기 뷰어 서빙
+    """
+    if view == "1" or (project_id and request.query_params.get("view")):
+        from core.gallery_builder import render_project_gallery_html
+        pid = project_id or request.query_params.get("project_id") or project_manager.get_active_project_id()
+        html_content = render_project_gallery_html(pid, relative_paths=False)
+        resp = HTMLResponse(content=html_content)
+        resp.set_cookie(key="sb_active_project", value=urllib.parse.quote(pid), max_age=30*24*3600, httponly=False, samesite="lax")
+        return resp
+
+    # 공용 서가 포털
+    return templates.TemplateResponse(
+        request=request,
+        name="bookshelf_portal.html",
+        context={"request": request}
+    )
+
+
+@router.get("/gallery/view/{project_id}", response_class=HTMLResponse)
 @router.get("/gallery/{project_id}", response_class=HTMLResponse)
-async def view_gallery_page(project_id: Optional[str] = None):
-    """
-    온라인 시화 갤러리 웹 서빙:
-    - 활성 또는 지정된 시집의 최신 시화집_갤러리.html 동기화 후 반환
-    """
-    from core.gallery_builder import sync_project_gallery_html
+async def view_gallery_book_page(request: Request, project_id: str):
+    """지정된 시집 프로젝트의 3D/2-Layer 넘겨보기 뷰어"""
+    from core.gallery_builder import render_project_gallery_html
     pid = project_id or project_manager.get_active_project_id()
     try:
-        pdir = project_manager.get_project_dir(pid)
-    except Exception:
-        raise HTTPException(status_code=404, detail="존재하지 않는 시집 프로젝트입니다.")
-
-    # 최신 원고 및 에셋 동기화
-    try:
-        sync_project_gallery_html(pid)
+        html_content = render_project_gallery_html(pid, relative_paths=False)
+        resp = HTMLResponse(content=html_content)
+        resp.set_cookie(key="sb_active_project", value=urllib.parse.quote(pid), max_age=30*24*3600, httponly=False, samesite="lax")
+        return resp
     except Exception as e:
-        logger.warning(f"Gallery sync warning: {e}")
+        raise HTTPException(status_code=404, detail=f"시화 갤러리 렌더링 오류: {str(e)}")
 
-    gallery_file = pdir / "시화집_갤러리.html"
-    if not gallery_file.exists():
-        raise HTTPException(status_code=404, detail="시화 갤러리 파일을 찾을 수 없습니다.")
 
-    html_content = gallery_file.read_text(encoding="utf-8")
-    return HTMLResponse(content=html_content)
+@router.get("/author/{user_id}", response_class=HTMLResponse)
+async def view_author_bookshelf_page(request: Request, user_id: str):
+    """작가 개인 서재 페이지 (/author/{user_id})"""
+    from core.db_manager import db_manager
+    current_user = auth_manager.get_current_user()
+    is_owner = bool(current_user and current_user.get("user_id") == user_id)
+
+    profile = db_manager.get_author_profile(user_id)
+    if not profile:
+        user_row = db_manager.get_user_by_id(user_id)
+        pen_name = (user_row.get("display_name") if user_row else None) or user_id
+        profile = {"user_id": user_id, "pen_name": pen_name, "bio": ""}
+
+    items = db_manager.get_bookshelf_items(user_id=user_id, only_published=not is_owner)
+    return templates.TemplateResponse(
+        request=request,
+        name="author_bookshelf.html",
+        context={
+            "request": request,
+            "author": profile,
+            "items": items,
+            "is_owner": is_owner
+        }
+    )
+
+
+# -------------------------------------------------------------
+# 모둠솥 서가(Bookshelf) API
+# -------------------------------------------------------------
+@router.get("/api/bookshelf/public")
+async def get_public_bookshelf_api(keyword: Optional[str] = None, limit: int = 50, offset: int = 0):
+    """공용 서가 출품작 목록 조회"""
+    from core.db_manager import db_manager
+    items = db_manager.get_bookshelf_items(only_published=True, keyword=keyword, limit=limit, offset=offset)
+    return {"success": True, "items": items}
+
+
+class AddExternalBookRequest(BaseModel):
+    title: str
+    author_name: str
+    book_type: Optional[str] = "external_ebook"
+    cover_image_url: Optional[str] = ""
+    view_url: str
+    excerpt: Optional[str] = ""
+
+
+@router.post("/api/bookshelf/add_external")
+async def add_external_book_api(req: AddExternalBookRequest):
+    """작가 소장 외부 e-Book / 출판 도서 등록"""
+    from core.db_manager import db_manager
+    current_user = auth_manager.get_current_user()
+    user_id = current_user.get("user_id") if current_user else "guest_author"
+
+    item = db_manager.upsert_bookshelf_item({
+        "user_id": user_id,
+        "book_type": req.book_type or "external_ebook",
+        "title": req.title.strip(),
+        "author_name": req.author_name.strip(),
+        "cover_image_url": req.cover_image_url.strip(),
+        "view_url": req.view_url.strip(),
+        "excerpt": req.excerpt.strip(),
+        "is_published": 1,
+        "has_recite": 0
+    })
+    return {"success": True, "item": item}
+
+
+@router.post("/api/bookshelf/publish_current")
+async def publish_current_project_api(project_id: Optional[str] = None):
+    """현재 스튜디오의 시화집을 모둠솥 공용 서가에 1-클릭 출품 (수정 시 자동 갱신)"""
+    from core.db_manager import db_manager
+    current_user = auth_manager.get_current_user()
+    user_id = current_user.get("user_id") if current_user else "author_user"
+
+    pid = project_id or project_manager.get_active_project_id()
+    info = project_manager.get_project_info(pid)
+    mgr = project_manager.get_manuscript_manager(pid)
+    works = mgr.load_works()
+
+    has_recite = any(
+        bool(getattr(w, "voice_user_file", "") or getattr(w, "voice_tts_file", "") or getattr(w, "recite_file", ""))
+        for w in works
+    )
+
+    cover_url = getattr(info, "cover_image", "")
+    if not cover_url and works and works[0].image_file:
+        cover_url = works[0].image_file
+
+    if cover_url and not cover_url.startswith("http") and not cover_url.startswith("/"):
+        safe_name = info.name.replace(" ", "_")
+        cover_url = f"/projects/{safe_name}/{cover_url.lstrip('./')}"
+
+    excerpt = ""
+    if works and works[0].poem_body:
+        lines = [l.strip() for l in works[0].poem_body.splitlines() if l.strip()]
+        excerpt = " / ".join(lines[:2])
+    elif getattr(info, "prologue", ""):
+        excerpt = info.prologue[:100]
+
+    author_name = info.author or (current_user.get("display_name") if current_user else "시인")
+
+    item = db_manager.upsert_bookshelf_item({
+        "user_id": user_id,
+        "book_type": "internal_storybook",
+        "title": info.name,
+        "author_name": author_name,
+        "cover_image_url": cover_url,
+        "excerpt": excerpt,
+        "view_url": f"/gallery/view/{pid}",
+        "project_id": pid,
+        "is_published": 1,
+        "has_recite": 1 if has_recite else 0
+    })
+
+    db_manager.upsert_author_profile(user_id, pen_name=author_name)
+
+    return {"success": True, "item": item}
+
+
+class ToggleVisibilityRequest(BaseModel):
+    item_id: str
+
+
+@router.post("/api/bookshelf/toggle_visibility")
+async def toggle_bookshelf_visibility_api(req: ToggleVisibilityRequest):
+    """출품 도서 공개/비공개 전환"""
+    from core.db_manager import db_manager
+    current_user = auth_manager.get_current_user()
+    user_id = current_user.get("user_id") if current_user else "author_user"
+
+    new_val = db_manager.toggle_bookshelf_visibility(req.item_id, user_id)
+    if new_val is None:
+        raise HTTPException(status_code=403, detail="권한이 없거나 존재하지 않는 도서입니다.")
+    return {"success": True, "is_published": new_val}
+
+
+@router.delete("/api/bookshelf/item/{item_id}")
+async def delete_bookshelf_item_api(item_id: str):
+    """서가에서 도서 삭제"""
+    from core.db_manager import db_manager
+    current_user = auth_manager.get_current_user()
+    user_id = current_user.get("user_id") if current_user else "author_user"
+
+    success = db_manager.delete_bookshelf_item(item_id, user_id)
+    return {"success": success}
 
 
 @router.get("/api/projects/export_gallery_zip")

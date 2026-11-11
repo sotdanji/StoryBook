@@ -83,19 +83,28 @@ async def get_bookk_formats():
 
 @router.get("/api/bookk/export_interior")
 async def export_bookk_interior(format_key: str = "a5", paper_type: str = "white_100g"):
-    """부크크 300DPI 사방 3mm 도련 및 20mm 제본 여백 내지 완제본 PDF 생성 및 다운로드"""
+    """부크크 300DPI 사방 3mm 도련 및 20mm 제본 여백 내지 완제본 PDF 온디맨드 생성 및 다운로드"""
     try:
+        from core.config import BASE_DIR
+        from core.r2_storage import r2_storage
+
         info = project_manager.get_active_project_info()
-        p_dir = project_manager.get_project_dir()
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
         builder = BookkPDFBuilder(format_key=format_key, paper_type=paper_type)
 
         format_label = "사륙판" if format_key == "b6_mod" else "국판"
         out_filename = f"{info.name}_부크크_내지_{format_label}_300DPI.pdf"
-        out_path = p_dir / out_filename
+        out_path = export_dir / out_filename
 
         await asyncio.to_thread(builder.build_interior_pdf, output_path=out_path)
         if not out_path.exists():
             raise HTTPException(status_code=500, detail="부크크 내지 PDF 생성에 실패했습니다.")
+
+        try:
+            r2_storage.save_pdf(info.id, out_filename, out_path.read_bytes())
+        except Exception:
+            pass
 
         safe_name = urllib.parse.quote(out_filename)
         return FileResponse(
@@ -109,27 +118,35 @@ async def export_bookk_interior(format_key: str = "a5", paper_type: str = "white
 
 @router.get("/api/bookk/export_cover")
 async def export_bookk_cover(format_key: str = "b6_mod", paper_type: str = "white_100g", total_pages: int = 0):
-    """부크크 표지 펼침면(뒤표지 + 책등 세네카 + 앞표지 + 도련 3mm) PDF 생성 및 다운로드"""
+    """부크크 표지 펼침면(뒤표지 + 책등 세네카 + 앞표지 + 도련 3mm) PDF 온디맨드 생성 및 다운로드"""
     try:
+        from core.config import BASE_DIR
+        from core.r2_storage import r2_storage
+
         info = project_manager.get_active_project_info()
-        p_dir = project_manager.get_project_dir()
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
         builder = BookkPDFBuilder(format_key=format_key, paper_type=paper_type)
 
         # 총 페이지 수 자동 산출 (미지정 또는 기본값일 때)
         if total_pages <= 0 or total_pages == 28:
             mgr = project_manager.get_active_manuscript_manager()
             episodes = mgr.load_works()
-            # 본문(작품당 2P) + 권두(도비라/서문/목차) + 권말(맺음말/판권지) = 최소 40~80쪽 표준
             actual_pages = len(episodes) * 2 + 8
             total_pages = max(actual_pages, 80)
 
         format_label = "사륙판" if format_key == "b6_mod" else "국판"
         out_filename = f"{info.name}_부크크_표지_{format_label}_300DPI.pdf"
-        out_path = p_dir / out_filename
+        out_path = export_dir / out_filename
 
         await asyncio.to_thread(builder.build_cover_spread_pdf, output_path=out_path, total_pages=total_pages)
         if not out_path.exists():
             raise HTTPException(status_code=500, detail="부크크 표지 PDF 생성에 실패했습니다.")
+
+        try:
+            r2_storage.save_pdf(info.id, out_filename, out_path.read_bytes())
+        except Exception:
+            pass
 
         safe_name = urllib.parse.quote(out_filename)
         return FileResponse(
@@ -160,18 +177,20 @@ class BookExtrasGenerateRequest(BaseModel):
 
 @router.get("/api/book_extras")
 async def get_book_extras():
-    """현재 활성 시집의 본문 외 출판 구성 요소(서문, 에필로그, 뒷표지카피, 판권) 조회"""
+    """현재 활성 시집의 본문 외 출판 구성 요소(서문, 에필로그, 뒷표지카피, 판권) 조회 (Turso DB 기준)"""
     try:
         info = project_manager.get_active_project_info()
+        mgr = project_manager.get_active_manuscript_manager()
         images_dir = project_manager.get_active_images_dir()
-        
-        # 프로젝트 내 사용 가능한 삽화 목록
-        available_images = []
-        if images_dir.exists():
-            for f in images_dir.glob("*.*"):
-                if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]:
-                    available_images.append(f.name)
-            available_images.sort()
+
+        # Turso DB에 등록된 시들의 삽화 파일 목록 수집 (100% 서버 일원화)
+        available_set = set()
+        for w in mgr.load_works():
+            for img_f in (w.image_file, getattr(w, "image_file_2", "")):
+                if img_f:
+                    available_set.add(Path(img_f.split("?")[0]).name)
+
+        available_images = sorted(available_set)
 
         return {
             "success": True,
@@ -229,11 +248,13 @@ async def generate_book_extras(req: BookExtrasGenerateRequest):
 
 @router.get("/api/canva/export_publishing_csv")
 async def export_canva_publishing_csv():
-    """Canva 표지/서문/목차/에필로그/판권지 일괄 바인딩용 메타데이터 CSV 다운로드"""
+    """Canva 표지/서문/목차/에필로그/판권지 일괄 바인딩용 메타데이터 CSV 온디맨드 다운로드"""
     try:
+        from core.config import BASE_DIR
         info = project_manager.get_active_project_info()
-        p_dir = project_manager.get_project_dir()
-        out_path = p_dir / f"{info.name}_출판구성데이터.csv"
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        out_path = export_dir / f"{info.name}_출판구성데이터.csv"
         build_canva_publishing_metadata_csv(output_file=out_path)
 
         safe_name = urllib.parse.quote(out_path.name)

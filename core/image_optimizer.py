@@ -148,25 +148,43 @@ def ensure_300dpi_image(
             except Exception as fade_err:
                 print(f"[가장자리 블러 마스킹 건너뜀]: {fade_err}")
 
-        # 저장 대상 경로 결정
-        if output_path is None:
-            raise ValueError("저장할 output_path가 지정되지 않았습니다.")
-        
-        save_path = Path(output_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # 300 DPI 메타데이터 및 고화질 압축률(95)로 저장
+        # 인메모리 버퍼(io.BytesIO)에서 300 DPI 메타데이터 및 고화질 압축률(95)로 인코딩
+        buf = io.BytesIO()
         final_img.save(
-            save_path,
+            buf,
             format="JPEG",
             dpi=(300, 300),
             quality=quality,
             subsampling=0  # 색상 서브샘플링 없이 최고 화질 유지
         )
+        jpeg_bytes = buf.getvalue()
+
+        # [100% 서버 일원화] 로컬 projects/ 폴더에는 절대 파일을 생성하지 않고 Cloudflare R2로 직행
+        r2_url = ""
+        save_path_str = str(output_path) if output_path else "memory://300dpi.jpg"
+        if output_path is not None:
+            from core.config import BASE_DIR
+            from core.r2_storage import r2_storage
+            save_path = Path(output_path)
+            projects_root = (BASE_DIR / "projects").resolve()
+            try:
+                resolved_save = save_path.resolve()
+            except Exception:
+                resolved_save = save_path
+
+            if str(resolved_save).startswith(str(projects_root)):
+                rel_key = resolved_save.relative_to(projects_root).as_posix()
+                r2_url = r2_storage.upload_bytes(jpeg_bytes, rel_key, content_type="image/jpeg")
+            else:
+                # /tmp 등 명시적 임시 파일 경로인 경우에만 기록
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                save_path.write_bytes(jpeg_bytes)
 
         return {
             "success": True,
-            "path": str(save_path),
+            "path": save_path_str,
+            "r2_url": r2_url,
+            "image_bytes": jpeg_bytes,
             "was_enhanced": was_enhanced,
             "original_resolution": f"{orig_w} x {orig_h} px",
             "original_dpi": f"{orig_dpi_val} DPI",

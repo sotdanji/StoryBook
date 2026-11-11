@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>모둠솥 공용 서가 (Bookshelf) | 기억이 시와 그림이 되는 공간</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --bg-warm: #F9F6F0;
+      --card-bg: #FFFFFF;
+      --wood-shelf: #8C5335;
+      --wood-shelf-dark: #5B321D;
+      --wood-shadow: rgba(65, 35, 18, 0.15);
+      --text-main: #2C221E;
+      --text-muted: #7A6960;
+      --accent: #8C5335;
+      --accent-hover: #A66441;
+      --border-warm: #EAE0D5;
+      --badge-internal: #E8F5E9;
+      --badge-internal-txt: #2E7D32;
+      --badge-external: #EBF3FA;
+      --badge-external-txt: #1E466E;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background-color: var(--bg-warm);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    .portal-header {
+      background: #FFFDF9;
+      border-bottom: 1.5px solid var(--border-warm);
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 2.2rem;
+    }
+
+    .brand-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--wood-shelf-dark);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-desc {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-portal {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-portal-primary {
+      background: linear-gradient(135deg, var(--wood-shelf) 0%, var(--wood-shelf-dark) 100%);
+      color: #FFF;
+      border: none;
+      box-shadow: 0 3px 8px var(--wood-shadow);
+    }
+
+    .btn-portal-primary:hover {
+      background: linear-gradient(135deg, var(--accent-hover) 0%, var(--wood-shelf) 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn-portal-outline {
+      background: #FFF;
+      color: var(--wood-shelf-dark);
+      border: 1.5px solid var(--border-warm);
+    }
+
+    .btn-portal-outline:hover {
+      background: #FAF6F0;
+      border-color: var(--wood-shelf);
+    }
+
+    /* 상단 중앙 게스트 유입 배너 & 외부 연계 버튼군 */
+    .header-center-zone {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 6px 16px;
+      background: #FFFDF9;
+      border: 1px solid #EBD5C2;
+      border-radius: 28px;
+      box-shadow: 0 2px 8px rgba(110, 61, 34, 0.06);
+    }
+
+    .banner-text-wrap {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+
+    .banner-highlight {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #643E19;
+      letter-spacing: -0.2px;
+    }
+
+    .banner-subtext {
+      font-size: 0.72rem;
+      color: #8C6A53;
+      margin-top: 1px;
+    }
+
+    .header-center-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-center-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 11px;
+      border-radius: 16px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-center-tour {
+      background: linear-gradient(135deg, #8C5335 0%, #6E3D22 100%);
+      color: #FFFFFF !important;
+      box-shadow: 0 2px 5px rgba(110, 61, 34, 0.2);
+    }
+
+    .btn-center-tour:hover {
+      background: linear-gradient(135deg, #9C6040 0%, #7E4528 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn-center-cafe {
+      background: linear-gradient(135deg, #03C75A 0%, #009F43 100%);
+      color: #FFFFFF !important;
+      box-shadow: 0 2px 5px rgba(3, 199, 90, 0.25);
+    }
+
+    .btn-center-cafe:hover {
+      background: linear-gradient(135deg, #04D862 0%, #00B14B 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn-center-home {
+      background: #F4ECE1;
+      color: #5C3D24 !important;
+      border: 1px solid #D9C3B0;
+    }
+
+    .btn-center-home:hover {
+      background: #EBE0D2;
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 1200px) {
+      .header-center-zone {
+        order: 3;
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 8px;
+      }
+    }
+
+    /* 검색 및 필터 툴바 */
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 8px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 440px;
+      min-width: 240px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      background: #FFF;
+      border: 1.5px solid var(--border-warm);
+      border-radius: 24px;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--wood-shelf);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .filter-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 6px 14px;
+      background: #FFF;
+      border: 1px solid var(--border-warm);
+      border-radius: 18px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-chip.active {
+      background: var(--wood-shelf-dark);
+      color: #FFF;
+      border-color: var(--wood-shelf-dark);
+    }
+
+    /* 서가 메인 뷰포트 */
+    .bookshelf-main {
+      flex: 1;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    .shelf-section-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--wood-shelf-dark);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 책장 그리드 */
+    .bookshelf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 32px 24px;
+    }
+
+    /* 개별 시집 카드 */
+    .book-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-warm);
+      box-shadow: 0 4px 14px rgba(65, 35, 18, 0.06);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+    }
+
+    .book-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 24px rgba(65, 35, 18, 0.12);
+    }
+
+    /* 표지 영역 (3D 책 형태 효과) */
+    .book-cover-wrap {
+      width: 100%;
+      height: 280px;
+      background: #ECE5DC;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .book-cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .book-card:hover .book-cover-img {
+      transform: scale(1.03);
+    }
+
+    /* 책등 입체 그림자 */
+    .book-spine-shadow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 16px;
+      height: 100%;
+      background: linear-gradient(to right, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.05) 70%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .book-badge-row {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: flex-end;
+    }
+
+    .badge-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+    }
+
+    .badge-recite {
+      background: rgba(140, 83, 53, 0.9);
+      color: #FFF;
+    }
+
+    .badge-type-internal {
+      background: rgba(46, 125, 50, 0.9);
+      color: #FFF;
+    }
+
+    .badge-type-external {
+      background: rgba(30, 70, 110, 0.9);
+      color: #FFF;
+    }
+
+    /* 책 정보 영역 */
+    .book-info-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .book-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: var(--wood-shelf-dark);
+      line-height: 1.4;
+      margin-bottom: 6px;
+      word-break: keep-all;
+    }
+
+    .book-author-link {
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 10px;
+      width: fit-content;
+    }
+
+    .book-author-link:hover {
+      text-decoration: underline;
+    }
+
+    .book-excerpt {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      font-style: italic;
+      margin-bottom: 14px;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      border-left: 2.5px solid var(--border-warm);
+      padding-left: 8px;
+    }
+
+    .book-card-footer {
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-warm);
+    }
+
+    .btn-read-book {
+      width: 100%;
+      padding: 9px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-read-internal {
+      background: #FAF6F0;
+      border: 1.5px solid var(--wood-shelf);
+      color: var(--wood-shelf);
+    }
+
+    .btn-read-internal:hover {
+      background: var(--wood-shelf);
+      color: #FFF;
+    }
+
+    .btn-read-external {
+      background: #F0F5FA;
+      border: 1.5px solid #7FAAD0;
+      color: #1E466E;
+    }
+
+    .btn-read-external:hover {
+      background: #1E466E;
+      color: #FFF;
+    }
+
+    /* 서가 받침대 효과 */
+    .wood-shelf-plank {
+      height: 14px;
+      background: linear-gradient(180deg, #A06443 0%, var(--wood-shelf) 30%, var(--wood-shelf-dark) 100%);
+      border-radius: 4px;
+      box-shadow: 0 6px 12px rgba(65, 35, 18, 0.2);
+      margin-top: 8px;
+      margin-bottom: 32px;
+    }
+
+    /* 모달 스타일 */
+    .portal-modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    .portal-modal-card {
+      background: #FFFDF9;
+      border-radius: 14px;
+      max-width: 540px;
+      width: 100%;
+      border: 1.5px solid var(--border-warm);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      animation: modalFadeIn 0.25s ease;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .portal-modal-header {
+      padding: 18px 22px;
+      background: #F4ECE1;
+      border-bottom: 1.5px solid var(--border-warm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .portal-modal-title {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: var(--wood-shelf-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .portal-modal-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-row label {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--wood-shelf-dark);
+    }
+
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border-warm);
+      border-radius: 7px;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      background: #FFF;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .form-row input:focus,
+    .form-row textarea:focus {
+      border-color: var(--wood-shelf);
+    }
+
+    .portal-modal-footer {
+      padding: 14px 22px;
+      background: #FDFBF7;
+      border-top: 1px solid var(--border-warm);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* 빈 서가 안내 */
+    .empty-shelf-notice {
+      text-align: center;
+      padding: 60px 20px;
+      background: #FFFDF9;
+      border: 1.5px dashed var(--border-warm);
+      border-radius: 12px;
+      color: var(--text-muted);
+    }
+
+    .empty-shelf-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    /* 하단 푸터 */
+    .portal-footer {
+      background: #F4ECE1;
+      border-top: 1.5px solid var(--border-warm);
+      padding: 24px;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 상단 공용 서가 헤더 -->
+  <header class="portal-header">
+    <div class="header-top-row">
+      <div class="brand-title-wrap">
+        <span class="brand-icon">📚</span>
+        <div>
+          <h1 class="brand-title">모둠솥 공용 서가</h1>
+          <p class="brand-desc">삶의 기억이 시가 되고, 그림이 머무는 열린 디지털 문학관</p>
+        </div>
+      </div>
+      
+      <!-- [중앙 유입 존] 게스트 유입 배너 + 집필실 구경 + 카페가기 + 홈페이지 가기 -->
+      <div class="header-center-zone">
+        <div class="banner-text-wrap">
+          <div class="banner-highlight">🌸 누구나 삶의 기억 하나로 시인이 됩니다</div>
+          <div class="banner-subtext">내 살아온 이야기로 빚어내는 나만의 서정 시화집</div>
+        </div>
+        <div class="header-center-links">
+          <a href="/?guest=true" target="_blank" rel="noopener noreferrer" class="btn-center-pill btn-center-tour" title="[체험 둘러보기] 회원가입 없이 즉시 시화집 집필실과 2-Layer 조판실을 둘러봅니다.">
+            <span>✨</span> <span>집필실 구경</span>
+          </a>
+          <a href="https://cafe.naver.com/eduaihub" target="_blank" rel="noopener noreferrer" class="btn-center-pill btn-center-cafe" title="[공식 네이버 카페] 전국의 시인들과 시화를 나누고 출판 팁을 공유하는 공식 카페로 이동합니다.">
+            <span>☕</span> <span>카페가기</span>
+          </a>
+          <a href="https://eduai-hub-bay.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn-center-pill btn-center-home" title="[EduAI Hub 공식 홈페이지] 브랜드 소개 및 다양한 에이전틱 AI 도구를 만날 수 있는 홈페이지로 이동합니다.">
+            <span>🏠</span> <span>홈페이지</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="btn-portal btn-portal-outline" onclick="openExternalBookModal()">
+          <span>➕</span> <span>소장 책 등록 (외부 e-Book)</span>
+        </button>
+        <a href="/" class="btn-portal btn-portal-primary">
+          <span>✍️</span> <span>시인의 집필실 가기</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 검색 및 필터 툴바 -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="bookshelfSearchInput" class="search-input" placeholder="시집 제목, 시인 필명, 시 구절 검색..."
+          oninput="onSearchFilterChanged()">
+      </div>
+      <div class="filter-tags">
+        <button type="button" class="filter-chip active" data-type="all" onclick="setFilterType('all')">전체 서가</button>
+        <button type="button" class="filter-chip" data-type="internal" onclick="setFilterType('internal')">🎙️ 모둠솥 3D 시화집</button>
+        <button type="button" class="filter-chip" data-type="external" onclick="setFilterType('external')">🔗 작가 소장 e-Book</button>
+        <button type="button" class="filter-chip" data-type="recite" onclick="setFilterType('recite')">🎧 시낭송 수록본</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 서가 메인 콘텐츠 -->
+  <main class="bookshelf-main">
+    <div class="shelf-section-title">
+      <span>📖</span> <span>출품된 시화집 & 소장 도서 서가</span>
+      <span id="shelfBookCountBadge" style="font-size: 0.82rem; background: #EFE6D8; color: var(--wood-shelf); padding: 2px 8px; border-radius: 10px; font-weight: 700;">총 0권</span>
+    </div>
+
+    <div class="bookshelf-grid" id="bookshelfGrid">
+      <!-- 자바스크립트로 동적 렌더링 -->
+      <div class="empty-shelf-notice" style="grid-column: 1 / -1;">
+        <div class="empty-shelf-icon">📚</div>
+        <h3>서가에서 책들을 불러오는 중입니다...</h3>
+      </div>
+    </div>
+  </main>
+
+  <!-- 외부 책 등록 모달 -->
+  <div class="portal-modal-backdrop" id="modalExternalBook">
+    <div class="portal-modal-card">
+      <div class="portal-modal-header">
+        <h3 class="portal-modal-title">
+          <span>➕</span> <span>나의 다른 책 / 소장 e-Book 자랑하기</span>
+        </h3>
+        <button type="button" onclick="closeExternalBookModal()" style="background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div class="portal-modal-body">
+        <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; background: #FFF9F0; border: 1px solid #EADBCE; border-radius: 6px; padding: 10px 12px;">
+          💡 과거에 부크크에서 펴낸 종이책, Heyzine 플립북, 교보문고 e-Book, 브런치북 등 <strong>자신의 소장 작품</strong>을 모둠솥 서가에 함께 꽂아둘 수 있습니다.
+        </p>
+        <div class="form-row">
+          <label for="extBookTitle">도서 / 시집 제목 *</label>
+          <input type="text" id="extBookTitle" placeholder="예: 어머니의 된장국">
+        </div>
+        <div class="form-row">
+          <label for="extAuthorName">시인 / 작가 필명 *</label>
+          <input type="text" id="extAuthorName" placeholder="예: 임종환">
+        </div>
+        <div class="form-row">
+          <label for="extBookType">도서 유형</label>
+          <select id="extBookType">
+            <option value="external_ebook">📖 외부 전자책 / 플립북 (Heyzine, AnyFlip 등)</option>
+            <option value="published_book">🛒 서점 정식 출간작 (부크크 POD, 교보문고 등)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="extCoverUrl">표지 이미지 웹 주소 (URL) 또는 파일 경로</label>
+          <input type="text" id="extCoverUrl" placeholder="https://... 또는 /projects/.../cover.png">
+        </div>
+        <div class="form-row">
+          <label for="extViewUrl">열람 또는 도서 안내 웹 주소 (URL) *</label>
+          <input type="url" id="extViewUrl" placeholder="https://heyzine.com/... 또는 부크크 책 페이지 주소">
+        </div>
+        <div class="form-row">
+          <label for="extExcerpt">대표 시 1구절 또는 책 한 줄 소개</label>
+          <textarea id="extExcerpt" rows="2" placeholder="예: 봄비 내리는 날이면 어머니의 바느질 소리가 들려온다."></textarea>
+        </div>
+      </div>
+      <div class="portal-modal-footer">
+        <button type="button" class="btn-portal btn-portal-outline" onclick="closeExternalBookModal()">취소</button>
+        <button type="button" class="btn-portal btn-portal-primary" onclick="submitExternalBook()">서가에 등록하기</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="portal-footer">
+    <p>StoryBook Studio &middot; 모둠솥 공용 서가 (Public Bookshelf)</p>
+    <p style="margin-top: 4px; opacity: 0.75;">기억 기반 서정 시화집 독립출판 생태계</p>
+  </footer>
+
+  <script>
+    let ALL_BOOKS = [];
+    let CURRENT_FILTER = 'all';
+
+    async function loadBookshelfItems() {
+      try {
+        const res = await fetch('/api/bookshelf/public');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            ALL_BOOKS = data.items || [];
+            renderBookshelf();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('서가 로드 실패:', e);
+      }
+      renderBookshelf();
+    }
+
+    function renderBookshelf() {
+      const grid = document.getElementById('bookshelfGrid');
+      const badgeCount = document.getElementById('shelfBookCountBadge');
+      const kw = (document.getElementById('bookshelfSearchInput')?.value || '').trim().toLowerCase();
+
+      let filtered = ALL_BOOKS.filter(b => {
+        if (CURRENT_FILTER === 'internal' && b.book_type !== 'internal_storybook') return false;
+        if (CURRENT_FILTER === 'external' && b.book_type === 'internal_storybook') return false;
+        if (CURRENT_FILTER === 'recite' && !b.has_recite) return false;
+
+        if (kw) {
+          const title = (b.title || '').toLowerCase();
+          const author = (b.author_name || '').toLowerCase();
+          const excerpt = (b.excerpt || '').toLowerCase();
+          return title.includes(kw) || author.includes(kw) || excerpt.includes(kw);
+        }
+        return true;
+      });
+
+      if (badgeCount) badgeCount.textContent = `총 ${filtered.length}권`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-shelf-notice" style="grid-column: 1 / -1;">
+            <div class="empty-shelf-icon">🌿</div>
+            <h3 style="font-family: 'Nanum Myeongjo', serif; color: var(--wood-shelf-dark); margin-bottom: 6px;">
+              ${kw ? '검색된 도서가 없습니다.' : '서가에 첫 번째 시집을 출품해 보세요!'}
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+              ${kw ? '다른 키워드로 검색하시거나 필터를 변경해 보세요.' : '스튜디오에서 빚어낸 시화집을 출품하거나, 소장하고 계신 e-Book 링크를 등록하실 수 있습니다.'}
+            </p>
+            <div style="display: flex; gap: 8px; justify-content: center;">
+              <button class="btn-portal btn-portal-primary" onclick="openExternalBookModal()">소장 책 등록하기</button>
+              <a href="/" class="btn-portal btn-portal-outline">집필실 가기</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(b => {
+        const isInternal = b.book_type === 'internal_storybook';
+        const coverSrc = b.cover_image_url || '/static/images/default_cover.png';
+        const authorUrl = `/author/${encodeURIComponent(b.user_id || 'anonymous')}`;
+        const viewUrl = isInternal ? `/gallery/view/${encodeURIComponent(b.project_id || '')}` : b.view_url;
+        const targetAttr = 'target="_blank" rel="noopener noreferrer"';
+
+        const typeBadge = isInternal
+          ? `<span class="badge-pill badge-type-internal">🎙️ 모둠솥 3D</span>`
+          : (b.book_type === 'published_book'
+              ? `<span class="badge-pill badge-type-external">🛒 정식 출간</span>`
+              : `<span class="badge-pill badge-type-external">🔗 외부 e-Book</span>`);
+
+        const reciteBadge = b.has_recite ? `<span class="badge-pill badge-recite">🎧 낭송</span>` : '';
+
+        return `
+          <div class="book-card">
+            <div class="book-cover-wrap" onclick="window.open('${viewUrl}', '_blank')" style="cursor: pointer;" title="클릭하면 새 창에서 3D 시화집을 펼칩니다">
+              <img src="${coverSrc}" class="book-cover-img" alt="${b.title}" onerror="this.src='/static/images/default_cover.png'">
+              <div class="book-spine-shadow"></div>
+              <div class="book-badge-row">
+                ${typeBadge}
+                ${reciteBadge}
+              </div>
+            </div>
+            <div class="book-info-body">
+              <h3 class="book-title">${b.title}</h3>
+              <a href="${authorUrl}" class="book-author-link" title="시인의 서재 보기">
+                <span>✍️</span> <span>${b.author_name} 시인</span>
+              </a>
+              <div class="book-excerpt">${b.excerpt || '기억의 향기가 머무는 서정 시화집'}</div>
+              <div class="book-card-footer">
+                <a href="${viewUrl}" ${targetAttr} class="btn-read-book ${isInternal ? 'btn-read-internal' : 'btn-read-external'}">
+                  <span>${isInternal ? '📖 시집 펼쳐보기' : '🌐 작가의 공간 열람'}</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setFilterType(type) {
+      CURRENT_FILTER = type;
+      document.querySelectorAll('.filter-chip').forEach(c => {
+        c.classList.toggle('active', c.getAttribute('data-type') === type);
+      });
+      renderBookshelf();
+    }
+
+    function onSearchFilterChanged() {
+      renderBookshelf();
+    }
+
+    function openExternalBookModal() {
+      const modal = document.getElementById('modalExternalBook');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeExternalBookModal() {
+      const modal = document.getElementById('modalExternalBook');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function submitExternalBook() {
+      const title = document.getElementById('extBookTitle')?.value.trim();
+      const author = document.getElementById('extAuthorName')?.value.trim();
+      const bookType = document.getElementById('extBookType')?.value || 'external_ebook';
+      const coverUrl = document.getElementById('extCoverUrl')?.value.trim();
+      const viewUrl = document.getElementById('extViewUrl')?.value.trim();
+      const excerpt = document.getElementById('extExcerpt')?.value.trim();
+
+      if (!title) {
+        Swal.fire({ icon: 'warning', title: '책 제목 입력 필요', text: '도서 또는 시집의 제목을 입력해 주세요.' });
+        return;
+      }
+      if (!author) {
+        Swal.fire({ icon: 'warning', title: '시인 필명 입력 필요', text: '작가님의 필명이나 성함을 입력해 주세요.' });
+        return;
+      }
+      if (!viewUrl) {
+        Swal.fire({ icon: 'warning', title: '열람 주소(URL) 입력 필요', text: '작품을 볼 수 있는 웹 주소(URL)를 입력해 주세요.' });
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/bookshelf/add_external', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            author_name: author,
+            book_type: bookType,
+            cover_image_url: coverUrl,
+            view_url: viewUrl,
+            excerpt
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: '서가 등록 완료!',
+            text: `「${title}」이(가) 모둠솥 서가에 성공적으로 진열되었습니다.`,
+            confirmButtonColor: '#8C5335'
+          });
+          closeExternalBookModal();
+          await loadBookshelfItems();
+        } else {
+          Swal.fire({ icon: 'error', title: '등록 실패', text: data.detail || '등록 중 오류가 발생했습니다.' });
+        }
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: '오류 발생', text: '서버와 통신하는 중 문제가 발생했습니다.' });
+      }
+    }
+
+    window.onload = loadBookshelfItems;
+  </script>
+</body>
+
+</html>
+

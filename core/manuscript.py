@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from core.config import MANUSCRIPT_FILE, TARGET_POEMS_COUNT
 
 @dataclass
@@ -10,19 +10,26 @@ class PoemWork:
     title: str               # 예: "새벽 대청"
     status: str              # 예: "완성 (승인 완료)"
     memory_anchor: str       # 예: "동지섣달 새벽, 대청마루에서..."
-    image_file: str          # 예: "images/01_새벽대청.jpg"
+    image_file: str          # 예: "media/P-0001/illustration.jpg"
     art_direction: str       # 예: "호롱불 아래 어머니의 뒷모습 (한국적 서정 수채화)"
     poem_body: str           # 시 본문 전체 텍스트
-    audio_file: str = ""     # 통합/하위호환 음원 (예: "music/01_새벽대청.mp3")
-    recite_file: str = ""    # 시인의 육성 낭송 음원 (예: "images/01_낭송.webm")
-    music_file: str = ""     # 서정 노래/작곡 음원 (예: "music/01_음원.mp3")
+    audio_file: str = ""     # 통합/하위호환 음원
+    recite_file: str = ""    # 시인의 육성/TTS 낭송 음원
+    music_file: str = ""     # 서정 노래/작곡 음원
     lyrics: str = ""         # 노랫말/가사 전체 텍스트
     chapter: str = ""        # 큰 주제별 묶음(부/챕터). 예: "제1부 흙과 솜꽃"
-    author: str = ""         # 개별 시인/필자 (예: "어머니 김영희", "윤동주", 비워둘 시 대표 저자)
-    layout_mode: str = "compact"  # 출판 조판 모드: "compact" (1페이지 쏙 맞춤) | "multi_page" (2페이지 연속 조판)
-    part2_mode: str = "motif_symbol"  # 4P 모드 2부 좌측면: "motif_symbol" | "image" | "pure_blank" | "poem_text"
-    image_file_2: str = ""        # 4P 모드 2부 좌측면 삽화 경로 (예: "images/01_새벽대청_후반.jpg")
+    author: str = ""         # 개별 시인/필자
+    layout_mode: str = "compact"  # "compact" | "multi_page"
+    part2_mode: str = "motif_symbol"  # "motif_symbol" | "image" | "pure_blank" | "poem_text"
+    image_file_2: str = ""        # 4P 모드 2부 좌측면 삽화 경로
     layout_config: Optional[dict] = None  # 신규 2P/4P 매트릭스 슬롯 조판 설정
+    piece_id: str = ""       # [신규] 고유 불변 ID (예: "P-0001")
+    video_file: str = ""     # [신규] 16:9 비디오 상대 경로
+    video_preview: str = ""  # [신규] 비디오 썸네일 경로
+    voice_user_file: str = "" # [신규] 시인 육성 녹음
+    voice_tts_file: str = ""  # [신규] AI TTS 낭송
+    voice_suno_file: str = "" # [신규] SUNO 성우 낭송
+    voice_bgm_file: str = ""  # [신규] BGM 결합 낭송
 
 class ManuscriptManager:
     def __init__(self, file_path: Optional[Path] = None):
@@ -36,22 +43,73 @@ class ManuscriptManager:
         else:
             self.file_path = file_path
 
+    def _get_project_id(self) -> str:
+        return self.file_path.parent.name
+
     def load_works(self) -> List[PoemWork]:
-        """원고 마크다운 파일을 파싱하여 PoemWork 객체 리스트로 반환"""
-        if not self.file_path.exists():
-            return []
+        """
+        [100% Turso DB 마스터 일원화]
+        로컬 작품집_원고.md 파일 의존성을 완전히 제거하고,
+        Turso DB(또는 마스터 DB)의 pieces 및 toc 테이블에서 직접 작품 목록을 로드합니다.
+        """
+        proj_id = self._get_project_id()
 
-        content = self.file_path.read_text(encoding="utf-8")
+        try:
+            from core.db_manager import db_manager
+            toc = db_manager.get_toc(proj_id)
+            if toc:
+                works = []
+                for item in toc:
+                    p = db_manager.get_piece(proj_id, item.piece_id)
+                    if not p or p.status == "deleted":
+                        continue
+
+                    recite_f = p.voice_tts_file or p.voice_user_file or p.voice_bgm_file
+                    music_f = p.music_file
+                    audio_f = music_f or recite_f
+
+                    works.append(PoemWork(
+                        episode_no=item.display_label,
+                        title=p.title,
+                        status=p.status,
+                        memory_anchor=p.memory_anchor,
+                        image_file=p.image_file,
+                        art_direction=p.art_direction,
+                        poem_body=p.poem_body,
+                        audio_file=audio_f,
+                        recite_file=recite_f,
+                        music_file=music_f,
+                        lyrics=p.lyrics,
+                        chapter=item.chapter or p.chapter_topic,
+                        author=p.author,
+                        layout_mode=p.layout_mode,
+                        part2_mode=p.part2_mode,
+                        image_file_2=p.image_file_2,
+                        layout_config=p.layout_config,
+                        piece_id=p.piece_id,
+                        video_file=p.video_file_16x9,
+                        video_preview=p.video_preview,
+                        voice_user_file=p.voice_user_file,
+                        voice_tts_file=p.voice_tts_file,
+                        voice_suno_file=p.voice_suno_file,
+                        voice_bgm_file=p.voice_bgm_file
+                    ))
+                return works
+        except Exception:
+            pass
+
+        return []
+
+    @staticmethod
+    def parse_markdown_text(content: str) -> List[PoemWork]:
+        """백업 ZIP 업로드(Import) 시 마크다운 원고 텍스트를 파싱하여 PoemWork 리스트로 반환"""
         works = []
-
-        # 각 화(Episode) 블록 분리: ## [제XX화] 또는 ## [XX화] 패턴
         sections = re.split(r'\n(?=##\s*\[(?:제)?\d+화?\])', content)
         
         for section in sections:
             if not section.strip().startswith("##"):
                 continue
 
-            # 헤더 파싱: ## [제01화] 새벽 대청
             header_match = re.search(r'##\s*\[(?:제)?(\d+)화?\]\s*(.+)', section)
             if not header_match:
                 continue
@@ -60,7 +118,9 @@ class ManuscriptManager:
             episode_no = f"제{ep_num}화"
             title = header_match.group(2).strip()
 
-            # 메타데이터 추출 (개행을 건너뛰지 않도록 [ \t] 사용)
+            pid_match = re.search(r'<!--\s*piece_id:\s*([A-Za-z0-9_-]+)\s*-->', section)
+            piece_id = pid_match.group(1).strip() if pid_match else ""
+
             status_match = re.search(r'-\s*\*\*상태\*\*:[ \t]*([^\r\n]+)', section)
             status = status_match.group(1).strip().replace("**", "") if status_match else "작성 중"
 
@@ -85,56 +145,17 @@ class ManuscriptManager:
             audio_match = re.search(r'-\s*\*\*음원 파일\*\*:[ \t]*`?([^`\r\n]+)`?', section)
             audio_file = audio_match.group(1).strip() if audio_match else ""
 
-            # 디스크 파일시스템 자동 감지: 낭송/노래 파일이 디스크에 존재하면 자동 연결
-            proj_music_dir = self.file_path.parent / "music"
-            if not recite_file and proj_music_dir.exists():
-                for cand in [f"{ep_num}_낭송.wav", f"{ep_num}_낭송.webm", f"{int(ep_num)}_낭송.wav"]:
-                    if (proj_music_dir / cand).exists():
-                        recite_file = f"music/{cand}"
-                        break
-            if not music_file and proj_music_dir.exists():
-                for cand in [f"{ep_num}_음원.mp3", f"{ep_num}_음원.m4a", f"{ep_num}_음원.wav", f"{int(ep_num)}_음원.mp3"]:
-                    if (proj_music_dir / cand).exists():
-                        music_file = f"music/{cand}"
-                        break
+            art_dir_match = re.search(r'-\s*\*\*그림 방향\*\*:[ \t]*([^\r\n]+)', section)
+            art_direction = art_dir_match.group(1).strip() if art_dir_match else ""
 
-            # 하위 호환 매핑: 기존 데이터에 audio_file만 있는 경우 자동 분기
-            if audio_file:
-                if ("낭송" in audio_file or audio_file.endswith(".webm")) and not recite_file:
-                    recite_file = audio_file
-                elif not music_file and not recite_file:
-                    music_file = audio_file
-            if not audio_file:
-                audio_file = music_file or recite_file
+            body_match = re.search(r'###\s*\[시\s*본문\]\s*\n(.*?)(?=\n###|\n##|\n---|\Z)', section, re.DOTALL)
+            poem_body = body_match.group(1).strip() if body_match else ""
 
-            art_match = re.search(r'-\s*\*\*그림 방향\*\*:[ \t]*([^\r\n]+)', section)
-            art_direction = art_match.group(1).strip() if art_match else ""
+            lyrics_match = re.search(r'###\s*\[노랫말.*?\]\s*\n(.*?)(?=\n###|\n##|\n---|\Z)', section, re.DOTALL)
+            lyrics = lyrics_match.group(1).strip() if lyrics_match else ""
 
-            # 방어 로직: 빈 줄 후 다음 행(- **삽화 파일** 등)이 잘못 매칭된 경우 원천 정제
-            if memory_anchor.startswith("- **") or memory_anchor.startswith("###"):
-                memory_anchor = ""
-            if art_direction.startswith("- **") or art_direction.startswith("###"):
-                art_direction = ""
-
-            # 노랫말 추출: ### [노랫말] 이후 내용
-            lyrics = ""
-            lyrics_split = re.split(r'###\s*\[노랫말\]', section)
-            if len(lyrics_split) > 1:
-                lyrics = lyrics_split[1].split("\n---")[0].strip()
-
-            # 시 본문 추출: ### [시 본문] 이후 내용 (노랫말 섹션이 있으면 그 전까지)
-            poem_split = re.split(r'###\s*\[시 본문\]', section)
-            if len(poem_split) > 1:
-                body_candidate = poem_split[1]
-                if "### [노랫말]" in body_candidate:
-                    poem_body = body_candidate.split("### [노랫말]")[0].strip()
-                else:
-                    poem_body = body_candidate.split("\n---")[0].strip()
-            else:
-                poem_body = ""
-
-            layout_match = re.search(r'-\s*\*\*조판 모드\*\*:[ \t]*([^\r\n]+)', section)
-            layout_mode = layout_match.group(1).strip() if layout_match else "compact"
+            layout_mode_match = re.search(r'-\s*\*\*조판 모드\*\*:[ \t]*([^\r\n]+)', section)
+            layout_mode = layout_mode_match.group(1).strip() if layout_mode_match else "compact"
 
             part2_mode_match = re.search(r'-\s*\*\*2부 조판 방식\*\*:[ \t]*([^\r\n]+)', section)
             part2_mode = part2_mode_match.group(1).strip() if part2_mode_match else "motif_symbol"
@@ -168,7 +189,8 @@ class ManuscriptManager:
                 layout_mode=layout_mode,
                 part2_mode=part2_mode,
                 image_file_2=image_file_2,
-                layout_config=layout_config
+                layout_config=layout_config,
+                piece_id=piece_id
             ))
 
         return works
@@ -179,32 +201,225 @@ class ManuscriptManager:
         return sum(1 for w in works if "완성" in w.status)
 
     def get_work_by_episode(self, episode_no: str) -> Optional[PoemWork]:
-        """회차 번호(예: '제01화', '01화', '01', 1)로 특정 작품 객체 반환"""
-        clean_num = re.sub(r'[^0-9]', '', str(episode_no)).zfill(2) if re.search(r'\d+', str(episode_no)) else ""
+        """회차 번호(예: '제01화', '01화', '01', 1) 또는 piece_id(예: 'P-0001')로 특정 작품 객체 반환"""
         works = self.load_works()
+        ep_str = str(episode_no).strip()
+        # 1. piece_id 직접 조회
+        for w in works:
+            if getattr(w, "piece_id", "") and w.piece_id == ep_str:
+                return w
+        # 2. 회차 번호 조회
+        clean_num = re.sub(r'[^0-9]', '', ep_str).zfill(2) if re.search(r'\d+', ep_str) else ""
         for w in works:
             w_clean = re.sub(r'[^0-9]', '', str(w.episode_no)).zfill(2) if re.search(r'\d+', str(w.episode_no)) else ""
-            if w.episode_no == episode_no or (clean_num and clean_num == w_clean):
+            if w.episode_no == ep_str or (clean_num and clean_num == w_clean):
                 return w
         return None
 
     def get_work(self, episode_no: str) -> Optional[PoemWork]:
-        """get_work_by_episode의 호환성 별칭"""
         return self.get_work_by_episode(episode_no)
 
-    def _write_works_to_file(self, works: List[PoemWork]) -> None:
-        """작품 리스트를 받아 마크다운 파일로 영구 저장 (기존 시집 헤더 메타데이터 보존)"""
+    def get_next_episode_number(self) -> int:
+        """다음 신규 에피소드 회차 번호 계산"""
+        works = self.load_works()
+        if not works:
+            return 1
+        nums = [int(re.search(r'\d+', w.episode_no).group(0)) for w in works if re.search(r'\d+', w.episode_no)]
+        return max(nums) + 1 if nums else 1
+
+    def update_work_layout(
+        self,
+        episode_no: str,
+        layout_mode: str,
+        part2_mode: Optional[str] = None,
+        image_file_2: Optional[str] = None
+    ) -> bool:
+        """특정 작품의 출판 조판 모드 ('compact' 또는 'multi_page') 및 4P 좌측면 연출 설정을 Turso DB에 갱신"""
+        proj_id = self._get_project_id()
+        work = self.get_work(episode_no)
+        if not work:
+            return False
+
+        piece_id = getattr(work, "piece_id", "")
+        if piece_id:
+            try:
+                from core.db_manager import db_manager
+                p = db_manager.get_piece(proj_id, piece_id)
+                if p:
+                    p.layout_mode = layout_mode
+                    if part2_mode is not None:
+                        p.part2_mode = part2_mode
+                    if image_file_2 is not None:
+                        p.image_file_2 = image_file_2
+                    db_manager.save_piece(p)
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def update_work_layout_config(
+        self,
+        episode_no: str,
+        layout_config: dict,
+        title: Optional[str] = None,
+        poem_body: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> bool:
+        """조판 설정을 Turso DB 마스터에 영구 동기화 (로컬 중복 파일 쓰기 제거)"""
+        proj_id = self._get_project_id()
+
+        work = self.get_work(episode_no)
+        if not work:
+            return False
+
+        piece_id = getattr(work, "piece_id", "")
+
+        if piece_id:
+            try:
+                from core.db_manager import db_manager
+                p = db_manager.get_piece(proj_id, piece_id)
+                if p:
+                    p.layout_config = layout_config
+                    p.page_count = layout_config.get("page_count", p.page_count)
+                    if p.page_count >= 4:
+                        p.layout_mode = "multi_page"
+                    if title is not None and title.strip():
+                        p.title = title.strip()
+                    if poem_body is not None:
+                        p.poem_body = poem_body
+                    if status is not None and status.strip():
+                        p.status = status.strip()
+                    db_manager.save_piece(p)
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def save_work(self, work: PoemWork) -> bool:
+        """
+        작품 저장 (100% Turso DB 마스터 일원화):
+        1. piece_id가 없으면 DB 시퀀스 채번기(allocate_piece_id)를 호출하여 P-XXXX 자동 부여
+        2. Turso DB(또는 로컬 SQLite)에 PieceData 영구 저장
+        3. 목차(TOC)에 등록되어 있지 않으면 목차 맨 끝에 추가
+        (평상시 로컬 작품집_원고.md 중복 파일 쓰기 제거 -> 온디맨드 ZIP 다운로드 시 즉석 생성)
+        """
+        proj_id = self._get_project_id()
+        from core.db_manager import db_manager, PieceData
+
+        # 1. piece_id 채번
+        if not getattr(work, "piece_id", ""):
+            old = self.get_work(work.episode_no)
+            if old and getattr(old, "piece_id", ""):
+                work.piece_id = old.piece_id
+            else:
+                work.piece_id = db_manager.allocate_piece_id(proj_id)
+
+        # 2. PieceData 변환 및 DB 저장
+        pdata = PieceData(
+            piece_id=work.piece_id,
+            project_id=proj_id,
+            title=work.title,
+            author=work.author or "임종훈",
+            poem_body=work.poem_body,
+            chapter_topic=work.chapter,
+            memory_anchor=work.memory_anchor,
+            art_direction=work.art_direction,
+            status=work.status,
+            image_file=work.image_file,
+            image_file_2=work.image_file_2,
+            recite_primary_type="user" if getattr(work, "voice_user_file", "") else "ai_tts",
+            voice_user_file=getattr(work, "voice_user_file", ""),
+            voice_tts_file=getattr(work, "voice_tts_file", "") or work.recite_file or work.audio_file,
+            voice_suno_file=getattr(work, "voice_suno_file", ""),
+            voice_bgm_file=getattr(work, "voice_bgm_file", ""),
+            music_file=work.music_file,
+            lyrics=work.lyrics,
+            video_file_16x9=getattr(work, "video_file", ""),
+            video_preview=getattr(work, "video_preview", ""),
+            layout_mode=work.layout_mode,
+            page_count=getattr(work, "layout_config", {}).get("page_count", 2) if getattr(work, "layout_config", None) else 2,
+            part2_mode=work.part2_mode,
+            layout_config=work.layout_config or {}
+        )
+        db_manager.save_piece(pdata)
+
+        # 3. 목차 등록 확인
+        toc = db_manager.get_toc(proj_id)
+        if not any(item.piece_id == work.piece_id for item in toc):
+            new_toc = [{"piece_id": item.piece_id, "chapter": item.chapter} for item in toc]
+            new_toc.append({"piece_id": work.piece_id, "chapter": work.chapter})
+            db_manager.set_toc(proj_id, new_toc)
+
+        return True
+
+    def delete_work(self, episode_no_or_piece_id: str) -> bool:
+        """작품 삭제 (영구 결번 처리, 목차에서 제거 및 R2 고아 미디어 정리)"""
+        proj_id = self._get_project_id()
+        work = self.get_work(episode_no_or_piece_id)
+        if not work:
+            return False
+        piece_id = getattr(work, "piece_id", "")
+        if piece_id:
+            from core.db_manager import db_manager
+            db_manager.delete_piece(proj_id, piece_id)
+        # R2 고아 미디어 파일(삽화, 음원) 정리
+        try:
+            from core.r2_storage import r2_storage
+            for media_f in (work.image_file, getattr(work, "image_file_2", ""), getattr(work, "recite_file", ""), getattr(work, "music_file", "")):
+                if media_f and not media_f.startswith("http"):
+                    r2_storage.delete_file(f"{proj_id}/{media_f.lstrip('./')}")
+        except Exception:
+            pass
+        return True
+
+    def reorder_works(self, items: Any, auto_renumber: bool = True) -> List[PoemWork]:
+        """목차 순서 재정렬 및 각 시의 부(챕터) 일괄 갱신 (100% Turso DB 일원화)"""
+        proj_id = self._get_project_id()
+        from core.db_manager import db_manager
+        
+        toc_items = []
+        if isinstance(items, list):
+            for it in items:
+                if isinstance(it, str):
+                    toc_items.append({
+                        "piece_id": it,
+                        "chapter": ""
+                    })
+                elif isinstance(it, dict):
+                    ep = it.get("piece_id") or it.get("episode_no", "")
+                    w = self.get_work(ep)
+                    ch = it.get("chapter", "")
+                    if w:
+                        if ch is not None:
+                            w.chapter = ch
+                        pid = getattr(w, "piece_id", "") or ep
+                        toc_items.append({
+                            "piece_id": pid,
+                            "chapter": ch or getattr(w, "chapter", "")
+                        })
+        
+        if toc_items:
+            db_manager.set_toc(proj_id, toc_items)
+
+        return self.load_works()
+
+    def render_markdown_text(self, works: Optional[List[PoemWork]] = None) -> str:
+        """
+        [온디맨드 원고 생성기]
+        백업 ZIP 다운로드 등 사용자가 파일을 요청할 때만 Turso DB 데이터로 `작품집_원고.md` 전문을 즉석 조립합니다.
+        """
+        if works is None:
+            works = self.load_works()
         completed_count = sum(1 for w in works if "완성" in w.status)
         target_cnt = TARGET_POEMS_COUNT
         book_title = "시화집 작품집"
         meta_quote_block = []
 
-        # 기존 파일이나 project.json에서 시집 메타데이터 보존
-        meta_file = self.file_path.parent / "project.json"
-        if meta_file.exists():
-            try:
-                import json
-                pdata = json.loads(meta_file.read_text(encoding="utf-8"))
+        proj_id = self._get_project_id()
+        try:
+            from core.db_manager import db_manager
+            pdata = db_manager.get_project_meta(proj_id)
+            if pdata:
                 book_title = pdata.get("name", book_title)
                 target_cnt = pdata.get("target_count", target_cnt)
                 author_label = "지은이" if pdata.get("author_type", "single") == "single" else "엮은이"
@@ -214,18 +429,8 @@ class ManuscriptManager:
                     f"> **기획**: {pdata.get('description', '')}  ",
                     ""
                 ]
-            except Exception:
-                pass
-        elif self.file_path.exists():
-            try:
-                old_text = self.file_path.read_text(encoding="utf-8")
-                for line in old_text.split("\n---")[0].splitlines():
-                    if line.strip().startswith(">"):
-                        meta_quote_block.append(line)
-                if meta_quote_block:
-                    meta_quote_block.append("")
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         lines = [
             f"# {book_title} 원고 (진행 현황: {completed_count} / {target_cnt}편 완료)",
@@ -237,6 +442,8 @@ class ManuscriptManager:
 
         for w in works:
             lines.append(f"## [{w.episode_no}] {w.title}")
+            if getattr(w, "piece_id", ""):
+                lines.append(f"<!-- piece_id: {w.piece_id} -->")
             lines.append(f"- **상태**: **{w.status}**")
             if getattr(w, 'chapter', ''):
                 lines.append(f"- **부/주제**: {w.chapter}")
@@ -257,178 +464,30 @@ class ManuscriptManager:
                 lines.append(f"- **낭송 음원**: `{w.recite_file}`")
             if getattr(w, 'music_file', ''):
                 lines.append(f"- **노래 음원**: `{w.music_file}`")
-            if getattr(w, 'audio_file', '') and not getattr(w, 'recite_file', '') and not getattr(w, 'music_file', ''):
+            if getattr(w, 'audio_file', '') and w.audio_file != getattr(w, 'recite_file', '') and w.audio_file != getattr(w, 'music_file', ''):
                 lines.append(f"- **음원 파일**: `{w.audio_file}`")
-            lines.append(f"- **그림 방향**: {w.art_direction}")
+            if getattr(w, 'art_direction', ''):
+                lines.append(f"- **그림 방향**: {w.art_direction}")
             lines.append("")
             lines.append("### [시 본문]")
             lines.append("")
             lines.append(w.poem_body)
+            lines.append("")
             if getattr(w, 'lyrics', ''):
-                lines.append("")
-                lines.append("### [노랫말]")
+                lines.append("### [노랫말 / 작곡 가사]")
                 lines.append("")
                 lines.append(w.lyrics)
-            lines.append("")
+                lines.append("")
             lines.append("---")
             lines.append("")
 
-        self.file_path.write_text("\n".join(lines), encoding="utf-8")
+        return "\n".join(lines)
 
-    def save_work(self, work: PoemWork) -> None:
-        """새 작품을 추가하거나 기존 작품을 수정하여 마크다운 파일 갱신"""
-        works = self.load_works()
-        existing_index = next((i for i, w in enumerate(works) if w.episode_no == work.episode_no), None)
-
-        if existing_index is not None:
-            old_w = works[existing_index]
-            # 기존 챕터 정보가 있고 새 입력에 없으면 기존 챕터 유지
-            if not getattr(work, 'chapter', '') and getattr(old_w, 'chapter', ''):
-                work.chapter = old_w.chapter
-            # 조판 설정 및 4P 모드 보존
-            if not getattr(work, 'layout_config', None) and getattr(old_w, 'layout_config', None):
-                work.layout_config = old_w.layout_config
-            if not getattr(work, 'layout_mode', '') and getattr(old_w, 'layout_mode', ''):
-                work.layout_mode = old_w.layout_mode
-            if not getattr(work, 'part2_mode', '') and getattr(old_w, 'part2_mode', ''):
-                work.part2_mode = old_w.part2_mode
-            if not getattr(work, 'image_file_2', '') and getattr(old_w, 'image_file_2', ''):
-                work.image_file_2 = old_w.image_file_2
-            works[existing_index] = work
-        else:
-            works.append(work)
-
-        # 에피소드 번호 기준 정렬
-        def _get_ep_num(w):
-            m = re.search(r'\d+', w.episode_no)
-            return int(m.group(0)) if m else 0
-
-        works.sort(key=_get_ep_num)
-        self._write_works_to_file(works)
-
-    def get_next_episode_number(self) -> int:
-        """다음 작성할 에피소드 번호 반환"""
-        works = self.load_works()
-        if not works:
-            return 1
-        nums = [int(re.search(r'\d+', w.episode_no).group(0)) for w in works if re.search(r'\d+', w.episode_no)]
-        return max(nums) + 1 if nums else 1
-
-    def delete_work(self, episode_no: str) -> bool:
-        """지정된 에피소드 번호의 작품을 원고에서 삭제하고 마크다운 파일 갱신"""
-        works = self.load_works()
-        original_len = len(works)
-        works = [w for w in works if w.episode_no != episode_no]
-        if len(works) == original_len:
-            return False
-
-        def _get_ep_num(w):
-            m = re.search(r'\d+', w.episode_no)
-            return int(m.group(0)) if m else 0
-
-        works.sort(key=_get_ep_num)
-        self._write_works_to_file(works)
-        return True
-
-    def reorder_works(self, reordered_items: List[dict], auto_renumber: bool = True) -> List[PoemWork]:
-        """
-        목차 및 순서 편집 결과를 반영하여 전체 작품 순서를 재정렬하고 필요시 회차 번호를 자동 재부여.
-        reordered_items: [{'episode_no': '제01화', 'chapter': '제1부: 흙과 솜꽃'}, ...]
-        """
-        works = self.load_works()
-        work_map = {w.episode_no: w for w in works}
-
-        new_works = []
-        for item in reordered_items:
-            orig_ep = item.get("episode_no")
-            if orig_ep in work_map:
-                w = work_map[orig_ep]
-                w.chapter = item.get("chapter", "").strip()
-                new_works.append(w)
-
-        # 목록에 누락된 기존 작품이 있다면 뒤에 덧붙임
-        for w in works:
-            if w not in new_works:
-                new_works.append(w)
-
-        # 회차 번호 자동 재부여 (제01화, 제02화...)
-        if auto_renumber:
-            for idx, w in enumerate(new_works, 1):
-                w.episode_no = f"제{str(idx).zfill(2)}화"
-
-        self._write_works_to_file(new_works)
-        return new_works
-
-    def update_work_layout(
-        self,
-        episode_no: str,
-        layout_mode: str,
-        part2_mode: Optional[str] = None,
-        image_file_2: Optional[str] = None
-    ) -> bool:
-        """특정 작품의 출판 조판 모드 ('compact' 또는 'multi_page') 및 4P 좌측면 연출 설정 갱신"""
-        works = self.load_works()
-        found = False
-        for w in works:
-            if w.episode_no == episode_no:
-                w.layout_mode = layout_mode
-                if part2_mode is not None:
-                    w.part2_mode = part2_mode
-                if image_file_2 is not None:
-                    w.image_file_2 = image_file_2
-                found = True
-                break
-        if found:
-            self._write_works_to_file(works)
-        return found
-
-    def update_work_layout_config(
-        self,
-        episode_no: str,
-        layout_config: dict,
-        title: Optional[str] = None,
-        poem_body: Optional[str] = None,
-        status: Optional[str] = None
-    ) -> bool:
-        """2P/4P/6P 매트릭스 슬롯 조판 설정을 갱신하고 기존 layout_mode/part2_mode 및 직접 편집 텍스트도 동기화"""
-        works = self.load_works()
-        found = False
-        target_num = re.sub(r'[^0-9]', '', str(episode_no)).zfill(2)
-
-        for w in works:
-            w_num = re.sub(r'[^0-9]', '', str(w.episode_no)).zfill(2)
-            if w.episode_no == episode_no or (target_num and w_num == target_num):
-                w.layout_config = layout_config
-                if title is not None and title.strip():
-                    w.title = title.strip()
-                if poem_body is not None:
-                    w.poem_body = poem_body
-                if status is not None and status.strip():
-                    w.status = status.strip()
-                page_count = layout_config.get("page_count", 2)
-                if page_count >= 4:
-                    w.layout_mode = "multi_page"
-                elif page_count == 1:
-                    w.layout_mode = "single_page"
-                else:
-                    w.layout_mode = "compact"
-                
-                # 4P/6P 모드일 때 3면/4면 기반 part2_mode 유추
-                slots = layout_config.get("slots", [])
-                if page_count >= 4 and len(slots) >= 4:
-                    slot3 = slots[2] if isinstance(slots[2], dict) else {"type": slots[2]}
-                    if slot3.get("type") == "text":
-                        w.part2_mode = "poem_text"
-                    else:
-                        img_cfg = layout_config.get("image_settings", {}).get("page_3", {})
-                        mode = img_cfg.get("mode", "motif_symbol")
-                        w.part2_mode = mode
-                        if mode == "image" and img_cfg.get("file"):
-                            w.image_file_2 = img_cfg.get("file")
-                found = True
-                break
-        if found:
-            self._write_works_to_file(works)
-        return found
-
-
+    def _write_works_to_file(self, works: List[PoemWork], target_path: Optional[Path] = None) -> None:
+        """온디맨드 내보내기 시 지정된 경로에 마크다운 원고 파일 기록"""
+        out_path = target_path or self.file_path
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(self.render_markdown_text(works), encoding="utf-8")
+        except Exception:
+            pass

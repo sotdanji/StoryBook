@@ -5,6 +5,7 @@ tools/poem_video_engine을 통해 고화질 슬림 MP4 비디오를 완전 자�
 """
 
 import os
+import re
 import glob
 import shutil
 import subprocess
@@ -239,7 +240,7 @@ class VideoDirectorBridge:
                 error_log = "\n".join(stdout_lines)
                 raise RuntimeError(f"영상 렌더링 실패:\n{error_log}")
 
-            # 6. 완성된 비디오 프로젝트 보관소로 이관
+            # 6. 완성된 비디오를 Cloudflare R2 및 Turso DB로 직행 업로드 (로컬 projects/ 폴더 쓰기 생략)
             self._current_tasks[task_id]["status"] = "saving"
             self._current_tasks[task_id]["progress"] = 90
 
@@ -248,9 +249,6 @@ class VideoDirectorBridge:
                 raise FileNotFoundError("렌더링된 출력 비디오 파일을 찾을 수 없습니다.")
 
             latest_video = max(rendered_files, key=os.path.getmtime)
-
-            project_videos_dir = BASE_DIR / "projects" / project_name / "videos"
-            project_videos_dir.mkdir(parents=True, exist_ok=True)
 
             is_shorts = (aspect_ratio == "9:16")
             is_song = (video_type == "song")
@@ -261,12 +259,11 @@ class VideoDirectorBridge:
                 prefix_label = "쇼츠_영상" if is_shorts else "시낭송_영상"
 
             final_video_name = f"{episode_num:02d}_{safe_title}_{prefix_label}.mp4"
-            final_video_path = project_videos_dir / final_video_name
-            shutil.copyfile(latest_video, final_video_path)
+            final_preview_name = None
 
-            # 7. 썸네일 프리뷰 복사
+            # 7. 썸네일 프리뷰 확인
             preview_files = list((self.engine_dir / ".musicstep" / "runs").glob("*/preview.png"))
-            final_preview_path = None
+            latest_preview = None
             if preview_files:
                 latest_preview = max(preview_files, key=os.path.getmtime)
                 if is_song:
@@ -274,8 +271,50 @@ class VideoDirectorBridge:
                 else:
                     preview_suffix = "shorts_preview.png" if is_shorts else "preview.png"
                 final_preview_name = f"{episode_num:02d}_{safe_title}_{preview_suffix}"
-                final_preview_path = project_videos_dir / final_preview_name
-                shutil.copyfile(latest_preview, final_preview_path)
+
+            # 7-1. Cloudflare R2 업로드 및 Turso DB 동기화
+            try:
+                from core.r2_storage import r2_storage
+                from core.project_manager import project_manager
+                if latest_video.exists():
+                    r2_storage.save_video(project_name, final_video_name, latest_video.read_bytes())
+                if latest_preview and latest_preview.exists() and final_preview_name:
+                    r2_storage.upload_bytes(
+                        latest_preview.read_bytes(),
+                        f"{project_name}/videos/{final_preview_name}",
+                        content_type="image/png"
+                    )
+                mgr = project_manager.get_manuscript_manager(project_name)
+                work = mgr.get_work_by_episode(str(episode_num)) or mgr.get_work_by_episode(f"제{episode_num:02d}화")
+                if work:
+                    work.video_file = f"videos/{final_video_name}"
+                    if final_preview_name:
+                        work.video_preview = f"videos/{final_preview_name}"
+                    mgr.save_work(work)
+            except Exception as r2_err:
+                print(f"[VideoDirectorBridge] R2/DB 동기화 경고: {r2_err}")
+
+            # 7-1. Cloudflare R2 업로드 및 Turso DB 동기화
+            try:
+                from core.r2_storage import r2_storage
+                from core.project_manager import project_manager
+                if latest_video.exists():
+                    r2_storage.save_video(project_name, final_video_name, latest_video.read_bytes())
+                if latest_preview and latest_preview.exists() and final_preview_name:
+                    r2_storage.upload_bytes(
+                        latest_preview.read_bytes(),
+                        f"{project_name}/videos/{final_preview_name}",
+                        content_type="image/png"
+                    )
+                mgr = project_manager.get_manuscript_manager(project_name)
+                work = mgr.get_work_by_episode(str(episode_num)) or mgr.get_work_by_episode(f"제{episode_num:02d}화")
+                if work:
+                    work.video_file = f"videos/{final_video_name}"
+                    if final_preview_name:
+                        work.video_preview = f"videos/{final_preview_name}"
+                    mgr.save_work(work)
+            except Exception as r2_err:
+                print(f"[VideoDirectorBridge] R2/DB 동기화 경고: {r2_err}")
 
             # 8. 최종 임시 파일 자동 클린업 (용량 최소화)
             self.clean_engine_temp()
@@ -283,9 +322,9 @@ class VideoDirectorBridge:
             result = {
                 "status": "complete",
                 "progress": 100,
-                "video_path": str(final_video_path),
+                "video_path": f"/projects/{project_name}/videos/{final_video_name}",
                 "video_name": final_video_name,
-                "preview_path": str(final_preview_path) if final_preview_path else None,
+                "preview_path": f"/projects/{project_name}/videos/{final_preview_name}" if final_preview_name else None,
                 "duration": sync_res.get("duration", 0),
                 "cues_count": sync_res.get("cues_count", len(poem_lines))
             }
@@ -306,78 +345,75 @@ class VideoDirectorBridge:
         aspect_ratio: str = "16:9"
     ) -> Dict[str, Any]:
         """
-        시화집 전편(EP01~EP10 등) 낭송 영상을 순서대로 무손실 초고속 결합하여
-        하나의 롱폼 '시화집 낭송 플레이리스트 영상'으로 완성합니다.
+        [100% 서버 일원화]
+        Turso DB에 등록된 시화집 전편 낭송 영상을 Cloudflare R2에서 /tmp로 다운로드한 뒤
+        순서대로 무손실 초고속 결합하여 다시 R2로 업로드합니다.
         """
+        import tempfile
         try:
-            project_videos_dir = BASE_DIR / "projects" / project_name / "videos"
-            if not project_videos_dir.exists():
-                raise FileNotFoundError(f"프로젝트 영상 폴더가 존재하지 않습니다: {project_videos_dir}")
+            from core.project_manager import project_manager
+            from core.r2_storage import r2_storage
+
+            pid = project_manager._resolve_project_id(project_name)
+            mgr = project_manager.get_manuscript_manager(pid)
+            works = mgr.load_works()
 
             is_shorts = (aspect_ratio == "9:16")
-            filter_pattern = "*_쇼츠_영상.mp4" if is_shorts else "*_시낭송_영상.mp4"
 
-            # 1. 대상 비디오 파일 탐색 및 에피소드 번호순 정렬
-            candidates = list(project_videos_dir.glob(filter_pattern))
-            if not candidates:
-                # 일반 mp4 fallback
-                candidates = [
-                    f for f in project_videos_dir.glob("*.mp4")
-                    if not f.name.endswith("_플레이리스트.mp4") and not f.name.endswith("_전편_연속재생.mp4")
+            with tempfile.TemporaryDirectory() as tmp_dir_str:
+                tmp_dir = Path(tmp_dir_str)
+                sorted_videos: List[Path] = []
+
+                for w in works:
+                    v_rel = getattr(w, "video_file", "")
+                    if not v_rel:
+                        continue
+                    v_name = Path(v_rel).name
+                    raw_v = r2_storage.get_media_bytes(f"/projects/{pid}/videos/{v_name}") or r2_storage.get_media_bytes(v_rel)
+                    if raw_v:
+                        vf = tmp_dir / v_name
+                        vf.write_bytes(raw_v)
+                        sorted_videos.append(vf)
+
+                if len(sorted_videos) < 2:
+                    raise ValueError(f"플레이리스트 결합을 위해서는 최소 2개 이상의 완성된 영상이 필요합니다. (현재: {len(sorted_videos)}개)")
+
+                concat_list_file = tmp_dir / "concat_playlist.txt"
+                with open(concat_list_file, "w", encoding="utf-8") as f:
+                    for v in sorted_videos:
+                        safe_v_path = str(v.resolve()).replace("\\", "/")
+                        f.write(f"file '{safe_v_path}'\n")
+
+                ratio_label = "쇼츠_모음집" if is_shorts else "전편_플레이리스트"
+                output_filename = f"{pid}_시화집_{ratio_label}.mp4"
+                output_path = tmp_dir / output_filename
+
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", str(concat_list_file),
+                    "-c", "copy",
+                    str(output_path)
                 ]
 
-            if len(candidates) < 2:
-                raise ValueError(f"플레이리스트 결합을 위해서는 최소 2개 이상의 완성된 영상이 필요합니다. (현재: {len(candidates)}개)")
+                proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
 
-            # 파일명 앞자리(01_, 02_ 등) 기준 정렬
-            def sort_key(p: Path):
-                digits = re.findall(r'^\d+', p.name)
-                return int(digits[0]) if digits else 999
+                if proc.returncode != 0 or not output_path.exists():
+                    raise RuntimeError(f"영상 결합 실패:\n{proc.stderr}")
 
-            sorted_videos = sorted(candidates, key=sort_key)
-
-            # 2. FFmpeg concat 파일리스트 생성
-            concat_list_file = project_videos_dir / "concat_playlist.txt"
-            with open(concat_list_file, "w", encoding="utf-8") as f:
-                for v in sorted_videos:
-                    # Windows 경로 안전하게 포맷팅
-                    safe_v_path = str(v.resolve()).replace("\\", "/")
-                    f.write(f"file '{safe_v_path}'\n")
-
-            # 3. FFmpeg 무손실 결합 실행 (-c copy)
-            ratio_label = "쇼츠_모음집" if is_shorts else "전편_플레이리스트"
-            output_filename = f"{project_name}_시화집_{ratio_label}.mp4"
-            output_path = project_videos_dir / output_filename
-
-            cmd = [
-                "ffmpeg", "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(concat_list_file),
-                "-c", "copy",
-                str(output_path)
-            ]
-
-            proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
-
-            # concat 파일 삭제
-            try:
-                concat_list_file.unlink(missing_ok=True)
-            except Exception:
-                pass
-
-            if proc.returncode != 0 or not output_path.exists():
-                raise RuntimeError(f"영상 결합 실패:\n{proc.stderr}")
-
-            size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 2)
+                merged_bytes = output_path.read_bytes()
+                size_mb = round(len(merged_bytes) / (1024 * 1024), 2)
+                r2_storage.save_video(pid, output_filename, merged_bytes)
+                ep_names = [v.name for v in sorted_videos]
 
             return {
                 "success": True,
                 "output_filename": output_filename,
-                "output_path": str(output_path),
-                "count": len(sorted_videos),
+                "output_path": f"/projects/{pid}/videos/{output_filename}",
+                "count": len(ep_names),
                 "size_mb": size_mb,
-                "episodes": [v.name for v in sorted_videos]
+                "episodes": ep_names
             }
 
         except Exception as e:

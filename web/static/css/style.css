@@ -831,6 +831,76 @@ body {
 /* ========================================================
    1. 창작 스튜디오 (Creation Studio)
    ======================================================== */
+/* ========================================================
+   1. 창작 스튜디오 3단 서브 탭 네비게이션 (Sub-Tabs)
+   ======================================================== */
+.studio-subnav-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+  background: #FFFDF9;
+  border: 1.5px solid #EBDCCB;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 2px 6px rgba(100, 62, 25, 0.04);
+}
+
+.studio-subtab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  color: #705238;
+  font-size: 0.96rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.studio-subtab-btn:hover {
+  background: #FAF3EB;
+  color: #52361B;
+}
+
+.studio-subtab-btn.active {
+  background: linear-gradient(135deg, #9E6B55 0%, #835440 100%);
+  color: #FFFFFF;
+  border-color: #704432;
+  box-shadow: 0 3px 8px rgba(131, 84, 64, 0.28);
+}
+
+.studio-subtab-btn .subtab-subtext {
+  font-size: 0.78rem;
+  font-weight: 500;
+  opacity: 0.88;
+}
+
+.studio-subtab-panel {
+  display: none;
+}
+
+.studio-subtab-panel.active {
+  display: block;
+  animation: fadeInSubtab 0.22s ease-out;
+}
+
+@keyframes fadeInSubtab {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .studio-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -3256,7 +3326,18 @@ body {
     max-width: 100%;
   }
 
-  /* 창작 스튜디오 2열 -> 1열 세로 스택 전환 */
+  /* 창작 스튜디오 3단 서브 탭 모바일 반응형 */
+  .studio-subnav-bar {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .studio-subtab-btn {
+    white-space: normal;
+    padding: 9px 12px;
+    font-size: 0.88rem;
+  }
+
   .studio-layout {
     grid-template-columns: 1fr;
     gap: 1.25rem;

@@ -99,14 +99,20 @@ class InquiryManager:
             except Exception as e:
                 print(f"Failed to auto-attach project zip: {e}")
 
-        # 2. 본문데이터 CSV만 첨부
+        # 2. 본문데이터 CSV만 첨부 (온디맨드 /tmp 생성 후 첨부)
         elif attach_type == "csv":
             try:
-                csv_path = project_manager.get_active_csv_path()
-                if csv_path.exists():
+                import tempfile
+                from core.csv_builder import build_canva_csv
+                mgr = project_manager.get_active_manuscript_manager()
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tf:
+                    tmp_csv = Path(tf.name)
+                build_canva_csv(output_file=tmp_csv, manuscript_manager=mgr)
+                if tmp_csv.exists():
                     target_name = f"{inquiry_id}_{active_id}_본문데이터.csv"
                     target_dest = self.attachments_dir / target_name
-                    shutil.copy2(csv_path, target_dest)
+                    shutil.copy2(tmp_csv, target_dest)
+                    tmp_csv.unlink(missing_ok=True)
                     attachment_path = str(target_dest.relative_to(self.inquiries_dir))
                     attachment_filename = f"{pname}_본문데이터.csv"
             except Exception as e:
@@ -138,66 +144,93 @@ class InquiryManager:
             status="pending"
         )
 
-        # JSON 저장
-        item_file = self.inquiries_dir / f"{inquiry_id}.json"
-        item_file.write_text(json.dumps(asdict(item), ensure_ascii=False, indent=2), encoding="utf-8")
+        # Turso DB 마스터 저장 (클라우드 영구 보존)
+        item_dict = asdict(item)
+        try:
+            from core.db_manager import db_manager
+            db_manager.save_inquiry(
+                inquiry_id=inquiry_id,
+                user_id=user_id or "",
+                author_email=author_email.strip(),
+                project_id=active_id,
+                data_dict=item_dict
+            )
+        except Exception as e:
+            print(f"[InquiryManager] DB 저장 경고: {e}")
+
+        # 첨부파일이 있으면 Cloudflare R2에 영구 저장
+        if attachment_path:
+            try:
+                from core.r2_storage import r2_storage
+                local_att = (self.inquiries_dir / attachment_path).resolve()
+                if local_att.exists():
+                    r2_key = f"inquiries/attachments/{local_att.name}"
+                    r2_storage.upload_bytes(
+                        local_att.read_bytes(),
+                        r2_key
+                    )
+            except Exception as e:
+                print(f"[InquiryManager] R2 첨부파일 업로드 경고: {e}")
+
         return item
 
     def get_inquiry(self, inquiry_id: str) -> Optional[InquiryItem]:
-        item_file = self.inquiries_dir / f"{inquiry_id}.json"
-        if not item_file.exists():
-            return None
         try:
-            data = json.loads(item_file.read_text(encoding="utf-8"))
-            return InquiryItem(**data)
+            from core.db_manager import db_manager
+            db_data = db_manager.get_inquiry(inquiry_id)
+            if db_data:
+                return InquiryItem(**db_data)
         except Exception:
-            return None
+            pass
+        return None
 
     def list_inquiries(self, user_id: Optional[str] = None, user_email: Optional[str] = None) -> List[Dict[str, Any]]:
-        """전체 또는 특정 사용자 문의 목록 반환 (최신순)"""
-        items = []
-        for f in self.inquiries_dir.glob("inq_*.json"):
-            try:
-                data = json.loads(f.read_text(encoding="utf-8"))
-                # 사용자 필터링 (user_id 또는 이메일 매칭)
-                if user_id or user_email:
-                    match_id = bool(user_id and data.get("user_id") == user_id)
-                    match_email = bool(user_email and data.get("author_email") == user_email)
-                    if not (match_id or match_email):
-                        continue
-                items.append(data)
-            except Exception:
-                continue
-
-        # 최신 등록순 정렬
-        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-        return items
+        """전체 또는 특정 사용자 문의 목록 반환 (100% Turso DB 기반, 최신순)"""
+        try:
+            from core.db_manager import db_manager
+            return db_manager.list_inquiries(user_id=user_id, user_email=user_email)
+        except Exception:
+            return []
 
     def reply_inquiry(self, inquiry_id: str, reply_content: str, status: str = "answered") -> Optional[InquiryItem]:
-        """관리자 답변 등록 및 상태 갱신"""
-        item_file = self.inquiries_dir / f"{inquiry_id}.json"
-        if not item_file.exists():
+        """관리자 답변 등록 및 상태 갱신 (Turso DB 연동)"""
+        existing = self.get_inquiry(inquiry_id)
+        if not existing:
             return None
         try:
-            data = json.loads(item_file.read_text(encoding="utf-8"))
+            data = asdict(existing)
             data["reply_content"] = reply_content.strip()
             data["status"] = status
             data["answered_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            item_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            from core.db_manager import db_manager
+            db_manager.save_inquiry(
+                inquiry_id=inquiry_id,
+                user_id=data.get("user_id", ""),
+                author_email=data.get("author_email", ""),
+                project_id=data.get("project_id", ""),
+                data_dict=data
+            )
             return InquiryItem(**data)
         except Exception:
             return None
 
     def get_attachment_abs_path(self, inquiry_id: str) -> Optional[Path]:
-        """첨부 파일의 안전한 절대 경로 반환"""
+        """첨부 파일의 안전한 절대 경로 반환 (로컬에 없으면 R2에서 임시 복원)"""
         item = self.get_inquiry(inquiry_id)
         if not item or not item.attachment_path:
             return None
         target = (self.inquiries_dir / item.attachment_path).resolve()
-        # inquiries_dir 하위 경로인지 검증
         try:
             target.relative_to(self.inquiries_dir.resolve())
             if target.exists() and target.is_file():
+                return target
+            # R2에서 복원 시도
+            from core.r2_storage import r2_storage
+            r2_key = f"inquiries/attachments/{target.name}"
+            raw = r2_storage.fetch_bytes_from_r2(r2_key)
+            if raw:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(raw)
                 return target
         except Exception:
             pass

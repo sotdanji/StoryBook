@@ -12,7 +12,7 @@ import base64
 from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -22,7 +22,7 @@ try:
 except ImportError:
     genai = None
 
-from core.config import TARGET_POEMS_COUNT, DEFAULT_ART_STYLE, PAPER_TYPE, save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, get_supabase_config
+from core.config import TARGET_POEMS_COUNT, DEFAULT_ART_STYLE, PAPER_TYPE, save_gemini_api_key, save_gemini_model, get_gemini_api_key_status, is_admin_email
 from core.auth_manager import auth_manager
 from core.project_manager import project_manager
 
@@ -40,27 +40,74 @@ class SetModelRequest(BaseModel):
     model_name: str
 
 class AuthSessionRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = ""
     email: str
-    access_token: str
+    access_token: Optional[str] = ""
     name: Optional[str] = None
-    provider: Optional[str] = "google"
+    provider: Optional[str] = "turso_email"
+
+class TursoLoginRequest(BaseModel):
+    email: str
+    password: Optional[str] = ""
+    name: Optional[str] = None
 
 # -------------------------------------------------------------
-# 중앙 회원 인증 및 로그인 라우트
+# 중앙 회원 인증 및 로그인 라우트 (Turso DB 자체 인증 일원화)
 # -------------------------------------------------------------
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    """Supabase 구글 1초 로그인 및 회원가입 페이지"""
-    cfg = get_supabase_config()
+    """Turso 클라우드 자체 인증 (이메일/구글) 1초 로그인 및 회원가입 페이지"""
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={
-            "supabase_url": cfg["url"],
-            "supabase_anon_key": cfg["anon_key"]
-        }
+        context={}
     )
+
+@router.post("/api/auth/turso_login")
+async def turso_native_login(req: TursoLoginRequest, response: Response):
+    """
+    [Supabase 수면 문제 완전 해결]
+    Turso DB 기반 자체 회원 로그인/자동 가입 엔드포인트
+    """
+    try:
+        session = auth_manager.authenticate_or_register_email(
+            email=req.email,
+            password=req.password or "",
+            name=req.name
+        )
+        if session and session.get("token"):
+            response.set_cookie(
+                key="sb_session",
+                value=session["token"],
+                max_age=30 * 24 * 3600,
+                httponly=True,
+                samesite="lax"
+            )
+        if session and session.get("active_project_id"):
+            response.set_cookie(
+                key="sb_active_project",
+                value=urllib.parse.quote(session["active_project_id"]),
+                max_age=30 * 24 * 3600,
+                httponly=False,
+                samesite="lax"
+            )
+        claimed = False
+        try:
+            active_info = project_manager.get_active_project_info()
+            if not active_info.owner_id:
+                claimed = project_manager.claim_project(active_info.id, session["user_id"], session["email"])
+        except Exception:
+            pass
+        return {
+            "success": True,
+            "session": session,
+            "claimed_project": claimed,
+            "message": "로그인 성공! 작성 중이던 시집이 회원님의 계정으로 안전하게 귀속되었습니다." if claimed else "로그인 성공!"
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"로그인 처리 실패: {str(e)}")
 
 @router.get("/", response_class=HTMLResponse)
 @router.get("/studio", response_class=HTMLResponse)
@@ -68,10 +115,12 @@ async def studio_page(request: Request):
     """스튜디오 메인 집필실 및 2-Layer 조판실 (루트 진입 시 바로 집필실 표시)"""
     is_guest = request.query_params.get("guest") == "true"
     current_user = auth_manager.get_current_user()
-    cfg = get_supabase_config()
 
-    if cfg["configured"] and not current_user and not is_guest:
+    if not current_user and not is_guest:
         return RedirectResponse(url="/login")
+
+    from core.project_manager import project_manager
+    active_info = project_manager.get_active_project_info()
 
     return templates.TemplateResponse(
         request=request,
@@ -79,7 +128,8 @@ async def studio_page(request: Request):
         context={
             "current_user": current_user,
             "is_guest": is_guest,
-            "is_admin": auth_manager.is_current_user_admin()
+            "is_admin": auth_manager.is_current_user_admin(),
+            "active_project": active_info
         }
     )
 
@@ -112,27 +162,17 @@ async def admin_dashboard_page(request: Request):
 
 @router.post("/api/auth/save_session")
 async def save_auth_session(req: AuthSessionRequest):
-    """클라이언트 로그인 성공 후 세션을 로컬에 영구 저장 및 기존 시집 자동 귀속"""
+    """클라이언트 로그인 성공 후 세션을 Turso DB 및 브라우저 쿠키에 영구 저장하고 기존 시집 자동 귀속"""
     try:
-        verified_uid = req.user_id
+        verified_uid = req.user_id or ""
         verified_email = req.email
-        supabase_cfg = get_supabase_config()
-
-        if supabase_cfg['configured']:
-            if not req.access_token:
-                raise HTTPException(status_code=401, detail='인증 토큰(access_token)이 누락되었습니다.')
-            remote_user = await asyncio.to_thread(auth_manager.verify_token_remote, req.access_token)
-            if not remote_user or not isinstance(remote_user, dict) or not remote_user.get('id'):
-                raise HTTPException(status_code=401, detail='유효하지 않거나 만료된 인증 토큰입니다.')
-            verified_uid = remote_user.get('id')
-            verified_email = remote_user.get('email') or req.email
 
         session = auth_manager.save_session(
             user_id=verified_uid,
             email=verified_email,
-            access_token=req.access_token,
+            access_token=req.access_token or "",
             name=req.name,
-            provider=req.provider or "google"
+            provider=req.provider or "turso_email"
         )
 
         # [자동 귀속: Auto Claim] 현재 활성 시집이 미할당(게스트 작성분) 상태라면 내 계정으로 즉시 소유권 이전
@@ -140,7 +180,7 @@ async def save_auth_session(req: AuthSessionRequest):
         try:
             active_info = project_manager.get_active_project_info()
             if not active_info.owner_id:
-                claimed = project_manager.claim_project(active_info.id, req.user_id, req.email)
+                claimed = project_manager.claim_project(active_info.id, session["user_id"], session["email"])
         except Exception as claim_err:
             print(f"Auto-claim warning: {claim_err}")
 
@@ -159,9 +199,11 @@ async def get_auth_status():
     return auth_manager.get_auth_status()
 
 @router.post("/api/auth/logout")
-async def logout_endpoint():
+async def logout_endpoint(response: Response):
     """스튜디오 로그아웃 및 세션 초기화"""
     success = auth_manager.clear_session()
+    response.delete_cookie("sb_session")
+    response.delete_cookie("sb_active_project")
     return {"success": success}
 
 
@@ -235,8 +277,8 @@ async def get_admin_overview():
         })
 
     # 시스템 상태
+    from core.db_manager import db_manager
     gemini_status = get_gemini_api_key_status()
-    supabase_cfg = get_supabase_config()
 
     return {
         "success": True,
@@ -252,9 +294,9 @@ async def get_admin_overview():
         "writers": writers_list,
         "system": {
             "gemini": gemini_status,
-            "supabase": {
-                "configured": supabase_cfg["configured"],
-                "url": supabase_cfg["url"]
+            "turso": {
+                "configured": db_manager.is_cloud_mode,
+                "mode": "Turso libSQL Cloud Native" if db_manager.is_cloud_mode else "Local SQLite"
             },
             "paper_type": PAPER_TYPE,
             "default_target_count": TARGET_POEMS_COUNT,

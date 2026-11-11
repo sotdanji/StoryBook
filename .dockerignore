@@ -1,0 +1,45 @@
+# Python virtual environments & cache
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Node modules & Heavy external tools
+node_modules/
+tools/poem_video_engine/node_modules/
+tools/poem_video_engine/out/
+
+# Exports & Build artifacts
+.exports/
+dist/
+build/
+*.zip
+*.sqlite-shm
+*.sqlite-wal
+
+# Git & IDE configs
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Local projects, outputs & session files (100% Cloud Unified: Turso DB + Cloudflare R2)
+projects/
+outputs/
+tools/
+.agents/
+docs/
+tests/
+*.mp3
+*.mp4
+*.wav
+*.pdf
+.auth_session.json
+.active_project
+
+# Local secrets (Secrets are injected via `fly secrets set`)
+.env
+

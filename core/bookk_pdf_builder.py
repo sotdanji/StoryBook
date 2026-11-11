@@ -35,7 +35,10 @@ FONT_PATHS = [
     (str(LOCAL_FONTS_DIR / "BookkMyungjo-Lt.ttf"), str(LOCAL_FONTS_DIR / "BookkMyungjo-Bd.ttf")),
     (str(LOCAL_FONTS_DIR / "BookkMyungjo.ttf"), str(LOCAL_FONTS_DIR / "BookkMyungjo-Bold.ttf")),
     (str(LOCAL_FONTS_DIR / "NanumMyeongjo.ttf"), str(LOCAL_FONTS_DIR / "NanumMyeongjoBold.ttf")),
-    # 2. 윈도우 시스템 설치 폰트
+    # 2. 리눅스 / Docker 컨테이너 표준 나눔명조 폰트 (Fly.io 서버 환경)
+    ("/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf", "/usr/share/fonts/truetype/nanum/NanumMyeongjoBold.ttf"),
+    ("/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf", "/usr/share/fonts/truetype/nanum/NanumBarunGothicBold.ttf"),
+    # 3. 윈도우 시스템 설치 폰트
     ("C:/Windows/Fonts/BookkMyungjo-Lt.ttf", "C:/Windows/Fonts/BookkMyungjo-Bd.ttf"),
     ("C:/Windows/Fonts/NanumMyeongjo.ttf", "C:/Windows/Fonts/NanumMyeongjoBold.ttf"),
     ("C:/Windows/Fonts/batang.ttc", "C:/Windows/Fonts/batang.ttc"),
@@ -1329,15 +1332,16 @@ class BookkPDFBuilder:
         top_y = cover_h_pt - bleed_pt
 
         cover_img_file = getattr(project_info, 'cover_image', '').strip()
-        has_cover_image = False
-        cand_img = None
-        if cover_img_file and images_dir:
-            cand = images_dir / Path(cover_img_file).name
-            if cand.exists() and cand.is_file():
-                has_cover_image = True
-                cand_img = cand
+        cover_img_bytes = None
+        if cover_img_file:
+            from core.r2_storage import r2_storage
+            pid = getattr(project_info, "id", "") or (images_dir.parent.name if images_dir else "")
+            cover_img_bytes = (
+                r2_storage.get_media_bytes(f"/projects/{pid}/images/{Path(cover_img_file).name}")
+                or r2_storage.get_media_bytes(cover_img_file)
+            )
 
-        if has_cover_image:
+        if cover_img_bytes:
             # [A] 대표 삽화가 있는 경우: 상단 제목 -> 구분선 -> 중앙 삽화 -> 하단 저자
             title_y = top_y - (36 * MM_TO_PT)
             c.setFillColorRGB(0.18, 0.16, 0.15)
@@ -1356,13 +1360,15 @@ class BookkPDFBuilder:
             c.setLineWidth(0.8)
             c.line(front_center_x - 30, curr_y, front_center_x + 30, curr_y)
 
-            # 대표 삽화 배치 (가로 65mm x 세로 65mm)
+            # 대표 삽화 배치 (가로 65mm x 세로 65mm - 인메모리 ImageReader)
             img_w = 65 * MM_TO_PT
             img_h = 65 * MM_TO_PT
             img_x = front_center_x - (img_w / 2)
             img_y = curr_y - 16 - img_h
             try:
-                c.drawImage(str(cand_img), img_x, img_y, width=img_w, height=img_h, preserveAspectRatio=True, mask='auto')
+                import io
+                from reportlab.lib.utils import ImageReader
+                c.drawImage(ImageReader(io.BytesIO(cover_img_bytes)), img_x, img_y, width=img_w, height=img_h, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         else:
@@ -1475,68 +1481,71 @@ class BookkPDFBuilder:
         img_override_file: Optional[str] = None,
         frame_shape: str = "rect"
     ):
-        """삽화 고화질(300DPI) 비율 유지 및 도형 틀(Shape Masking) 렌더링"""
+        """삽화 고화질(300DPI) 비율 유지 및 도형 틀(Shape Masking) 렌더링 (100% R2 클라우드 인메모리)"""
+        import io
+        from reportlab.lib.utils import ImageReader
         img_drawn = False
         target_file = img_override_file if img_override_file else work.image_file
         if target_file:
-            candidates = [
-                images_dir / Path(target_file).name,
-                images_dir / target_file,
-                BASE_DIR / target_file,
-                BASE_DIR / "images" / Path(target_file).name
-            ]
-            for cand in candidates:
-                if cand.exists() and cand.is_file():
+            from core.r2_storage import r2_storage
+            pid = images_dir.parent.name if images_dir else project_manager.get_active_project_id()
+            img_name = Path(str(target_file).replace("\\", "/").split("?")[0]).name
+            raw_bytes = (
+                r2_storage.get_media_bytes(f"/projects/{pid}/images/{img_name}")
+                or r2_storage.get_media_bytes(str(target_file))
+            )
+            if raw_bytes:
+                try:
                     try:
-                        try:
-                            ensure_300dpi_image(cand, cand)
-                        except Exception:
-                            pass
-                        with Image.open(cand) as im:
-                            orig_w, orig_h = im.size
-                        ratio = min(w / orig_w, h / orig_h)
-                        target_w = orig_w * ratio
-                        target_h = orig_h * ratio
-                        pos_x = x + (w - target_w) / 2
-                        pos_y = y + (h - target_h) / 2
+                        opt_res = ensure_300dpi_image(raw_bytes, None)
+                        if opt_res.get("image_bytes"):
+                            raw_bytes = opt_res["image_bytes"]
+                    except Exception:
+                        pass
+                    with Image.open(io.BytesIO(raw_bytes)) as im:
+                        orig_w, orig_h = im.size
+                    ratio = min(w / orig_w, h / orig_h)
+                    target_w = orig_w * ratio
+                    target_h = orig_h * ratio
+                    pos_x = x + (w - target_w) / 2
+                    pos_y = y + (h - target_h) / 2
 
-                        c.saveState()
-                        if frame_shape == "circle":
-                            path = c.beginPath()
-                            path.ellipse(pos_x, pos_y, target_w, target_h)
-                            c.clipPath(path, stroke=0, fill=0)
-                        elif frame_shape == "hexagon":
-                            path = c.beginPath()
-                            pts = [
-                                (pos_x + target_w * 0.5, pos_y + target_h),
-                                (pos_x + target_w, pos_y + target_h * 0.75),
-                                (pos_x + target_w, pos_y + target_h * 0.25),
-                                (pos_x + target_w * 0.5, pos_y),
-                                (pos_x, pos_y + target_h * 0.25),
-                                (pos_x, pos_y + target_h * 0.75),
-                            ]
-                            path.moveTo(pts[0][0], pts[0][1])
-                            for pt in pts[1:]:
-                                path.lineTo(pt[0], pt[1])
-                            path.close()
-                            c.clipPath(path, stroke=0, fill=0)
-                        elif frame_shape == "arch":
-                            path = c.beginPath()
-                            arch_radius = target_w / 2
-                            arch_base_y = max(pos_y, pos_y + target_h - arch_radius)
-                            path.moveTo(pos_x, pos_y)
-                            path.lineTo(pos_x, arch_base_y)
-                            path.arc(pos_x, arch_base_y - arch_radius, pos_x + target_w, arch_base_y + arch_radius, startAngle=180, extent=-180)
-                            path.lineTo(pos_x + target_w, pos_y)
-                            path.close()
-                            c.clipPath(path, stroke=0, fill=0)
+                    c.saveState()
+                    if frame_shape == "circle":
+                        path = c.beginPath()
+                        path.ellipse(pos_x, pos_y, target_w, target_h)
+                        c.clipPath(path, stroke=0, fill=0)
+                    elif frame_shape == "hexagon":
+                        path = c.beginPath()
+                        pts = [
+                            (pos_x + target_w * 0.5, pos_y + target_h),
+                            (pos_x + target_w, pos_y + target_h * 0.75),
+                            (pos_x + target_w, pos_y + target_h * 0.25),
+                            (pos_x + target_w * 0.5, pos_y),
+                            (pos_x, pos_y + target_h * 0.25),
+                            (pos_x, pos_y + target_h * 0.75),
+                        ]
+                        path.moveTo(pts[0][0], pts[0][1])
+                        for pt in pts[1:]:
+                            path.lineTo(pt[0], pt[1])
+                        path.close()
+                        c.clipPath(path, stroke=0, fill=0)
+                    elif frame_shape == "arch":
+                        path = c.beginPath()
+                        arch_radius = target_w / 2
+                        arch_base_y = max(pos_y, pos_y + target_h - arch_radius)
+                        path.moveTo(pos_x, pos_y)
+                        path.lineTo(pos_x, arch_base_y)
+                        path.arc(pos_x, arch_base_y - arch_radius, pos_x + target_w, arch_base_y + arch_radius, startAngle=180, extent=-180)
+                        path.lineTo(pos_x + target_w, pos_y)
+                        path.close()
+                        c.clipPath(path, stroke=0, fill=0)
 
-                        c.drawImage(str(cand), pos_x, pos_y, width=target_w, height=target_h)
-                        c.restoreState()
-                        img_drawn = True
-                        break
-                    except Exception as e:
-                        print(f"Bookk Image Draw Warning: {e}")
+                    c.drawImage(ImageReader(io.BytesIO(raw_bytes)), pos_x, pos_y, width=target_w, height=target_h)
+                    c.restoreState()
+                    img_drawn = True
+                except Exception as e:
+                    print(f"Bookk Image Draw Warning: {e}")
 
         if not img_drawn:
             c.setStrokeColorRGB(0.85, 0.82, 0.78)
@@ -1626,8 +1635,17 @@ def build_pdf_book(
     project_info=None,
     images_dir: Optional[Path] = None,
 ) -> Path:
-    """열람용/기본 A5 PDF 생성 통합 래퍼 (BookkPDFBuilder 기반 100% DTP 조판 동기화)"""
+    """열람용/기본 A5 PDF 생성 통합 래퍼 (BookkPDFBuilder 기반 100% DTP 조판 동기화, .exports 온디맨드 출력)"""
     if output_path is None:
-        output_path = project_manager.get_active_pdf_path()
+        info = project_info or project_manager.get_active_project_info()
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        output_path = export_dir / f"{info.id}_완성본.pdf"
     builder = BookkPDFBuilder(format_key="a5", paper_type="white_100g")
-    return builder.build_interior_pdf(output_path=output_path)
+    builder.build_interior_pdf(
+        output_path=output_path,
+        manuscript_manager=manuscript_manager,
+        project_info=project_info,
+        images_dir=images_dir
+    )
+    return output_path

@@ -73,7 +73,12 @@ def build_canva_csv(
         manuscript_manager = project_manager.get_active_manuscript_manager()
 
     if output_file is None:
-        output_file = project_manager.get_active_csv_path()
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        pid = project_manager.get_active_project_id()
+        output_file = export_dir / f"{pid}_시화집_본문데이터.csv"
+    else:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
 
     works = manuscript_manager.load_works()
 
@@ -169,8 +174,11 @@ def build_canva_publishing_metadata_csv(
     """
     info = project_manager.get_project_info(project_id)
     if output_file is None:
-        pdir = project_manager.get_project_dir(project_id)
-        output_file = pdir / "시화집_출판구성데이터.csv"
+        export_dir = BASE_DIR / ".exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        output_file = export_dir / f"{info.id}_시화집_출판구성데이터.csv"
+    else:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
 
     headers = [
         "Book_Title", "Book_Subtitle", "Book_Author",

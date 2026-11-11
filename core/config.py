@@ -88,20 +88,11 @@ def get_gemini_api_key() -> str:
 from typing import Optional
 
 # -------------------------------------------------------------
-# Supabase 중앙 회원 인증 설정
+# [완전 이전] Turso DB Cloud 및 회원 인증 (Supabase 완전 제거)
 # -------------------------------------------------------------
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-
 def get_supabase_config() -> dict:
-    """프론트엔드 및 백엔드에서 사용할 Supabase 공개 연결 정보를 반환합니다."""
-    url = os.getenv("SUPABASE_URL", "") or SUPABASE_URL
-    anon_key = os.getenv("SUPABASE_ANON_KEY", "") or SUPABASE_ANON_KEY
-    return {
-        "url": url.strip(),
-        "anon_key": anon_key.strip(),
-        "configured": bool(url and anon_key)
-    }
+    """[하위 호환] Supabase는 Turso DB Cloud로 100% 이전되어 완전 비활성화되었습니다."""
+    return {"url": "", "anon_key": "", "configured": False}
 
 # -------------------------------------------------------------
 # 관리자(Admin) 권한 설정
@@ -117,5 +108,26 @@ def is_admin_email(email: Optional[str]) -> bool:
     if not email:
         return False
     return email.strip().lower() in ADMIN_EMAILS
+
+
+# -------------------------------------------------------------
+# 단일 플랫폼 클라우드 인프라 (Turso libSQL & Cloudflare R2) 설정
+# -------------------------------------------------------------
+def get_cloud_infrastructure_status() -> dict:
+    """현재 Turso DB 및 Cloudflare R2 연동 상태를 반환합니다."""
+    turso_url = os.getenv("TURSO_DATABASE_URL", "").strip()
+    turso_token = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+    r2_endpoint = os.getenv("R2_ENDPOINT_URL", "").strip() or os.getenv("R2_ACCOUNT_ID", "").strip()
+    r2_access = os.getenv("R2_ACCESS_KEY_ID", "").strip()
+    r2_secret = os.getenv("R2_SECRET_ACCESS_KEY", "").strip()
+    r2_public = os.getenv("R2_PUBLIC_URL", "").strip()
+
+    return {
+        "turso_configured": bool(turso_url and turso_token),
+        "turso_url_masked": f"{turso_url[:24]}..." if turso_url else "로컬 SQLite 모드 (storybook_master.sqlite)",
+        "r2_configured": bool(r2_endpoint and r2_access and r2_secret),
+        "r2_public_url": r2_public or "로컬 정적 서빙 모드 (/projects)",
+    }
+
 
 

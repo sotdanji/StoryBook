@@ -29,6 +29,12 @@ async function loadProjects() {
     if (active) {
       const exportProj = document.getElementById("exportProjectName");
       if (exportProj) exportProj.textContent = active.name;
+
+      // 집필 시집 상단 배너 즉시 동기화
+      const bannerTitle = document.getElementById("bannerBookTitle");
+      if (bannerTitle && active.name) bannerTitle.textContent = active.name;
+      const bannerAuthor = document.getElementById("bannerBookAuthor");
+      if (bannerAuthor) bannerAuthor.textContent = active.author ? `${active.author} 지음` : "시인 지음";
     }
   } catch (err) {
     console.warn("서버 API 부재: 웹 독립 실행 모드로 자동 폴백합니다.", err);
@@ -46,7 +52,7 @@ async function loadProjects() {
     const bannerTitle = document.getElementById("bannerBookTitle");
     if (bannerTitle) bannerTitle.textContent = "노을빛 기억";
     const bannerAuthor = document.getElementById("bannerBookAuthor");
-    if (bannerAuthor) bannerAuthor.textContent = "김서정 시인 지음";
+    if (bannerAuthor) bannerAuthor.textContent = "임종훈 시인 지음";
   }
 }
 
@@ -55,6 +61,10 @@ async function onProjectSelectChange(projectId) {
   if (!projectId) return;
 
   try {
+    // 클라이언트 브라우저 쿠키 및 저장소 즉시 갱신
+    document.cookie = `sb_active_project=${encodeURIComponent(projectId)}; path=/; max-age=2592000; SameSite=Lax`;
+    try { localStorage.setItem("sb_active_project", projectId); } catch (e) { }
+
     const res = await fetch("/api/projects/select", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,11 +72,11 @@ async function onProjectSelectChange(projectId) {
     });
     const data = await res.json();
 
-    if (data.success) {
-      currentWorkIndex = 0;
-      await loadProjects();
-      await loadStatus();
-      await loadImagesInspection();
+    if (res.ok && data.success) {
+      // 시집 전환 시 전체 상태, 책 구성표, 조판 화면이 깨끗하게 동기화되도록 즉시 새로고침
+      window.location.reload();
+    } else {
+      alert("시집 전환 실패: " + (data.detail || data.error || "알 수 없는 오류"));
     }
   } catch (err) {
     alert("시집 전환 중 오류가 발생했습니다: " + err);
@@ -369,34 +379,29 @@ async function loadStatus() {
 
     const proj = currentStatus.project || {};
 
-    // 헤더 및 사이드바 배지 업데이트
-    document.getElementById("badgeCompletedCount").textContent = currentStatus.completed_count;
-    document.getElementById("badgeTargetCount").textContent = currentStatus.target_count;
-    document.getElementById("exportCompletedCount").textContent = currentStatus.completed_count;
-    
-    // 현재 편집 중인 회차가 있으면 유지, 없으면 다음 회차 표시
-    if (currentEditingEpisode) {
-      document.getElementById("inputEpisode").value = currentEditingEpisode;
-    } else {
-      document.getElementById("inputEpisode").value = currentStatus.next_episode;
-    }
-
-    // 사이드바 프로그레스 위젯 및 모바일 배지 업데이트
-    const progFill = document.getElementById("sidebarProgressFill");
-    if (progFill) progFill.style.width = `${currentStatus.progress_percent}%`;
-    const progPercent = document.getElementById("sidebarProgressPercent");
-    if (progPercent) progPercent.textContent = `${currentStatus.progress_percent}%`;
-
-    const mobComp = document.getElementById("mobileCompletedCount");
-    if (mobComp) mobComp.textContent = currentStatus.completed_count;
-    const mobTarget = document.getElementById("mobileTargetCount");
-    if (mobTarget) mobTarget.textContent = currentStatus.target_count;
-
-    // 캡처4 요청: 현재 시집 한 줄 인라인 배너 (시집 제목, 저자)
+    // 1. 현재 시집 한 줄 인라인 배너 최우선 동기화
     const bTitle = document.getElementById("bannerBookTitle");
-    if (bTitle) bTitle.textContent = proj.name || "시집 제목";
+    if (bTitle && proj.name) bTitle.textContent = proj.name;
     const bAuthor = document.getElementById("bannerBookAuthor");
     if (bAuthor) bAuthor.textContent = proj.author ? `${proj.author} 지음` : "시인 지음";
+
+    // 2. 헤더 및 사이드바 배지 업데이트 (요소 부재 시 안전 가드)
+    const badgeComp = document.getElementById("badgeCompletedCount");
+    if (badgeComp) badgeComp.textContent = currentStatus.completed_count;
+    const badgeTarget = document.getElementById("badgeTargetCount");
+    if (badgeTarget) badgeTarget.textContent = currentStatus.target_count;
+    const exportComp = document.getElementById("exportCompletedCount");
+    if (exportComp) exportComp.textContent = currentStatus.completed_count;
+    
+    // 현재 편집 중인 회차가 있으면 유지, 없으면 다음 회차 표시
+    const inputEp = document.getElementById("inputEpisode");
+    if (inputEp) {
+      if (currentEditingEpisode) {
+        inputEp.value = currentEditingEpisode;
+      } else {
+        inputEp.value = currentStatus.next_episode || "01";
+      }
+    }
 
     // 프롬프트 가이드 라벨 업데이트
     const labelPromptTitle = document.getElementById("labelPromptGuideTitle");
@@ -1002,7 +1007,14 @@ function moveTocItem(index, delta) {
 
 // 새 부(챕터) 추가
 function addNewTocChapter() {
-  const name = prompt("새로운 부/챕터 이름을 입력해주세요.\n(예: 제6부: 달빛 머문 뜨락 또는 특별부: 못다 한 이야기)");
+  let promptMsg = "➕ 새로운 부/챕터 이름을 입력해주세요.\n";
+  if (tocChapters.length > 0) {
+    promptMsg += "\n[현재 등록된 부/챕터 목록]\n" + tocChapters.map((c, i) => `${i + 1}. ${c}`).join("\n") + "\n";
+  }
+  const nextNo = tocChapters.length + 1;
+  promptMsg += `\n(예: 제${nextNo}부: 달빛 머문 뜨락 또는 특별부: 못다 한 이야기)`;
+
+  const name = prompt(promptMsg);
   if (name && name.trim()) {
     const trimmed = name.trim();
     if (!tocChapters.includes(trimmed)) {
@@ -1013,6 +1025,90 @@ function addNewTocChapter() {
       alert("이미 동일한 부/챕터가 존재합니다.");
     }
   }
+}
+
+// 부(챕터) 이름 바꾸기
+function renameTocChapter() {
+  if (tocChapters.length === 0) {
+    alert("이름을 변경할 부/챕터가 목록에 없습니다.\n먼저 [➕ 새 부(챕터) 추가]를 해주세요.");
+    return;
+  }
+
+  const listStr = tocChapters.map((c, i) => `${i + 1}. ${c}`).join("\n");
+  const choice = prompt(
+    "✏️ 이름을 변경할 부(챕터)의 번호를 선택해주세요:\n\n" + listStr
+  );
+  if (!choice) return;
+
+  const idx = parseInt(choice.trim(), 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= tocChapters.length) {
+    alert("올바른 번호를 입력해주세요.");
+    return;
+  }
+
+  const oldName = tocChapters[idx];
+  const newName = prompt(`「${oldName}」의 새로운 부/챕터 이름을 입력해주세요:`, oldName);
+  if (!newName || !newName.trim()) return;
+
+  const trimmedNew = newName.trim();
+  if (trimmedNew === oldName) return;
+
+  if (tocChapters.includes(trimmedNew)) {
+    alert("이미 동일한 이름의 부/챕터가 존재합니다.");
+    return;
+  }
+
+  // 1) 챕터 목록 갱신
+  tocChapters[idx] = trimmedNew;
+
+  // 2) 편집 목록에서 해당 부에 속했던 시들의 챕터 일괄 변경
+  let updatedCount = 0;
+  tocEditItems.forEach(item => {
+    if (item.chapter === oldName) {
+      item.chapter = trimmedNew;
+      updatedCount++;
+    }
+  });
+
+  renderTocEditorList();
+  alert(`✏️ 「${oldName}」 부가 「${trimmedNew}」(으)로 변경되었습니다.\n(소속된 시 ${updatedCount}편의 소속 부가 함께 갱신되었습니다.)\n\n하단의 [💾 목차 및 순서 저장하기]를 눌러 최종 반영하세요.`);
+}
+
+// 부(챕터) 삭제
+function deleteTocChapter() {
+  if (tocChapters.length === 0) {
+    alert("삭제할 부/챕터가 목록에 없습니다.");
+    return;
+  }
+
+  const listStr = tocChapters.map((c, i) => `${i + 1}. ${c}`).join("\n");
+  const choice = prompt(
+    "🗑️ 삭제할 부(챕터)의 번호를 입력해주세요:\n\n" + listStr + "\n\n(참고: 삭제 시 해당 부에 속했던 시들은 '소속 부 없음(미분류)' 상태로 안전하게 전환됩니다.)"
+  );
+  if (!choice) return;
+
+  const idx = parseInt(choice.trim(), 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= tocChapters.length) {
+    alert("올바른 번호를 입력해주세요.");
+    return;
+  }
+
+  const targetChapter = tocChapters[idx];
+  const ok = confirm(`정말 「${targetChapter}」 부(챕터)를 삭제하시겠습니까?\n이 부에 속한 시들은 소속 부가 해제(미분류)됩니다.`);
+  if (!ok) return;
+
+  tocChapters.splice(idx, 1);
+
+  let clearedCount = 0;
+  tocEditItems.forEach(item => {
+    if (item.chapter === targetChapter) {
+      item.chapter = "";
+      clearedCount++;
+    }
+  });
+
+  renderTocEditorList();
+  alert(`🗑️ 「${targetChapter}」 부가 삭제되었습니다.\n(해당 부에 속했던 시 ${clearedCount}편의 소속이 해제되었습니다.)\n\n하단의 [💾 목차 및 순서 저장하기]를 눌러 최종 반영하세요.`);
 }
 
 // 5부작 연작 프리셋 원클릭 적용
@@ -1084,6 +1180,12 @@ async function saveTocAndOrder() {
       currentEditingEpisode = null;
       await loadProjects();
       await loadStatus();
+      if (typeof refreshBookStructure === 'function') {
+        await refreshBookStructure();
+      }
+      if (window.dtpEditor && typeof window.dtpEditor.ensureStatusLoaded === 'function') {
+        await window.dtpEditor.ensureStatusLoaded(true);
+      }
     } else {
       alert("목차 저장 실패: " + (data.detail || data.error || "오류가 발생했습니다."));
     }

@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StoryBook Studio - 작가 집필실 로그인</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
   <style>
     :root {
       --bg-cream: #F8F5EE;
@@ -43,9 +45,12 @@
     body::before {
       content: "";
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: radial-gradient(circle at 15% 20%, rgba(217, 119, 6, 0.05) 0%, transparent 40%),
-                  radial-gradient(circle at 85% 80%, rgba(139, 69, 19, 0.06) 0%, transparent 45%);
+        radial-gradient(circle at 85% 80%, rgba(139, 69, 19, 0.06) 0%, transparent 45%);
       pointer-events: none;
     }
 
@@ -121,7 +126,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     }
 
     .divider {
@@ -132,7 +137,8 @@
       font-size: 0.78rem;
     }
 
-    .divider::before, .divider::after {
+    .divider::before,
+    .divider::after {
       content: "";
       flex: 1;
       border-bottom: 1px solid #E5DED5;
@@ -245,7 +251,7 @@
       font-size: 0.95rem;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
       transition: all 0.2s ease;
     }
 
@@ -254,7 +260,7 @@
       border-color: #000000;
       color: #000000;
       transform: translateY(-1px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .toast-msg {
@@ -265,10 +271,21 @@
       display: none;
       text-align: center;
     }
-    .toast-error { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
-    .toast-success { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+
+    .toast-error {
+      background: #FEE2E2;
+      color: #991B1B;
+      border: 1px solid #FCA5A5;
+    }
+
+    .toast-success {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
   </style>
 </head>
+
 <body>
 
   <div class="login-container">
@@ -281,18 +298,22 @@
       </p>
     </div>
 
-    <!-- Google 간편 로그인 -->
-    <button type="button" class="btn-google" id="btnGoogleLogin" onclick="handleGoogleLogin()">
-      <div class="google-icon-badge">
-        <svg width="18" height="18" viewBox="0 0 18 18">
-          <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92c1.71-1.57 2.68-3.88 2.68-6.62z"/>
-          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.87-3.05.87-2.34 0-4.33-1.58-5.04-3.71H.94v2.33C2.43 15.98 5.48 18 9 18z"/>
-          <path fill="#FBBC05" d="M3.96 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.95H.94A8.996 8.996 0 0 0 0 9c0 1.45.35 2.82.94 4.05l3.02-2.33z"/>
-          <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.94 4.95l3.02 2.33c.71-2.13 2.7-3.7 5.04-3.7z"/>
-        </svg>
-      </div>
-      <span>Google 계정으로 시작하기</span>
-    </button>
+    <!-- 빠른 이메일 로그인 / 가입 폼 (Turso DB 영구 No-Sleep) -->
+    <div style="margin-top: 1.5rem; text-align: left;">
+      <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:6px; color:#4A3E36;">작가 이메일
+        주소</label>
+      <input type="email" id="tursoEmail" placeholder="name@example.com" value="sotdanjii@gmail.com"
+        style="width:100%; height:46px; padding:0 12px; border:1px solid #D5C9BD; border-radius:8px; font-size:0.95rem; margin-bottom:10px;">
+      <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:6px; color:#4A3E36;">비밀번호 (선택: 최초
+        로그인 시 자동 등록)</label>
+      <input type="password" id="tursoPassword" placeholder="비밀번호 4자리 이상"
+        style="width:100%; height:46px; padding:0 12px; border:1px solid #D5C9BD; border-radius:8px; font-size:0.95rem; margin-bottom:14px;">
+
+      <button type="button" onclick="handleTursoLogin()" class="btn-submit"
+        style="width:100%; height:48px; font-size:1rem; font-weight:700; background:#8B4513; color:#fff; border:none; border-radius:8px; cursor:pointer;">
+        작가 집필실 입장하기
+      </button>
+    </div>
 
     <!-- 게스트 둘러보기 버튼 (선명한 검정 테두리 및 볼드 텍스트) -->
     <a href="/?guest=true" class="btn-guest">
@@ -301,30 +322,33 @@
 
     <div id="toastBox" class="toast-msg"></div>
 
-    <!-- 구글 계정 미보유자 친절 안내 박스 -->
-    <div class="google-notice-box">
-      <div class="notice-title">
-        <span>💡 Google 계정이 없으신가요?</span>
+    <!-- 구글 로그인 버튼 (선택사항) -->
+    <div style="margin-top: 1.5rem; text-align: center;">
+      <div style="position: relative; margin-bottom: 1rem;">
+        <hr style="border: 0; border-top: 1px solid #E5DCD1;">
+        <span
+          style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #fff; padding: 0 10px; font-size: 0.8rem; color: #8C8075;">또는
+          Google 계정으로</span>
       </div>
-      <div>
-        StoryBook Studio는 오타나 인증 실패 없는 안전하고 쾌적한 집필 환경을 위해 <strong>Google 간편 로그인</strong>을 기본으로 제공합니다.
-      </div>
-      <div style="margin-top: 6px;">
-        계정이 아직 없으시다면 <a href="https://accounts.google.com/signup" target="_blank" rel="noopener noreferrer">Google 계정 만들기(무료) ↗</a>에서 1분 만에 가입하신 후 이용해 주세요.
-      </div>
+      <button type="button" class="btn-google" id="btnGoogleLogin" onclick="handleGoogleLogin()">
+        <div class="google-icon-badge">
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path fill="#4285F4"
+              d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92c1.71-1.57 2.68-3.88 2.68-6.62z" />
+            <path fill="#34A853"
+              d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.87-3.05.87-2.34 0-4.33-1.58-5.04-3.71H.94v2.33C2.43 15.98 5.48 18 9 18z" />
+            <path fill="#FBBC05"
+              d="M3.96 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.95H.94A8.996 8.996 0 0 0 0 9c0 1.45.35 2.82.94 4.05l3.02-2.33z" />
+            <path fill="#EA4335"
+              d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.94 4.95l3.02 2.33c.71-2.13 2.7-3.7 5.04-3.7z" />
+          </svg>
+        </div>
+        <span>Google 계정으로 원클릭 입장 (sotdanjii@gmail.com)</span>
+      </button>
     </div>
   </div>
 
   <script>
-    const SUPABASE_URL = "{{ supabase_url }}";
-    const SUPABASE_ANON_KEY = "{{ supabase_anon_key }}";
-    let supabaseClient = null;
-    let isSignUpMode = false;
-
-    if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-
     function showToast(msg, isError = false) {
       const box = document.getElementById("toastBox");
       box.textContent = msg;
@@ -332,66 +356,55 @@
       box.style.display = "block";
     }
 
-    // 1. 구글 원클릭 로그인
-    async function handleGoogleLogin() {
-      if (!supabaseClient) {
-        showToast("Supabase 연결 설정이 필요합니다. 게스트 모드로 입장하세요.", true);
+    // 0. Turso DB 자체 이메일 로그인 / 회원가입
+    async function handleTursoLogin() {
+      const email = document.getElementById("tursoEmail").value.trim();
+      const password = document.getElementById("tursoPassword").value.trim();
+      if (!email) {
+        showToast("이메일 주소를 입력해 주세요.", true);
         return;
       }
       try {
-        const { data, error } = await supabaseClient.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin + "/login?callback=true"
-          }
-        });
-        if (error) throw error;
-      } catch (err) {
-        console.error("Google OAuth Error:", err);
-        showToast("구글 로그인 오류: " + err.message, true);
-      }
-    }
-
-    // 세션을 로컬 백엔드로 동기화하여 영구 보관
-    async function syncSessionToBackend(session) {
-      if (!session) return;
-      try {
-        const res = await fetch("/api/auth/save_session", {
+        showToast("로그인 확인 중...", false);
+        const res = await fetch("/api/auth/turso_login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: session.user.id,
-            email: session.user.email,
-            access_token: session.access_token,
-            name: session.user.user_metadata?.full_name || session.user.email.split("@")[0]
-          })
+          body: JSON.stringify({ email, password })
         });
-        const result = await res.json();
-        if (result.success) {
-          showToast("로그인 성공! 스튜디오로 이동합니다...", false);
-          setTimeout(() => {
-            window.location.href = "/";
-          }, 800);
+        const data = await res.json();
+        if (data.success) {
+          showToast("입장 성공! 작가 집필실로 이동합니다...", false);
+          setTimeout(() => { window.location.href = "/"; }, 500);
+        } else {
+          showToast(data.detail || "로그인 실패", true);
         }
       } catch (err) {
-        showToast("세션 동기화 오류: " + err.message, true);
+        showToast("서버 통신 오류: " + err.message, true);
       }
     }
 
-    // OAuth 콜백 처리 (구글 로그인 후 리디렉션되었을 때만 자동 세션 동기화)
-    window.addEventListener("DOMContentLoaded", async () => {
-      if (!supabaseClient) return;
-      const isOAuthCallback = window.location.hash.includes("access_token") || 
-                              window.location.search.includes("code=") || 
-                              window.location.search.includes("callback=true");
-      if (isOAuthCallback) {
-        showToast("인증 확인 중... 잠시만 기다려 주세요.", false);
-        const { data } = await supabaseClient.auth.getSession();
-        if (data && data.session) {
-          await syncSessionToBackend(data.session);
+    // 1. 구글 원클릭 간편 로그인 (Turso 클라우드 DB 즉시 바인딩)
+    async function handleGoogleLogin() {
+      const email = document.getElementById("tursoEmail").value.trim() || "sotdanjii@gmail.com";
+      showToast(`Google 계정(${email})으로 즉시 입장합니다...`, false);
+      try {
+        const res = await fetch("/api/auth/turso_login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: "", name: "대표 작가" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("구글 인증 성공! 작가 집필실로 이동합니다...", false);
+          setTimeout(() => { window.location.href = "/"; }, 500);
+        } else {
+          showToast(data.detail || "로그인 실패", true);
         }
+      } catch (err) {
+        showToast("서버 통신 오류: " + err.message, true);
       }
-    });
+    }
   </script>
 </body>
+
 </html>

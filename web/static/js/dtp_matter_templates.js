@@ -87,9 +87,7 @@
     // -------------------------------------------------------------
     toc: {
       title: "차 례",
-      part_label: "제 1 부",
-      part_title: "유년의 뜰, 어머니의 등불",
-      part_desc: "본문 시화가 시작되는 장(Chapter)입니다."
+      quote: `삶의 가장 따스한 순간들은\n언제나 가장 고요한 기억 속에 머물러 있다.`
     },
 
     // -------------------------------------------------------------
@@ -242,34 +240,10 @@
      * 상단 툴바 부속물 퀵 액션 바 렌더링
      */
     renderMatterToolbar() {
-      let bar = document.getElementById("dtpMatterActionBar");
-      if (!bar) {
-        const exportGroup = document.querySelector(".layout-export-group");
-        if (exportGroup) {
-          bar = document.createElement("div");
-          bar.id = "dtpMatterActionBar";
-          bar.className = "matter-action-bar";
-          bar.style.cssText = "display: flex; align-items: center; gap: 6px; margin-right: 6px; flex-shrink: 0;";
-          exportGroup.insertBefore(bar, exportGroup.firstChild);
-        }
-      }
-
-      if (bar) {
-        bar.style.display = "flex";
-        bar.innerHTML = `
-          <button type="button" class="btn-micro" onclick="dtpMatterEngine.saveCurrentMatter()" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFF; border: 1.5px solid #1E40AF; padding: 5px 11px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.25); white-space: nowrap !important; flex-shrink: 0;" title="[부속물 저장] 수정한 텍스트 및 레이아웃을 책 구성에 영구 저장합니다.">
-            <span>💾 부속물 저장</span>
-          </button>
-          <button type="button" class="btn-micro" onclick="dtpMatterEngine.resetToDefaultPreset()" style="background: #FFF8F0; color: #9A3412; border: 1.5px solid #FDBA74; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap !important; flex-shrink: 0;" title="[기본 예시 불러오기] 편집 내용을 표준 예시 템플릿으로 원클릭 초기화합니다.">
-            <span>✨ 기본 예시 불러오기</span>
-          </button>
-          <select id="selectMatterTheme" onchange="dtpMatterEngine.changeTheme(this.value)" style="padding: 4px 8px; font-size: 0.78rem; border: 1.5px solid #D5C2B0; border-radius: 6px; background: #FFF; color: #52361B; font-weight: 600; cursor: pointer; white-space: nowrap !important; flex-shrink: 0;" title="[템플릿 스타일] 서정 수채화형, 정통 문학형, 모던 미니멀형 스타일을 전환합니다.">
-            <option value="lyrical" ${this.currentTheme === 'lyrical' ? 'selected' : ''}>🌸 서정 수채화형</option>
-            <option value="classic" ${this.currentTheme === 'classic' ? 'selected' : ''}>📜 정통 문학형</option>
-            <option value="modern" ${this.currentTheme === 'modern' ? 'selected' : ''}>✒️ 모던 미니멀형</option>
-          </select>
-        `;
-      }
+      // 2-Layer 통합으로 인해 액션바는 더 이상 생성하지 않음 (단일 2-Layer 헤더로 통합)
+      const bar = document.getElementById("dtpMatterActionBar");
+      if (bar) bar.remove();
+      return;
     }
 
     /**
@@ -411,19 +385,62 @@
       let tocRows = '';
 
       if (works.length > 0) {
+        let currentChapter = null;
+
         works.forEach((w, idx) => {
-          const chap = w.chapter ? `<span style="color:#8C6A4F; font-size:0.75rem; margin-right:5px;">[${w.chapter}]</span>` : '';
-          const ep = w.episode_no || String(idx + 1).padStart(2, '0');
-          // 시작 쪽수 자동 연동
-          const pageNo = 6 + (idx * 2);
-          tocRows += `
-            <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; border-bottom:1px dotted #E2D5C5; font-size:0.86rem; color:#3A2E24;">
-              <div style="display:flex; align-items:baseline; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                <span style="font-weight:700; color:#8C6A4F; font-size:0.8rem; min-width:48px;">제${ep}화</span>
-                ${chap}
-                <span style="font-weight:600;">${w.title}</span>
+          const chap = (w.chapter || '').trim();
+
+          // 회차 번호 정규화: "제01화" or "01" -> "제01화" (중복 접두/접미사 방지)
+          let rawEp = String(w.episode_no || (idx + 1)).trim();
+          let epNum = rawEp.replace(/[^0-9]/g, '');
+          let epStr = epNum ? `제${epNum.padStart(2, '0')}화` : rawEp;
+
+          // 실제 책 구조에서의 페이지 쪽수 자동 연동
+          let pageNo = 8 + (idx * 2);
+          if (window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+            const sec = window.bookStructureData.sections.find(s => s.episode_no === w.episode_no);
+            if (sec) {
+              pageNo = sec.start_page !== undefined ? sec.start_page : (sec.page_start || pageNo);
+            }
+          }
+
+          // 📚 새로운 부(Chapter) 등장 시 상단에 독립된 한 줄 헤더 삽입!
+          if (chap && chap !== currentChapter) {
+            currentChapter = chap;
+
+            // 해당 부의 도비라(간지) 페이지 번호 연동
+            let partPageNo = "";
+            if (window.bookStructureData && Array.isArray(window.bookStructureData.sections)) {
+              const partSec = window.bookStructureData.sections.find(s => s.section_type === 'part_divider' && (s.title === chap || s.chapter === chap));
+              if (partSec) {
+                partPageNo = partSec.start_page !== undefined ? partSec.start_page : (partSec.page_start || "");
+              }
+            }
+
+            // 부 표제 및 제목 포맷팅 (예: "제1부: 솜꽃의 전설" -> "제 1 부 · 솜꽃의 전설")
+            let displayChap = chap.replace(/^(제\s*\d+\s*부|특별부|외전)\s*[:|-]?\s*(.*)$/, function(m, p1, p2) {
+              const cleanP1 = p1.replace(/\s+/g, '').replace(/제(\d+)부/, '제 $1 부');
+              return p2 ? `${cleanP1} · ${p2}` : cleanP1;
+            });
+
+            tocRows += `
+              <div style="margin-top:${idx === 0 ? '6px' : '20px'}; margin-bottom:8px; padding-bottom:5px; border-bottom:1.5px solid #C8B6A2; display:flex; justify-content:space-between; align-items:baseline;">
+                <span style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.96rem; font-weight:700; color:#52361B; letter-spacing:1px;">
+                  📁 ${displayChap}
+                </span>
+                ${partPageNo ? `<span style="font-size:0.8rem; font-weight:700; color:#8C6A4F; font-family:'BookkMyungjo', serif;">${partPageNo}</span>` : ''}
               </div>
-              <span style="color:#8C7560; font-size:0.82rem; font-weight:700; min-width:32px; text-align:right;">${pageNo}</span>
+            `;
+          }
+
+          // 시화 개별 항목 (단아한 들여쓰기와 제목, 쪽수)
+          tocRows += `
+            <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 0 6px 12px; border-bottom:1px dotted #EADCC9; font-size:0.86rem; color:#3A2E24;">
+              <div style="display:flex; align-items:baseline; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; padding-right:10px;">
+                <span style="font-weight:600; color:#8C6A4F; font-size:0.78rem; min-width:44px; letter-spacing:0.5px;">${epStr}</span>
+                <span style="font-weight:600; font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.88rem; color:#2C1D11;">${w.title}</span>
+              </div>
+              <span style="color:#8C7560; font-size:0.84rem; font-weight:700; min-width:32px; text-align:right; font-family:'BookkMyungjo', serif;">${pageNo}</span>
             </div>
           `;
         });
@@ -442,16 +459,13 @@
         </div>
       `;
 
+      const tocQuote = d.tocRightQuote || (MATTER_PRESETS.toc && MATTER_PRESETS.toc.quote) || `삶의 가장 따스한 순간들은\n언제나 가장 고요한 기억 속에 머물러 있다.`;
+
       ovRight.innerHTML = `
-        <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px 35px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-          <div style="font-size:0.85rem; letter-spacing:2px; color:#8C6A4F; font-weight:700; margin-bottom:12px;">
-            ${d.preset.part_label}
-          </div>
-          <h2 class="matter-editable" data-field="toc_chapter_title" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:1.75rem; color:#2C1D11; margin:0 0 16px 0; font-weight:700;">
-            ${d.preset.part_title}
-          </h2>
-          <div class="matter-editable" data-field="toc_chapter_desc" contenteditable="true" style="font-size:0.88rem; color:#8C7560; font-style:italic;">
-            ${d.preset.part_desc}
+        <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:55px 40px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
+          <div style="font-size:1.15rem; color:#B89A7E; margin-bottom:16px;">❦</div>
+          <div class="matter-editable" data-field="toc_right_quote" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.95rem; line-height:2.2; color:#5A4A3A; font-style:italic; white-space:pre-line;" title="권두 헌사 문구 (자유롭게 수정하거나 비워둘 수 있습니다)">
+            ${tocQuote}
           </div>
         </div>
       `;
@@ -470,18 +484,50 @@
         </div>
       `;
 
-      const partTitle = sec.title || partRight.part_title || "유년의 뜰, 어머니의 등불";
-      const partNo = sec.subtitle || partRight.part_no || "제 1 부";
+      // 원본 챕터명 보존
+      const rawTitle = sec.title || (sec.data && sec.data.chapter_title) || "";
+      
+      // 1) 부 번호 (Part No): 크고 당당한 메인 헤더
+      let partNo = (sec.data && sec.data.part_no) || sec.subtitle || "";
+      if (!partNo && rawTitle) {
+        const m = rawTitle.match(/^(제\s*\d+\s*부|특별부|외전)/);
+        if (m) partNo = m[1];
+      }
+      if (!partNo) partNo = partRight.part_no || "제 1 부";
+
+      // 2) 부 고유 제목 (Part Title): 접두사 '제N부:' 제거하여 순수 제목만 추출
+      let cleanPartTitle = (sec.data && sec.data.part_title !== undefined) ? sec.data.part_title : rawTitle;
+      cleanPartTitle = cleanPartTitle.replace(/^(?:제\s*\d+\s*부|특별부|외전)\s*[:|-]?\s*/, '').trim();
+      cleanPartTitle = cleanPartTitle.replace(/\((?:지은이\s*[:|]?\s*)?[^\)]+\)$/, '').trim();
+
+      // 3) 작가명 (Author): 앤솔로지 또는 다인 시집용
+      let partAuthor = (sec.data && sec.data.author) || sec.author || "";
+      if (!partAuthor && rawTitle) {
+        const mAuth = rawTitle.match(/\((?:지은이\s*[:|]?\s*)?([^\)]+)\)$/);
+        if (mAuth) partAuthor = mAuth[1].trim();
+      }
 
       ovRight.innerHTML = `
         <div class="matter-page-inner matter-theme-${this.currentTheme}" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:55px 40px; background:#FAF7F2; text-align:center; box-sizing:border-box;">
-          <div class="matter-editable" data-field="part_no" contenteditable="true" style="font-size:0.88rem; letter-spacing:2px; color:#8C6A4F; font-weight:700; margin-bottom:14px;">
+          <!-- 1. 메인 부 표제 (크고 품격 있는 서체) -->
+          <div class="matter-editable" data-field="part_no" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:2.0rem; letter-spacing:4px; color:#2C1D11; font-weight:700; margin:0 0 16px 0;" title="메인 부 표제 (예: 제 1 부)">
             ${partNo}
           </div>
-          <h2 class="matter-editable" data-field="part_title" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:1.85rem; color:#2C1D11; margin:0 0 20px 0; font-weight:700;">
-            ${partTitle}
+
+          <!-- 2. 부 고유 제목 (선택 사항 / 미입력 시 생략) -->
+          <h2 class="matter-editable" data-field="part_title" data-old-title="${rawTitle}" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:1.45rem; color:#4A3525; margin:0 0 12px 0; font-weight:600; min-height:1.4em; letter-spacing:1px;" title="부 고유 제목 (필요 없으면 비워둘 수 있습니다)">
+            ${cleanPartTitle}
           </h2>
+
+          <!-- 3. 작가명 (선택 사항 / 앤솔로지 및 부별 작가 표기용) -->
+          <div class="matter-editable" data-field="part_author" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.95rem; color:#8C6A4F; font-weight:500; margin:0 0 20px 0; min-height:1.2em; letter-spacing:2px;" title="지은이/시인명 (앤솔로지 시 입력, 단독 시집은 비워두셔도 됩니다)">
+            ${partAuthor ? `지은이 | ${partAuthor}` : ""}
+          </div>
+
+          <!-- 구분선 -->
           <div style="width:36px; height:1.5px; background:#B89A7E; margin:0 auto 24px auto;"></div>
+
+          <!-- 4. 서정 소개글 -->
           <div class="matter-editable" data-field="part_desc" contenteditable="true" style="font-family:'BookkMyungjo', '부크크 명조', 'Nanum Myeongjo', serif; font-size:0.92rem; line-height:2.0; color:#5A4A3A; font-style:italic; white-space:pre-line;">
             ${partRight.part_desc || ""}
           </div>
@@ -605,6 +651,19 @@ ${copyNotice}
         const val = elem.innerText.trim();
 
         if (field === "title" || field === "colophon_title") payloadData.title = val;
+        else if (field === "part_no") {
+          payloadData.part_no = val;
+          payloadData.subtitle = val;
+        }
+        else if (field === "part_title") {
+          payloadData.part_title = val;
+          if (elem.dataset.oldTitle) payloadData.old_part_title = elem.dataset.oldTitle;
+        }
+        else if (field === "part_author") {
+          const cleanAuth = val.replace(/^지은이\s*[:|]?\s*/, '').trim();
+          payloadData.part_author = cleanAuth;
+          payloadData.author = cleanAuth;
+        }
         else if (field === "subtitle") payloadData.subtitle = val;
         else if (field === "author" || field === "colophon_author") payloadData.author = val;
         else if (field === "publisher" || field === "colophon_publisher") payloadData.publisher = val;
@@ -614,8 +673,25 @@ ${copyNotice}
         else if (field === "prologue_content") payloadData.prologue_content = val;
         else if (field === "epilogue_content") payloadData.epilogue_content = val;
         else if (field === "colophon_published_date") payloadData.published_date = val;
+        else if (field === "toc_right_quote") payloadData.toc_right_quote = val;
         else payloadData[field] = val;
       });
+
+      // 부 / 챕터 간지(Part Divider)일 때 통합 목차 타이틀 조합
+      if (sec.id && sec.id.startsWith('part_')) {
+        const pNo = (payloadData.part_no || sec.subtitle || "제1부").trim();
+        const pTitle = (payloadData.part_title !== undefined ? payloadData.part_title : (sec.data && sec.data.part_title) || "").trim();
+        const pAuth = (payloadData.part_author !== undefined ? payloadData.part_author : (sec.data && sec.data.author) || "").trim();
+
+        let fullTitle = pNo;
+        if (pTitle) {
+          fullTitle = `${pNo}: ${pTitle}`;
+        }
+        if (pAuth) {
+          fullTitle += ` (${pAuth})`;
+        }
+        payloadData.title = fullTitle;
+      }
 
       try {
         if (sec.id === 'epilogue' || sec.id === 'colophon') {
@@ -668,16 +744,22 @@ ${copyNotice}
         if (typeof Swal !== 'undefined') {
           Swal.fire({
             icon: "success",
-            title: "부속물 저장 완료",
-            text: `[${sec.title}] 내용이 책 전체 구성에 성공적으로 반영되었습니다.`,
+            title: "조판 완료 및 저장",
+            text: `[${sec.title || sec.subtitle || '부속물'}] 조판 상태가 책 전체 구성에 영구 반영되었습니다.`,
             timer: 1600,
             showConfirmButton: false
           });
         } else {
-          alert(`[${sec.title}] 저장 완료!`);
+          alert(`[${sec.title || sec.subtitle || '부속물'}] 조판 완료 및 저장 성공!`);
+        }
+        if (typeof window.loadStatus === 'function') {
+          await window.loadStatus();
         }
         if (typeof window.refreshBookStructure === 'function') {
           await window.refreshBookStructure();
+        }
+        if (window.dtpEditor && typeof window.dtpEditor.ensureStatusLoaded === 'function') {
+          await window.dtpEditor.ensureStatusLoaded(true);
         }
       } catch (err) {
         console.error("부속물 저장 예외:", err);

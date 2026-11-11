@@ -57,41 +57,35 @@ async def save_voice_recording(
     title: str = Form(...),
     audio_file: UploadFile = File(...)
 ):
-    p_img_dir = project_manager.get_active_images_dir()
-    p_img_dir.mkdir(parents=True, exist_ok=True)
+    from core.r2_storage import r2_storage
+    active_id = project_manager.get_active_project_id()
 
-    safe_ep = episode_no.replace(" ", "_").replace("/", "_")
+    clean_ep = re.sub(r'[^0-9]', '', episode_no).zfill(2) if episode_no else "01"
     ext = ".webm"
     if audio_file.filename:
         suffix = Path(audio_file.filename).suffix
         if suffix:
             ext = suffix
 
-    saved_name = f"{safe_ep}_낭송{ext}"
-    target_path = p_img_dir / saved_name
+    saved_name = f"{clean_ep}_육성{ext}"
+    rel_path = f"music/{saved_name}"
 
     content = await audio_file.read()
-    with open(target_path, "wb") as f:
-        f.write(content)
+    r2_storage.upload_bytes(content, f"{active_id}/{rel_path}")
 
-    rel_path = f"images/{saved_name}"
-
-    # 원고에도 recite_file 경로 자동 업데이트 (기존 노래 music_file은 보존)
+    # Turso DB에 voice_user_file 및 recite_file 경로 자동 업데이트
     mgr = project_manager.get_active_manuscript_manager()
     work = mgr.get_work_by_episode(episode_no)
     if work:
+        work.voice_user_file = rel_path
         work.recite_file = rel_path
         if not getattr(work, "audio_file", ""):
             work.audio_file = rel_path
         mgr.save_work(work)
-        try:
-            build_canva_csv()
-        except Exception:
-            pass
 
     return {
         "success": True,
-        "message": f"[{episode_no}] 육성 낭송 녹음이 안전하게 보관되었습니다.",
+        "message": f"[{episode_no}] 육성 낭송 녹음이 클라우드 서버에 안전하게 보관되었습니다.",
         "audio_file": rel_path,
         "filename": saved_name
     }
@@ -219,16 +213,14 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
         raise HTTPException(status_code=400, detail="낭송할 시 본문이 비어 있습니다.")
 
     clean_ep = re.sub(r'[^0-9]', '', req.episode_no).zfill(2) if req.episode_no else "01"
-    project_dir = project_manager.get_project_dir()
-    music_dir = project_dir / "music"
-    music_dir.mkdir(parents=True, exist_ok=True)
+    active_id = project_manager.get_active_project_id()
 
     # 🎙️ poetic-recitation 스킬 기반 시낭송 호흡 대본(Script) 자동 생성
     full_recite_text = build_poetic_recitation_script(clean_title, poem_text)
 
     audio_data = None
-    mime_type = "audio/wav"
-    recite_filename = f"{clean_ep}_낭송.wav"
+    mime_type = "audio/mp3"
+    recite_filename = f"{clean_ep}_낭송.mp3"
     provider_name = "Gemini 3.8 Flash"
     engine_used = "gemini"
     just_switched_to_edge = False
@@ -291,12 +283,11 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
             except Exception as gemini_err:
                 print(f"[Gemini 1순위 시도 실패]: {gemini_err}")
 
-    # 2. Edge-TTS 신경망 성우로 생성 (크레딧 만료 또는 Edge 모드 시)
+    # 2. Edge-TTS 신경망 성우로 생성 (크레딧 만료 또는 Edge 모드 시 - /tmp 임시 버퍼 사용)
     if not audio_data:
         try:
             engine_used = "edge"
             
-            # 성우 매핑
             if is_edge_voice:
                 edge_voice = raw_voice
             elif raw_voice in ["Charon", "Fenrir"]:
@@ -307,50 +298,40 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
                 edge_voice = "ko-KR-SunHiNeural"
 
             edge_rate = "-12%" if "InJoon" in edge_voice else "-10%"
-
-            # 성우 친화적 이름 라벨링
             voice_label = "선희 (서정 여성)" if "SunHi" in edge_voice else ("인준 (남성 중저음)" if "InJoon" in edge_voice else ("현수 (차분 청년)" if "Hyunsu" in edge_voice else "봉진 (원로 남성)"))
 
             title_prefix = f"{clean_title}." if clean_title and clean_title != "무제" else ""
             tts_plain = f"{title_prefix}\n\n{poem_text}"
-            recite_path = music_dir / recite_filename
 
             print(f"[Edge-TTS 신경망 성우 낭송 시작]: {edge_voice} (속도: {edge_rate})")
 
-            # 🚀 uvicorn 비동기 소켓 충돌(403)을 피하기 위해 격리된 서브프로세스로 edge-tts 실행
             import tempfile
-            with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False) as tf:
-                tf.write(tts_plain)
-                tf_path = tf.name
-
             import subprocess
-            def run_edge_tts_cli():
-                cmd = [
-                    sys.executable, "-m", "edge_tts",
-                    "--file", tf_path,
-                    "--voice", edge_voice,
-                    f"--rate={edge_rate}",
-                    "--write-media", str(recite_path)
-                ]
-                return subprocess.run(cmd, capture_output=True, text=True)
+            with tempfile.TemporaryDirectory() as tmp_dir_str:
+                tmp_dir = Path(tmp_dir_str)
+                tf_path = tmp_dir / "tts_input.txt"
+                tf_path.write_text(tts_plain, encoding="utf-8")
+                tmp_audio_out = tmp_dir / recite_filename
 
-            try:
+                def run_edge_tts_cli():
+                    cmd = [
+                        sys.executable, "-m", "edge_tts",
+                        "--file", str(tf_path),
+                        "--voice", edge_voice,
+                        f"--rate={edge_rate}",
+                        "--write-media", str(tmp_audio_out)
+                    ]
+                    return subprocess.run(cmd, capture_output=True, text=True)
+
                 res = await asyncio.to_thread(run_edge_tts_cli)
                 if res.returncode != 0:
                     raise RuntimeError(f"Edge-TTS 프로세스 오류 (code {res.returncode}): {res.stderr}")
-            finally:
-                if os.path.exists(tf_path):
-                    try:
-                        os.unlink(tf_path)
-                    except Exception:
-                        pass
 
-            if recite_path.exists() and recite_path.stat().st_size > 0:
-                with open(recite_path, "rb") as f:
-                    audio_data = f.read()
-                mime_type = "audio/mp3"
-                provider_name = f"Edge-TTS 신경망 [{voice_label}]"
-                print(f"[Edge-TTS 성공]: {len(audio_data)} bytes ({recite_filename}) 생성 완료")
+                if tmp_audio_out.exists() and tmp_audio_out.stat().st_size > 0:
+                    audio_data = tmp_audio_out.read_bytes()
+                    mime_type = "audio/mp3"
+                    provider_name = f"Edge-TTS 신경망 [{voice_label}]"
+                    print(f"[Edge-TTS 성공]: {len(audio_data)} bytes ({recite_filename}) 생성 완료")
         except Exception as edge_err:
             last_edge_err = str(edge_err)
             print(f"[Edge-TTS 실행 오류]: {edge_err}")
@@ -362,7 +343,7 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
         )
 
     # Gemini 헤더 없는 PCM 처리
-    if mime_type == "audio/wav" and not audio_data.startswith(b"RIFF"):
+    if not audio_data.startswith(b"RIFF") and not audio_data.startswith(b"ID3") and not audio_data.startswith(b"\xff\xfb"):
         wav_io = io.BytesIO()
         with wave.open(wav_io, "wb") as wf:
             wf.setnchannels(1)
@@ -371,28 +352,39 @@ async def speak_poem_endpoint(req: SpeakPoemRequest):
             wf.writeframes(audio_data)
         audio_data = wav_io.getvalue()
 
+    # 🌟 [낭송 음원 128k MP3 표준화] WAV인 경우 고음질 경량 MP3로 즉각 압축 (용량 80% 다이어트)
+    if audio_data.startswith(b"RIFF"):
+        try:
+            import subprocess
+            cmd = ["ffmpeg", "-y", "-i", "pipe:0", "-codec:a", "libmp3lame", "-b:a", "128k", "-ac", "1", "-f", "mp3", "pipe:1"]
+            proc = subprocess.run(cmd, input=audio_data, capture_output=True, check=True)
+            if proc.stdout and len(proc.stdout) > 0:
+                audio_data = proc.stdout
+                mime_type = "audio/mp3"
+        except Exception as ffmpeg_err:
+            print(f"[MP3 압축 경고]: {ffmpeg_err}")
+
     b64_audio = base64.b64encode(audio_data).decode("utf-8")
     data_uri = f"data:{mime_type};base64,{b64_audio}"
 
-    # 프로젝트 music 폴더에 자동 음원 저장
-    recite_path = music_dir / recite_filename
-    with open(recite_path, "wb") as f:
-        f.write(audio_data)
+    # [100% 서버 일원화] Cloudflare R2에 직접 업로드 (로컬 projects/ 폴더 쓰기 생략)
+    from core.r2_storage import r2_storage
+    r2_storage.upload_bytes(audio_data, f"{active_id}/music/{recite_filename}", content_type=mime_type)
 
-    # 원고(작품집_원고.md)에 낭송 음원(recite_file) 자동 동기화
+    # Turso DB에 낭송 음원(voice_tts_file / recite_file) 자동 동기화
     try:
         mgr = project_manager.get_active_manuscript_manager()
         works = mgr.load_works()
         target_ep = f"제{clean_ep}화"
         target_work = next((w for w in works if w.episode_no == target_ep), None)
         if target_work:
+            target_work.voice_tts_file = f"music/{recite_filename}"
             target_work.recite_file = f"music/{recite_filename}"
             mgr.save_work(target_work)
             print(f"[원고 낭송 동기화] {target_ep} recite_file = music/{recite_filename} 저장 완료")
     except Exception as sync_err:
         print(f"[원고 낭송 동기화 알림]: {sync_err}")
 
-    active_id = project_manager.get_active_project_id()
     audio_url = f"/projects/{active_id}/music/{recite_filename}?t={int(time.time())}"
 
     return {

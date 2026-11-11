@@ -1,0 +1,46 @@
+# =====================================================================
+# fly.toml — StoryBook Studio (Fly.io 서울 리전 상시대기 배포 설정)
+# 배포 명령어: fly deploy
+# =====================================================================
+
+app = "storybook-studio"
+primary_region = "nrt" # 도쿄(나리타) 데이터센터 — Turso DB(ap-northeast-1)와 동일 리전(DB 지연시간 1ms)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "storybook_data"
+  destination = "/app/projects"
+
+[env]
+  PORT = "8080"
+  BOOK_TARGET_POEMS = "35"
+  BOOK_PAPER_TYPE = "white_100g"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # ⚡ 핵심: 핑 봇 없이도 24시간 365일 단 1초도 잠들지 않는(No Sleep) 상시대기 보장
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+

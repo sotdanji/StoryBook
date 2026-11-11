@@ -110,6 +110,24 @@ def detect_next_song_bleed(file_path: Path, dur: float) -> Optional[Dict[str, fl
     return None
 
 
+def _sync_audio_to_r2(audio_path: Path) -> None:
+    """처리된 오디오 파일을 Cloudflare R2 단일 마스터 스토리지로 자동 동기화"""
+    try:
+        from core.r2_storage import r2_storage, PROJECTS_DIR
+        if r2_storage.is_r2_configured and audio_path.exists():
+            resolved_audio = audio_path.resolve()
+            resolved_proj = PROJECTS_DIR.resolve()
+            if str(resolved_audio).startswith(str(resolved_proj)):
+                rel_key = resolved_audio.relative_to(resolved_proj).as_posix()
+                r2_storage.upload_bytes(
+                    audio_path.read_bytes(),
+                    rel_key,
+                    local_cache_path=audio_path
+                )
+    except Exception as r2_err:
+        print(f"[AudioProcessor R2 동기화 건너뜀]: {r2_err}")
+
+
 def clean_and_optimize_audio(input_path: Path, output_path: Path) -> Dict[str, Any]:
     """
     오디오 파일을 종합 검사하여:
@@ -138,6 +156,7 @@ def clean_and_optimize_audio(input_path: Path, output_path: Path) -> Dict[str, A
     ffmpeg_bin = shutil.which("ffmpeg")
     if not ffmpeg_bin:
         shutil.copy2(input_path, output_path)
+        _sync_audio_to_r2(output_path)
         result["message"] = "FFmpeg 미설치로 원본 파일 그대로 안전하게 보관되었습니다."
         return result
 
@@ -213,6 +232,7 @@ def clean_and_optimize_audio(input_path: Path, output_path: Path) -> Dict[str, A
                     )
             else:
                 result["message"] = "음원을 고음질(320k) MP3로 최적화하여 등록했습니다."
+            _sync_audio_to_r2(output_path)
             return result
     except Exception as e:
         print(f"[AudioProcessor] Processing warning: {e}")
@@ -221,6 +241,7 @@ def clean_and_optimize_audio(input_path: Path, output_path: Path) -> Dict[str, A
     if temp_target.exists():
         temp_target.unlink()
     shutil.copy2(input_path, output_path)
+    _sync_audio_to_r2(output_path)
     result["message"] = "오디오 원본 포맷으로 안전하게 보존되었습니다."
     return result
 
