@@ -38,7 +38,7 @@ export function initInquirySupport() {
         }
       }, 500);
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export function openInquiryModal() {
@@ -144,7 +144,7 @@ export async function handleInquirySubmit(event) {
   const authorEmail = document.getElementById("inquiryAuthorEmail")?.value || "";
   const title = document.getElementById("inquiryTitle")?.value || "";
   const content = document.getElementById("inquiryContent")?.value || "";
-  
+
   const attachRadio = document.querySelector('input[name="attachOption"]:checked');
   const attachType = attachRadio ? attachRadio.value : "full_zip";
 
@@ -225,7 +225,7 @@ function renderAiCoachingResult(inq) {
   if (titleEl) titleEl.textContent = inq.title;
   if (badgeIdEl) badgeIdEl.textContent = inq.inquiry_id;
   if (timeEl) timeEl.textContent = inq.answered_at || "방금 전";
-  
+
   const categoryLabels = {
     coaching: "🎨 시화집 편집 및 조판 코칭",
     bug: "🐞 버그 및 기술 오류",

@@ -247,3 +247,4 @@ class AICoachingDirector:
 
 # 전역 싱글톤 인스턴스
 ai_coach = AICoachingDirector()
+
