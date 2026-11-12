@@ -30,11 +30,16 @@ async function loadProjects() {
       const exportProj = document.getElementById("exportProjectName");
       if (exportProj) exportProj.textContent = active.name;
 
-      // 집필 시집 상단 배너 즉시 동기화
+      // 집필 시집 상단 배너 및 명패 즉시 동기화
       const bannerTitle = document.getElementById("bannerBookTitle");
       if (bannerTitle && active.name) bannerTitle.textContent = active.name;
       const bannerAuthor = document.getElementById("bannerBookAuthor");
       if (bannerAuthor) bannerAuthor.textContent = active.author ? `${active.author} 지음` : "시인 지음";
+
+      const dispTitle = document.getElementById("displayBookTitle");
+      if (dispTitle && active.name) dispTitle.textContent = active.name;
+      const dispAuthor = document.getElementById("displayBookAuthor");
+      if (dispAuthor) dispAuthor.innerHTML = `시인: <strong>${active.author || "기억의 작가"}</strong>`;
     }
   } catch (err) {
     console.warn("서버 API 부재: 웹 독립 실행 모드로 자동 폴백합니다.", err);

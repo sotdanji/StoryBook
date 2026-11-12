@@ -84,44 +84,42 @@
           </span>
         </div>
 
-        <!-- 2) 현재 집필 시화집 명패 & 빠른 도서 전환 -->
-        <div style="background: #FFFFFF; border: 1.5px solid #D5B895; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="font-size: 0.72rem; font-weight: 700; background: #F3EAE0; color: #7A4B23; padding: 1px 6px; border-radius: 6px;">
+        <!-- 2) 현재 집필 시화집 단일 명패 & 정보 수정 -->
+        <div
+          style="background: #FFFFFF; border: 1.5px solid #D5B895; border-radius: 8px; padding: 11px 12px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span
+              style="font-size: 0.72rem; font-weight: 700; background: #F3EAE0; color: #7A4B23; padding: 2px 7px; border-radius: 6px;">
               ✍️ 감성 시화집
             </span>
             <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">
               ● 집필 중
             </span>
           </div>
-          <div style="margin-bottom: 6px;">
-            <select id="selectProjectDropdown" class="project-select" onchange="onProjectSelectChange(this.value)"
-              style="width: 100%; font-size: 0.88rem; font-weight: 700; color: #4A2E13; background: #FFFDF9; border: 1px solid #D5B895; border-radius: 5px; padding: 4px 6px;">
-              <!-- 동적으로 도서 옵션 추가됨 -->
-            </select>
+          <div id="displayBookTitle"
+            style="font-family: 'MaruBuri', serif; font-size: 1.05rem; font-weight: 700; color: #4A2E13; margin-bottom: 4px; word-break: keep-all; line-height: 1.35;">
+            {{ active_project.name if active_project else "책 제목" }}
           </div>
-          <div style="font-size: 0.78rem; color: #7A624E;">
+          <div id="displayBookAuthor" style="font-size: 0.82rem; color: #7A624E; margin-bottom: 10px;">
             시인: <strong>{{ active_project.author if (active_project and active_project.author) else "저자 지음" }}</strong>
           </div>
+
+          <!-- 시집 정보 수정 단일 버튼 (줄바꿈 없이 넓고 시원하게) -->
+          <button type="button" class="btn-sidebar-setting" id="btnOpenEditProjectModal"
+            onclick="openEditProjectModal()"
+            style="width: 100%; padding: 8px 10px; font-size: 0.82rem; font-weight: 700; background: #FFFDF9; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); white-space: nowrap; transition: all 0.2s;"
+            title="현재 시집의 제목, 부제, 저자명, 목표 편수를 수정합니다.">
+            <span>✏️</span> <span>시집 정보(제목/시인명) 수정</span>
+          </button>
         </div>
 
-        <!-- 3) 이 책 전용 슬림 2-액션 툴바 (책 정보 수정 + 시집 백업) -->
-        <div class="project-btn-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-          <button type="button" class="btn-sidebar-setting" id="btnOpenEditProjectModal" onclick="openEditProjectModal()"
-            style="padding: 7px 6px; font-size: 0.78rem; font-weight: 700; background: #FFFDF9; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s;"
-            title="현재 시집의 제목, 부제, 저자명, 목표 편수를 수정합니다.">
-            <span>📖</span> <span>책 정보 수정</span>
-          </button>
-          <a href="/api/projects/export_zip"
-            style="padding: 7px 6px; font-size: 0.78rem; font-weight: 700; background: #FAF5ED; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s;"
-            title="[전체 ZIP 백업] 현재 시집의 모든 원고(마크다운), 삽화, 조판 데이터를 하나의 압축파일로 다운로드합니다.">
-            <span>📦</span> <span>시집 백업</span>
-          </a>
-        </div>
+        <!-- JS 호환용 숨겨진 드롭다운 및 책 정보 홀더 -->
+        <select id="selectProjectDropdown" class="project-select" style="display: none;"></select>
 
         <!-- JS 호환용 숨겨진 책 정보 홀더 -->
         <span id="bannerBookTitle" style="display: none;">{{ active_project.name if active_project else "책 제목" }}</span>
-        <span id="bannerBookAuthor" style="display: none;">{{ active_project.author ~ " 지음" if (active_project and active_project.author) else "저자 지음" }}</span>
+        <span id="bannerBookAuthor" style="display: none;">{{ active_project.author ~ " 지음" if (active_project and
+          active_project.author) else "저자 지음" }}</span>
       </div>
 
       <!-- 3. [3번 캡처 영역] 메인 메뉴 네비게이션 탭 (수직 배열) -->
@@ -259,16 +257,16 @@
         <div class="studio-work-master-bar" id="studioWorkMasterBar"
           style="background: linear-gradient(135deg, #FFFDF9 0%, #FAF5ED 100%); border: 2px solid #D4A373; border-radius: 10px; padding: 10px 14px; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(100, 62, 25, 0.06);">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-            
+
             <!-- 좌측: 작업 글 목록 상자 -->
             <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 280px;">
-              <span style="font-size: 0.92rem; font-weight: 700; color: #643E19; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+              <span
+                style="font-size: 0.92rem; font-weight: 700; color: #643E19; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
                 <span>📜</span> <span>작업 글 선택:</span>
               </span>
               <select id="selectWorkToEdit" class="form-input"
                 style="padding: 6px 12px; font-size: 0.92rem; height: 38px; flex: 1; font-weight: 700; color: #78350F; background: #FFFFFF; border: 1.5px solid #F59E0B; border-radius: 8px; cursor: pointer;"
-                onchange="onSelectWorkToEditChange(this.value)"
-                title="[작업 글 선택] 창작실 1~4번 탭 전체에서 작업할 회차별 글을 선택합니다.">
+                onchange="onSelectWorkToEditChange(this.value)" title="[작업 글 선택] 창작실 1~4번 탭 전체에서 작업할 회차별 글을 선택합니다.">
                 <!-- 동적으로 회차 및 제목 옵션 로드됨 -->
               </select>
             </div>
@@ -486,7 +484,8 @@
                     <div
                       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                       <label for="inputFinalTitle" style="margin-bottom: 0; font-weight: 700; color: #52361B;">
-                        제목 <span style="font-size: 0.8rem; font-weight: 500; color: #8C6D53;">(새로 글을 작성할 경우 반드시 기입 바람)</span>
+                        제목 <span style="font-size: 0.8rem; font-weight: 500; color: #8C6D53;">(새로 글을 작성할 경우 반드시 기입
+                          바람)</span>
                       </label>
                       <div style="display: flex; align-items: center; gap: 6px;">
                         <button type="button" class="btn-copy" id="btnOpenRevisionsModal" onclick="openRevisionsModal()"
@@ -502,7 +501,8 @@
                       </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                      <input type="text" id="inputFinalTitle" class="form-input" value="" placeholder="작품 제목을 입력하세요 (새 글 작성 시 반드시 기입)"
+                      <input type="text" id="inputFinalTitle" class="form-input" value=""
+                        placeholder="작품 제목을 입력하세요 (새 글 작성 시 반드시 기입)"
                         style="flex: 2; font-size: 1.15rem; font-weight: 700; color: #111111;">
                       <input type="text" id="inputFinalAuthor" class="form-input" value=""
                         placeholder="작가/필자 (예: 어머니, 윤동주)" style="flex: 1;"
@@ -3495,20 +3495,20 @@
       // 3. 서브탭별 특화 동기화
       if (subtabName === 'video') {
         if (typeof populateVideoWorkSelect === 'function') {
-          try { populateVideoWorkSelect(); } catch (e) {}
+          try { populateVideoWorkSelect(); } catch (e) { }
         }
         if (typeof updateSidebarVideoCard === 'function') {
-          try { updateSidebarVideoCard(); } catch (e) {}
+          try { updateSidebarVideoCard(); } catch (e) { }
         }
         if (typeof updateSongVideoCard === 'function') {
-          try { updateSongVideoCard(); } catch (e) {}
+          try { updateSongVideoCard(); } catch (e) { }
         }
-      } 
+      }
 
       // 4. 현재 탭 위치 기억
       try {
         sessionStorage.setItem('currentStudioSubtab', subtabName);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 📖 상단 메인 탭 원클릭 전환 헬퍼
@@ -3548,7 +3548,7 @@
       const modal = document.getElementById('modalSettingsManage');
       if (modal) modal.style.display = 'flex';
       if (typeof checkGeminiKeyStatus === 'function') {
-        try { checkGeminiKeyStatus(); } catch (e) {}
+        try { checkGeminiKeyStatus(); } catch (e) { }
       }
     }
     function closeSettingsManageModal() {
