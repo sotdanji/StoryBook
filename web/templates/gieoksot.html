@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>기억솥 · 온 세대 자서전 스튜디오 — 이야기솥 (Story Sot)</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+  <!-- 웹폰트: 마루부리 & 프리텐다드 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10-21@1.0/MaruBuri.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root {
+      --sot-bg: #F8F5F0;
+      --sot-sidebar-bg: #FAF7F2;
+      --sot-card-bg: #FFFFFF;
+      --sot-primary: #0F766E;
+      --sot-primary-dark: #094E49;
+      --sot-primary-light: #E6F4F2;
+      --sot-accent: #B45309;
+      --sot-text-main: #2D241E;
+      --sot-text-muted: #756658;
+      --sot-border: #E5DCD1;
+      --sot-border-hover: #CBD5E1;
+      --font-serif: 'MaruBuri', 'Noto Serif KR', Georgia, serif;
+      --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--sot-bg);
+      color: var(--sot-text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 통합 바 */
+    .top-header {
+      background: #FFFFFF;
+      border-bottom: 1.5px solid var(--sot-border);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-back-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--sot-text-muted);
+      text-decoration: none;
+      background: var(--sot-bg);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--sot-border);
+      transition: all 0.2s;
+    }
+    .btn-back-home:hover {
+      background: #EFE7DC;
+      color: var(--sot-text-main);
+    }
+
+    .sot-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      background: var(--sot-primary-light);
+      color: var(--sot-primary-dark);
+      border: 1px solid rgba(15, 118, 110, 0.25);
+    }
+
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.88rem;
+      color: var(--sot-text-muted);
+    }
+
+    /* 메인 2단 레이아웃 */
+    .main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 58px);
+      overflow: hidden;
+    }
+
+    /* 좌측 사이드바: 자서전 메타 & 목차 */
+    .sidebar {
+      width: 320px;
+      background: var(--sot-sidebar-bg);
+      border-right: 1.5px solid var(--sot-border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .memoir-placard {
+      background: #FFFFFF;
+      border: 1.5px solid #CCD8D6;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .memoir-title {
+      font-family: var(--font-serif);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--sot-primary-dark);
+      margin-bottom: 6px;
+      line-height: 1.4;
+      word-break: keep-all;
+    }
+
+    .memoir-author {
+      font-size: 0.85rem;
+      color: var(--sot-text-muted);
+      margin-bottom: 14px;
+    }
+
+    .btn-edit-memoir {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: var(--sot-primary-light);
+      color: var(--sot-primary-dark);
+      border: 1px solid rgba(15,118,110,0.3);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-edit-memoir:hover {
+      background: #D5EDE9;
+    }
+
+    /* 워크플로우 탭 네비게이션 */
+    .workflow-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .workflow-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--sot-text-main);
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .workflow-btn:hover {
+      background: rgba(15, 118, 110, 0.06);
+    }
+    .workflow-btn.active {
+      background: #FFFFFF;
+      border-color: #B4CECA;
+      color: var(--sot-primary-dark);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    }
+
+    /* 챕터 진행률 바 */
+    .progress-box {
+      background: #FFFFFF;
+      border: 1px solid var(--sot-border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: auto;
+    }
+    .progress-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--sot-text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .progress-track {
+      background: #E5EBEA;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: var(--sot-primary);
+      width: 15%;
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    /* 우측 작업 본문 캔버스 */
+    .content-area {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+      background: #FDFBF8;
+    }
+
+    .tab-pane {
+      display: none;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 배너 헤더 */
+    .section-header {
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1.5px solid var(--sot-border);
+    }
+    .section-header h2 {
+      font-family: var(--font-serif);
+      font-size: 1.45rem;
+      color: var(--sot-text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .section-header p {
+      font-size: 0.92rem;
+      color: var(--sot-text-muted);
+    }
+
+    /* 7대 생애 주기 연대기 질문 카드 그리드 */
+    .chronology-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .chrono-card {
+      background: #FFFFFF;
+      border: 1.5px solid var(--sot-border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .chrono-card:hover {
+      border-color: var(--sot-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15,118,110,0.08);
+    }
+    .chrono-card.selected {
+      border-color: var(--sot-primary);
+      background: var(--sot-primary-light);
+    }
+    .chrono-num {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--sot-primary);
+      background: #E0EFEB;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .chrono-title {
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--sot-text-main);
+      margin-bottom: 6px;
+    }
+    .chrono-desc {
+      font-size: 0.84rem;
+      color: var(--sot-text-muted);
+      line-height: 1.45;
+    }
+
+    /* 대화 및 인터뷰어 영역 */
+    .interview-chat-wrap {
+      background: #FFFFFF;
+      border: 1.5px solid var(--sot-border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .chat-bubble {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .chat-avatar {
+      font-size: 1.8rem;
+      background: var(--sot-primary-light);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .chat-body {
+      background: var(--sot-bg);
+      padding: 14px 18px;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      max-width: 80%;
+      border: 1px solid var(--sot-border);
+    }
+    .chat-body.coach {
+      background: #F2F8F7;
+      border-color: #CCE4E1;
+      color: #17423E;
+    }
+
+    .chat-input-bar {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+    }
+    .chat-input-bar textarea {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--sot-border);
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: vertical;
+      min-height: 70px;
+    }
+    .chat-input-bar textarea:focus {
+      outline: none;
+      border-color: var(--sot-primary);
+    }
+    .btn-send-answer {
+      padding: 0 22px;
+      background: var(--sot-primary);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-send-answer:hover {
+      background: var(--sot-primary-dark);
+    }
+
+    /* 모달 공통 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    .modal-card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      border: 1px solid var(--sot-border);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 상단 바 -->
+  <header class="top-header">
+    <div class="brand-wrap">
+      <a href="/" class="btn-back-home" title="이야기솥 서재로 돌아갑니다.">
+        <span>🏠</span> <span>서재로 나가기</span>
+      </a>
+      <span class="sot-badge">
+        <span>📖</span> <span>제2솥 · 기억솥 (온 세대 자서전)</span>
+      </span>
+      <span style="font-size: 0.78rem; color: #0F766E; font-weight: 700;">● 집필 중</span>
+    </div>
+
+    <div class="header-user">
+      <span>👤 <strong>{{ current_user.display_name if current_user else '작가' }}</strong>님</span>
+      <a href="/manual" target="_blank" style="color: var(--sot-text-muted); text-decoration: none; font-size: 0.82rem;">📖 큰 글씨 안내서</a>
+    </div>
+  </header>
+
+  <!-- 2. 본문 레이아웃 -->
+  <div class="main-container">
+
+    <!-- 좌측 사이드바 -->
+    <aside class="sidebar">
+      <div class="memoir-placard">
+        <div style="font-size: 0.72rem; color: #0F766E; font-weight: 700; margin-bottom: 4px;">📖 회고록 서지 정보</div>
+        <div class="memoir-title" id="displayMemoirTitle">{{ active_project.name if active_project else "나의 삶, 나의 노래" }}</div>
+        <div class="memoir-author" id="displayMemoirAuthor">지은이: <strong>{{ active_project.author if (active_project and active_project.author) else "기억의 작가" }}</strong></div>
+        <button type="button" class="btn-edit-memoir" onclick="openEditMemoirModal()">
+          <span>✏️</span> <span>자서전 정보(제목/작가명) 수정</span>
+        </button>
+      </div>
+
+      <!-- 4단계 워크플로우 네비게이션 -->
+      <nav class="workflow-nav">
+        <button class="workflow-btn active" onclick="switchWorkflowTab('interview', this)">
+          <span>🎙️</span> <span>1. 생애 기억 인터뷰</span>
+        </button>
+        <button class="workflow-btn" onclick="switchWorkflowTab('writing', this)">
+          <span>✍️</span> <span>2. 챕터 글쓰기 & 윤문</span>
+        </button>
+        <button class="workflow-btn" onclick="switchWorkflowTab('album', this)">
+          <span>📷</span> <span>3. 옛 사진 앨범 & 복원</span>
+        </button>
+        <button class="workflow-btn" onclick="switchWorkflowTab('publishing', this)">
+          <span>📚</span> <span>4. 회고록 조판 & 출판</span>
+        </button>
+      </nav>
+
+      <!-- 진행률 바 -->
+      <div class="progress-box">
+        <div class="progress-title">
+          <span>집필 진행률</span>
+          <span id="memoirProgressText">1 / 7 테마 인터뷰 완료</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="memoirProgressBar" style="width: 15%;"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 우측 메인 캔버스 -->
+    <main class="content-area">
+
+      <!-- [탭 1] 🎙️ 생애 기억 인터뷰 -->
+      <section class="tab-pane active" id="pane-interview">
+        <div class="section-header">
+          <h2><span>🎙️</span> 1. 생애 기억 인터뷰</h2>
+          <p>“큰 질문 하나에 한 번씩, 그때 머물렀던 장소와 들었던 목소리를 편안하게 들려주세요.”</p>
+        </div>
+
+        <!-- 7대 생애 주기 테마 카드 그리드 -->
+        <div class="chronology-grid">
+          <div class="chrono-card selected" onclick="selectTheme(1, '유년의 뜰과 고향의 흙냄새', this)">
+            <span class="chrono-num">제1장 · 유년기</span>
+            <div class="chrono-title">유년의 뜰과 고향</div>
+            <div class="chrono-desc">어린 시절 살던 동네, 골목길 풍경, 부모님의 젊은 시절과 따스했던 밥상.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(2, '배움의 나날과 학창 시절 친구들', this)">
+            <span class="chrono-num">제2장 · 학창 시절</span>
+            <div class="chrono-title">배움과 친구들</div>
+            <div class="chrono-desc">까까머리 단발머리 시절, 통학길의 추억, 마음을 나누던 오랜 동무들.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(3, '청춘의 불꽃과 가슴 벅찬 사랑', this)">
+            <span class="chrono-num">제3장 · 청춘</span>
+            <div class="chrono-title">청춘과 첫사랑</div>
+            <div class="chrono-desc">세상에 첫발을 딛던 설렘, 가슴 뛰던 첫사랑과 잊을 수 없는 결혼의 날.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(4, '생업의 현장과 땀방울의 무게', this)">
+            <span class="chrono-num">제4장 · 직업과 도전</span>
+            <div class="chrono-title">일터와 세상 속으로</div>
+            <div class="chrono-desc">가장 치열하게 일했던 곳, 비바람을 견뎌내며 지켜온 소중한 일터.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(5, '가족이라는 울타리와 아이들의 웃음', this)">
+            <span class="chrono-num">제5장 · 가족</span>
+            <div class="chrono-title">가족과 보금자리</div>
+            <div class="chrono-desc">품 안의 자식들을 키워낸 세월, 함께 울고 웃었던 가족과의 날들.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(6, '황혼의 쉼표와 삶의 분기점', this)">
+            <span class="chrono-num">제6장 · 성찰</span>
+            <div class="chrono-title">삶의 분기점과 쉼표</div>
+            <div class="chrono-desc">인생의 큰 고비를 넘어온 지혜, 내 삶의 쉼표가 되어준 순간들.</div>
+          </div>
+          <div class="chrono-card" onclick="selectTheme(7, '후손에게 건네는 따스한 축복과 지혜', this)">
+            <span class="chrono-num">제7장 · 전언</span>
+            <div class="chrono-title">남겨주고 싶은 말</div>
+            <div class="chrono-desc">사랑하는 자녀와 손주들에게 꼭 전해주고 싶은 삶의 나침반.</div>
+          </div>
+        </div>
+
+        <!-- 기억 발굴 인터뷰 챗봇 화면 -->
+        <div class="interview-chat-wrap">
+          <div style="font-weight: 700; font-size: 0.92rem; color: var(--sot-primary-dark); margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+            <span>🤖</span> <span>기억솥 대화 코치 「안실장」의 인터뷰 질문</span>
+          </div>
+
+          <div class="chat-bubble">
+            <div class="chat-avatar">👵</div>
+            <div class="chat-body coach" id="coachQuestion">
+              “어릴 적 자라셨던 고향 집 마당을 떠올려보세요. 봄여름에 피어나던 꽃이나 대청마루에서 바라보던 하늘, 그때 가장 먼저 떠오르는 장면은 무엇인가요?”
+            </div>
+          </div>
+
+          <div class="chat-input-bar">
+            <textarea id="txtInterviewAnswer" placeholder="기억나는 대로 편안하게 적어주세요. 단어 하나, 짧은 한 줄이어도 좋습니다. (예: 마당 감나무 아래 평상이 생각나요...)"></textarea>
+            <button type="button" class="btn-send-answer" onclick="recordInterviewAnswer()">
+              <span>💬</span>
+              <span>이야기<br>들려주기</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- [탭 2] ✍️ 챕터 글쓰기 & 윤문 -->
+      <section class="tab-pane" id="pane-writing">
+        <div class="section-header">
+          <h2><span>✍️</span> 2. 챕터 글쓰기 & 윤문</h2>
+          <p>인터뷰에서 나눈 이야기를 품격 있는 자서전 문체로 구성하고 다듬습니다.</p>
+        </div>
+        <div style="background: #fff; border: 1.5px solid var(--sot-border); border-radius: 12px; padding: 24px; text-align: center;">
+          <span style="font-size: 2.4rem; display: block; margin-bottom: 12px;">📖</span>
+          <h3 style="font-family: var(--font-serif); margin-bottom: 8px;">제1장. 유년의 뜰 원고 집필</h3>
+          <p style="font-size: 0.9rem; color: var(--sot-text-muted); margin-bottom: 16px;">
+            1단계 인터뷰 대화가 완료되면, 구술된 기억을 토대로 풍성하고 진솔한 회고록 본문이 자동으로 초안 작성됩니다.
+          </p>
+          <button type="button" class="btn-edit-memoir" style="width: auto; margin: 0 auto; padding: 10px 20px;" onclick="switchWorkflowTab('interview')">
+            🎙️ 먼저 인터뷰로 이야기 들려주기 ➔
+          </button>
+        </div>
+      </section>
+
+      <!-- [탭 3] 📷 옛 사진 앨범 & 복원 -->
+      <section class="tab-pane" id="pane-album">
+        <div class="section-header">
+          <h2><span>📷</span> 3. 옛 사진 앨범 & 복원</h2>
+          <p>색바랜 흑백 사진, 낡은 가족사진을 올려 선명하게 복원하고 이야기 캡션을 답니다.</p>
+        </div>
+        <div style="background: #fff; border: 1.5px dashed var(--sot-border); border-radius: 12px; padding: 32px; text-align: center;">
+          <span style="font-size: 2.6rem; display: block; margin-bottom: 12px;">🖼️</span>
+          <h3 style="font-family: var(--font-serif); margin-bottom: 8px;">빛바랜 옛 사진을 올려주세요</h3>
+          <p style="font-size: 0.9rem; color: var(--sot-text-muted); margin-bottom: 18px;">
+            스마트폰으로 찍은 옛 흑백 사진, 졸업 앨범, 결혼식 사진을 등록하시면 자서전 본문에 아름답게 삽입됩니다.
+          </p>
+          <button type="button" class="btn-edit-memoir" style="width: auto; margin: 0 auto; padding: 10px 20px;" onclick="Swal.fire('준비 중', '사진 복원 및 앨범 기능은 2단계 고도화에서 연결됩니다.', 'info')">
+            📁 옛 사진 업로드하기
+          </button>
+        </div>
+      </section>
+
+      <!-- [탭 4] 📚 회고록 조판 & 출판 -->
+      <section class="tab-pane" id="pane-publishing">
+        <div class="section-header">
+          <h2><span>📚</span> 4. 회고록 조판 & 출판</h2>
+          <p>완성된 원고와 옛 사진을 엮어 부크크 A5 양장/무선 회고록 출판용 PDF로 자동 조판합니다.</p>
+        </div>
+        <div style="background: #fff; border: 1.5px solid var(--sot-border); border-radius: 12px; padding: 24px; text-align: center;">
+          <span style="font-size: 2.6rem; display: block; margin-bottom: 12px;">📕</span>
+          <h3 style="font-family: var(--font-serif); margin-bottom: 8px;">세상에 단 하나뿐인 내 삶의 책</h3>
+          <p style="font-size: 0.9rem; color: var(--sot-text-muted); margin-bottom: 18px;">
+            목차, 프롤로그, 각 장의 본문과 사진, 에필로그가 완벽한 출판 표준(300 DPI, 양면 펼침)으로 조판됩니다.
+          </p>
+          <button type="button" class="btn-edit-memoir" style="width: auto; margin: 0 auto; padding: 10px 24px;" onclick="Swal.fire('조판 준비', '작성된 인터뷰와 챕터 원고를 수합하여 조판 미리보기를 준비합니다.', 'info')">
+            📑 A5 출판 조판 미리보기
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 자서전 메타데이터 수정 모달 -->
+  <div class="modal-overlay" id="editMemoirModal">
+    <div class="modal-card">
+      <h3 style="font-family: var(--font-serif); margin-bottom: 14px; color: var(--sot-primary-dark);">✏️ 자서전 서지 정보 수정</h3>
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.84rem; font-weight: 700; margin-bottom: 4px;">자서전 제목</label>
+        <input type="text" id="editMemoirName" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--sot-border); font-family: inherit; font-size: 0.95rem;" value="{{ active_project.name if active_project else '' }}">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.84rem; font-weight: 700; margin-bottom: 4px;">부제 (한 줄 소개)</label>
+        <input type="text" id="editMemoirSubtitle" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--sot-border); font-family: inherit; font-size: 0.95rem;" value="{{ active_project.subtitle if active_project else '' }}">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.84rem; font-weight: 700; margin-bottom: 4px;">저자(구술자) 존함</label>
+        <input type="text" id="editMemoirAuthor" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--sot-border); font-family: inherit; font-size: 0.95rem;" value="{{ active_project.author if active_project else '' }}">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" onclick="closeEditMemoirModal()" style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--sot-border); background: #fff; cursor: pointer;">취소</button>
+        <button type="button" onclick="saveEditMemoir()" style="padding: 8px 18px; border-radius: 8px; border: none; background: var(--sot-primary); color: #fff; font-weight: 700; cursor: pointer;">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const currentProjectId = "{{ active_project.id if active_project else '' }}";
+
+    function switchWorkflowTab(tabKey, btnElement) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.workflow-btn').forEach(el => el.classList.remove('active'));
+
+      const targetPane = document.getElementById('pane-' + tabKey);
+      if (targetPane) targetPane.classList.add('active');
+      if (btnElement) btnElement.classList.add('active');
+    }
+
+    function selectTheme(themeId, themeTitle, cardElem) {
+      document.querySelectorAll('.chrono-card').forEach(c => c.classList.remove('selected'));
+      cardElem.classList.add('selected');
+
+      const questions = {
+        1: "“어릴 적 자라셨던 고향 집 마당을 떠올려보세요. 봄여름에 피어나던 꽃이나 대청마루에서 바라보던 하늘, 그때 가장 먼저 떠오르는 장면은 무엇인가요?”",
+        2: "“까까머리나 단발머리 시절, 매일 걸어가던 등굣길의 풍경이나 가장 오랜 시간을 함께 보낸 친구의 이름을 들려주세요.”",
+        3: "“처음으로 세상에 내 힘으로 발을 딛던 스무 살 무렵, 가슴 뛰던 꿈이나 잊히지 않는 첫사랑의 순간이 있으신가요?”",
+        4: "“젊은 날 가장 치열하게 땀 흘렸던 일터는 어디였나요? 비바람 속에서도 나를 지탱해주었던 마음가짐을 말씀해주세요.”",
+        5: "“첫 아이를 품에 안았던 날의 감격이나 온 가족이 둘러앉아 소박하게 저녁을 먹던 날, 가장 마음이 푸근했던 순간은 언제인가요?”",
+        6: "“인생이라는 긴 길을 걸어오며 가장 힘들었던 고비, 그리고 그것을 묵묵히 이겨냈을 때 내게 남은 깨달음은 무엇이었나요?”",
+        7: "“앞으로 긴 세월을 살아갈 사랑하는 자녀와 손주들에게, 살아가면서 꼭 이것만은 마음에 품으라고 건네고 싶은 한마디는 무엇인가요?”"
+      };
+
+      document.getElementById('coachQuestion').textContent = questions[themeId] || questions[1];
+      document.getElementById('txtInterviewAnswer').focus();
+    }
+
+    function recordInterviewAnswer() {
+      const txt = document.getElementById('txtInterviewAnswer').value.trim();
+      if (!txt) {
+        Swal.fire('안내', '들려주실 이야기를 한 줄이라도 적어주세요.', 'warning');
+        return;
+      }
+      Swal.fire({
+        icon: 'success',
+        title: '소중한 기억이 기록되었습니다',
+        text: '이 소중한 이야기를 바탕으로 자서전 챕터 초안을 정성껏 빚어냅니다.',
+        confirmButtonColor: '#0F766E'
+      });
+      document.getElementById('txtInterviewAnswer').value = '';
+    }
+
+    function openEditMemoirModal() {
+      document.getElementById('editMemoirModal').style.display = 'flex';
+    }
+    function closeEditMemoirModal() {
+      document.getElementById('editMemoirModal').style.display = 'none';
+    }
+
+    async function saveEditMemoir() {
+      const name = document.getElementById('editMemoirName').value.trim();
+      const subtitle = document.getElementById('editMemoirSubtitle').value.trim();
+      const author = document.getElementById('editMemoirAuthor').value.trim();
+
+      if (!name) {
+        Swal.fire('오류', '자서전 제목을 입력해주세요.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/projects/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: currentProjectId,
+            name: name,
+            subtitle: subtitle,
+            author: author,
+            sot_type: "gieoksot"
+          })
+        });
+        if (res.ok) {
+          document.getElementById('displayMemoirTitle').textContent = name;
+          document.getElementById('displayMemoirAuthor').innerHTML = '지은이: <strong>' + (author || '기억의 작가') + '</strong>';
+          closeEditMemoirModal();
+          Swal.fire({ icon: 'success', title: '수정 완료', timer: 1200, showConfirmButton: false });
+        } else {
+          throw new Error('수정에 실패했습니다.');
+        }
+      } catch (err) {
+        Swal.fire('오류', err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

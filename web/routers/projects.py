@@ -46,6 +46,7 @@ class ProjectCreateRequest(BaseModel):
     description: Optional[str] = ""
     book_type: Optional[str] = "illustrated"
     author_type: Optional[str] = "single"
+    sot_type: Optional[str] = "geulsot"
 
 class ProjectUpdateRequest(BaseModel):
     project_id: Optional[str] = None
@@ -56,6 +57,7 @@ class ProjectUpdateRequest(BaseModel):
     description: Optional[str] = ""
     book_type: Optional[str] = "illustrated"
     author_type: Optional[str] = "single"
+    sot_type: Optional[str] = None
 
 class ProjectDeleteRequest(BaseModel):
     project_id: str
@@ -165,14 +167,17 @@ async def create_project(req: ProjectCreateRequest):
 
         book_type = req.book_type if req.book_type in ("illustrated", "standard") else "illustrated"
         author_type = req.author_type if req.author_type in ("single", "collab") else "single"
+        sot_type = req.sot_type if req.sot_type in ("geulsot", "gieoksot") else "geulsot"
+        default_sub = "격동의 시대를 지나온 한 사람의 위대한 기록" if sot_type == "gieoksot" else ("삶의 궤적을 빚어낸 서정 시화집" if book_type == "illustrated" else "서정 시집")
         info = project_manager.create_project(
             name=name,
-            subtitle=req.subtitle.strip() if req.subtitle else ("삶의 궤적을 빚어낸 서정 시화집" if book_type == "illustrated" else "서정 시집"),
+            subtitle=req.subtitle.strip() if req.subtitle else default_sub,
             author=req.author.strip() if req.author else (current_user.get("display_name", "기억의 작가") if current_user else "기억의 작가"),
-            target_count=req.target_count or 35,
+            target_count=req.target_count or (12 if sot_type == "gieoksot" else 35),
             description=req.description.strip() if req.description else "",
             book_type=book_type,
             author_type=author_type,
+            sot_type=sot_type,
             owner_id=owner_id,
             owner_email=owner_email
         )
@@ -194,7 +199,8 @@ async def update_project(req: ProjectUpdateRequest):
             target_count=req.target_count or 35,
             description=req.description or "",
             book_type=req.book_type,
-            author_type=req.author_type
+            author_type=req.author_type,
+            sot_type=req.sot_type
         )
         return {"success": True, "project": asdict(info)}
     except Exception as e:

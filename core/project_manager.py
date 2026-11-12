@@ -21,6 +21,7 @@ class ProjectInfo:
     target_count: int        # 목표 시 편수 (기본 35)
     description: str         # 시집 기획 의도 및 설명
     book_type: str = "illustrated" # "illustrated" (서정 시화집) | "standard" (일반 시집)
+    sot_type: str = "geulsot"      # "geulsot" (제1솥: 글솥 시화집) | "gieoksot" (제2솥: 기억솥 자서전)
     author_type: str = "single"    # "single" (개인 시집) | "collab" (공동/가족 시집)
     owner_id: str = ""       # 회원 계정 고유 ID (Turso Auth UID)
     owner_email: str = ""    # 회원 이메일 (소유자 확인용)
@@ -221,6 +222,7 @@ class ProjectManager:
                 target_count=data.get("target_count", 35),
                 description=data.get("description", ""),
                 book_type=data.get("book_type", "illustrated"),
+                sot_type=data.get("sot_type", "geulsot"),
                 author_type=data.get("author_type", "single"),
                 owner_id=data.get("owner_id", ""),
                 owner_email=data.get("owner_email", ""),
@@ -333,6 +335,7 @@ class ProjectManager:
                 "target_count": target_count,
                 "description": meta.get("description", ""),
                 "book_type": meta.get("book_type", "illustrated"),
+                "sot_type": meta.get("sot_type", "geulsot"),
                 "owner_id": owner_id,
                 "owner_email": meta.get("owner_email", ""),
                 "is_mine": (owner_id == user_id) if user_id else True,
@@ -356,14 +359,15 @@ class ProjectManager:
         description: str = "",
         book_type: str = "illustrated",
         author_type: str = "single",
+        sot_type: str = "geulsot",
         owner_id: str = "",
         owner_email: str = ""
     ) -> ProjectInfo:
-        """새로운 시집 프로젝트를 Turso DB에 즉시 생성 (로컬 파일 생성 불필요)"""
+        """새로운 시집/자서전 프로젝트를 Turso DB에 즉시 생성 (로컬 파일 생성 불필요)"""
         from core.db_manager import db_manager
 
         safe_name = re.sub(r'[^a-zA-Z0-9가-힣]', '_', name).strip('_')
-        base_id = safe_name.lower() if safe_name else "poem_book"
+        base_id = safe_name.lower() if safe_name else ("memoir_book" if sot_type == "gieoksot" else "poem_book")
 
         project_id = base_id
         counter = 1
@@ -371,14 +375,16 @@ class ProjectManager:
             project_id = f"{base_id}_{counter}"
             counter += 1
 
+        default_sub = "격동의 시대를 지나온 한 사람의 위대한 기록" if sot_type == "gieoksot" else ("삶의 궤적을 빚어낸 서정 시화집" if book_type == "illustrated" else "서정 시집")
         info = ProjectInfo(
             id=project_id,
             name=name,
-            subtitle=subtitle or ("삶의 궤적을 빚어낸 서정 시화집" if book_type == "illustrated" else "서정 시집"),
+            subtitle=subtitle or default_sub,
             author=author or ("기억의 작가" if author_type == "single" else "온가족 엮음"),
-            target_count=target_count or 35,
+            target_count=target_count or (12 if sot_type == "gieoksot" else 35),
             description=description,
             book_type=book_type or "illustrated",
+            sot_type=sot_type or "geulsot",
             author_type=author_type or "single",
             owner_id=owner_id or "",
             owner_email=owner_email or "",
@@ -399,9 +405,10 @@ class ProjectManager:
         target_count: int = 35,
         description: str = "",
         book_type: Optional[str] = None,
-        author_type: Optional[str] = None
+        author_type: Optional[str] = None,
+        sot_type: Optional[str] = None
     ) -> ProjectInfo:
-        """기존 시집 프로젝트의 메타데이터를 Turso DB에서 수정"""
+        """기존 시집/자서전 프로젝트의 메타데이터를 Turso DB에서 수정"""
         pid = self._resolve_project_id(project_id or self.get_active_project_id())
         from core.db_manager import db_manager
         if not db_manager.get_project_meta(pid):
@@ -418,6 +425,8 @@ class ProjectManager:
             info.book_type = book_type
         if author_type:
             info.author_type = author_type
+        if sot_type:
+            info.sot_type = sot_type
         info.updated_at = datetime.now().strftime("%Y-%m-%d")
 
         self._save_info_and_sync_db(self.projects_dir / pid, info)

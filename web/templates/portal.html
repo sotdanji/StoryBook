@@ -726,8 +726,8 @@
         <span class="portal-brand-badge">기억 출판 공방</span>
       </div>
       <nav class="portal-nav-links">
-        <a href="/studio" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">✍️ 글솥 입장</a>
-        <a href="javascript:void(0);" onclick="alert('기억솥(온 세대 자서전)은 더 깊고 따뜻한 서비스 제공을 위해 현재 시스템 고도화 및 새 단장(리뉴얼) 중입니다.\n곧 정식 서비스로 찾아뵙겠습니다.');" class="portal-nav-btn" style="color:#64748B;">📖 기억솥 (리뉴얼 중)</a>
+        <a href="/geulsot" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">✍️ 글솥 입장</a>
+        <a href="/gieoksot" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">📖 기억솥 입장</a>
         <a href="/gallery" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 입장</a>
         <a href="https://cafe.naver.com/eduaihub" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">☕ 사랑방(카페)</a>
 
@@ -806,14 +806,14 @@
         </ul>
       </div>
       <div class="portal-card-actions">
-        <a href="/studio" class="portal-card-btn pot-brown" target="_blank" rel="noopener noreferrer">✍️ 글솥 집필실 입장하기</a>
+        <a href="/geulsot" class="portal-card-btn pot-brown" target="_blank" rel="noopener noreferrer">✍️ 글솥 집필실 입장하기</a>
         <a href="/manual" class="portal-card-subbtn" target="_blank" rel="noopener noreferrer">📖 글솥 큰 글씨 사용설명서 보기</a>
       </div>
     </div>
 
     <!-- 카드 2: 온 세대 자서전 '기억솥' -->
     <div class="portal-card">
-      <span class="portal-card-badge badge-gray" style="background:#E2E8F0; color:#475569;">제2솥 · 새 단장 리뉴얼 중</span>
+      <span class="portal-card-badge badge-teal">제2솥 · 온 세대 자서전</span>
       <div>
         <div class="portal-card-icon">📖</div>
         <h3 class="portal-card-title">온 세대 자서전 「기억솥」</h3>
@@ -827,8 +827,8 @@
         </ul>
       </div>
       <div class="portal-card-actions">
-        <button type="button" class="portal-card-btn pot-slate" onclick="alert('기억솥(온 세대 자서전)은 더 깊고 따뜻한 서비스 제공을 위해 현재 시스템 고도화 및 새 단장(리뉴얼) 중입니다.\n곧 정식 서비스로 찾아뵙겠습니다.');" style="cursor:pointer; border:none;">🔄 기억솥 새 단장 중 (리뉴얼 안내)</button>
-        <span class="portal-card-subbtn disabled">📖 자서전 큰 글씨 설명서 (오픈 예정)</span>
+        <a href="/gieoksot" class="portal-card-btn pot-slate" target="_blank" rel="noopener noreferrer" style="background:#0F766E; color:#fff;">📖 기억솥 집필실 입장하기</a>
+        <a href="/manual" class="portal-card-subbtn" target="_blank" rel="noopener noreferrer">📖 자서전 큰 글씨 설명서 보기</a>
       </div>
     </div>
 
@@ -936,8 +936,8 @@
   <footer class="portal-footer">
     <div class="portal-footer-links">
       <a href="/">홈(이야기솥 대문)</a>
-      <a href="/studio" target="_blank" rel="noopener noreferrer">글솥 (감성 시화집)</a>
-      <a href="javascript:void(0);" onclick="alert('기억솥(온 세대 자서전)은 현재 새 단장 리뉴얼 중입니다.');">기억솥 (구술 자서전)</a>
+      <a href="/geulsot" target="_blank" rel="noopener noreferrer">글솥 (감성 시화집)</a>
+      <a href="/gieoksot" target="_blank" rel="noopener noreferrer">기억솥 (온 세대 자서전)</a>
       <a href="/gallery" target="_blank" rel="noopener noreferrer">모둠솥 (열린 서가)</a>
       <a href="/manual" target="_blank" rel="noopener noreferrer">글솥 큰 글씨 설명서</a>
       <a href="https://cafe.naver.com/eduaihub" target="_blank" rel="noopener noreferrer">이야기솥 사랑방(카페)</a>
@@ -1082,12 +1082,12 @@
               </p>
             </div>
 
-            <!-- 제2솥: 온 세대 자서전 (리뉴얼 중) -->
-            <div id="choiceSotMemoir" class="sot-choice-box disabled" onclick="selectNewBookSot('memoir')">
+            <!-- 제2솥: 온 세대 자서전 -->
+            <div id="choiceSotMemoir" class="sot-choice-box" onclick="selectNewBookSot('memoir')">
               <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">📖</span>
-              <span style="font-size: 0.76rem; font-weight: 700; background: #64748B; color: #fff; padding: 2px 8px; border-radius: 10px;">제2솥 · 리뉴얼 중</span>
-              <h4 style="margin: 8px 0 6px; font-size: 1.15rem; color: #64748B;">온 세대 자서전</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #94A3B8; line-height: 1.45;">
+              <span id="badgeChoiceMemoir" style="font-size: 0.76rem; font-weight: 700; background: #64748B; color: #fff; padding: 2px 8px; border-radius: 10px;">제2솥 · 온 세대 자서전</span>
+              <h4 id="titleChoiceMemoir" style="margin: 8px 0 6px; font-size: 1.15rem; color: #475569;">온 세대 자서전</h4>
+              <p style="margin: 0; font-size: 0.82rem; color: #7A695A; line-height: 1.45;">
                 • 부모님의 삶과 육성 녹취<br>
                 • 옛 사진과 생애 연대기 에세이<br>
                 • 신국판 152×225 자서전 규격
@@ -1097,7 +1097,7 @@
 
           <!-- 시화집 생성 폼 -->
           <div id="formCreatePoemBook" style="margin-top: 20px; background: #FAF5ED; border: 1.5px solid #E6D4BE; border-radius: 12px; padding: 18px;">
-            <h4 style="margin: 0 0 12px; font-size: 1rem; color: #5C381E; display: flex; align-items: center; gap: 6px;">
+            <h4 id="formNewBookHeader" style="margin: 0 0 12px; font-size: 1rem; color: #5C381E; display: flex; align-items: center; gap: 6px;">
               <span>🌸</span> <span>감성 시화집 책 정보 입력</span>
             </h4>
 
@@ -1401,12 +1401,20 @@
 
         container.innerHTML = projects.map(p => {
           const isActive = active && (active.id === p.id);
-          const bookTypeLabel = p.book_type === "standard" ? "서정 시집" : "✍️ 감성 시화집";
+          const isMemoir = (p.sot_type === "gieoksot");
+          const bookTypeLabel = isMemoir ? "📖 온 세대 자서전" : (p.book_type === "standard" ? "📜 서정 시집" : "✍️ 감성 시화집");
+          const badgeBg = isMemoir ? "#E6F4F2" : "#F3EAE0";
+          const badgeColor = isMemoir ? "#0F766E" : "#7A4B23";
+          const enterBtnBg = isMemoir ? "#0F766E" : "#8B4513";
+          const enterBtnText = isMemoir ? "📖 집필실 입장 ➔" : "✍️ 집필실 입장 ➔";
+          const sotTarget = isMemoir ? "gieoksot" : "geulsot";
+          const specLabel = isMemoir ? "신국판 (12장)" : "A5 판형 (35편)";
+
           return `
-            <div class="user-book-card" style="${isActive ? 'border-color: #8B4513; box-shadow: 0 0 0 1.5px #8B4513;' : ''}">
+            <div class="user-book-card" style="${isActive ? `border-color: ${enterBtnBg}; box-shadow: 0 0 0 1.5px ${enterBtnBg};` : ''}">
               <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <span style="font-size: 0.76rem; font-weight: 700; background: #F3EAE0; color: #7A4B23; padding: 2px 8px; border-radius: 10px;">
+                  <span style="font-size: 0.76rem; font-weight: 700; background: ${badgeBg}; color: ${badgeColor}; padding: 2px 8px; border-radius: 10px;">
                     ${bookTypeLabel}
                   </span>
                   ${isActive ? '<span style="font-size: 0.74rem; font-weight: 700; color: #15803D; background: #DCFCE7; padding: 2px 7px; border-radius: 10px;">● 현재 집필 중</span>' : ''}
@@ -1419,13 +1427,13 @@
                 </div>
               </div>
 
-              <div style="display: flex; justify-content: space-between; align-items: center; pt-2; border-top: 1px solid #F0E6D8; padding-top: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #F0E6D8; padding-top: 10px;">
                 <span style="font-size: 0.78rem; color: #8A725F;">
-                  A5 판형 (35편)
+                  ${specLabel}
                 </span>
-                <button type="button" onclick="selectAndEnterStudio('${p.id}')"
-                  style="padding: 6px 14px; font-size: 0.82rem; font-weight: 700; border-radius: 6px; border: none; background: #8B4513; color: #fff; cursor: pointer; transition: all 0.2s;">
-                  ✍️ 집필실 입장 ➔
+                <button type="button" onclick="selectAndEnterStudio('${p.id}', '${sotTarget}')"
+                  style="padding: 6px 14px; font-size: 0.82rem; font-weight: 700; border-radius: 6px; border: none; background: ${enterBtnBg}; color: #fff; cursor: pointer; transition: all 0.2s;">
+                  ${enterBtnText}
                 </button>
               </div>
             </div>
@@ -1437,7 +1445,7 @@
       }
     }
 
-    async function selectAndEnterStudio(projectId) {
+    async function selectAndEnterStudio(projectId, sotTarget = 'geulsot') {
       try {
         const res = await fetch("/api/projects/select", {
           method: "POST",
@@ -1445,7 +1453,7 @@
           body: JSON.stringify({ project_id: projectId })
         });
         if (res.ok) {
-          window.location.href = "/studio";
+          window.location.href = "/" + (sotTarget || 'geulsot');
         } else {
           throw new Error("책 전환에 실패했습니다.");
         }
@@ -1454,14 +1462,38 @@
       }
     }
 
+    let selectedNewBookSot = 'poem';
+
     function selectNewBookSot(type) {
+      selectedNewBookSot = type;
+      const boxPoem = document.getElementById("choiceSotPoem");
+      const boxMemoir = document.getElementById("choiceSotMemoir");
+      const badgeMemoir = document.getElementById("badgeChoiceMemoir");
+      const titleMemoir = document.getElementById("titleChoiceMemoir");
+
+      const titleInput = document.getElementById("newBookTitle");
+      const subtitleInput = document.getElementById("newBookSubtitle");
+      const btnSubmit = document.getElementById("btnSubmitNewBook");
+      const formHeader = document.getElementById("formNewBookHeader");
+
       if (type === 'memoir') {
-        Swal.fire({
-          icon: "info",
-          title: "온 세대 자서전 「기억솥」 리뉴얼 중",
-          html: "기억솥은 어르신 맞춤 음성 구술 녹취 및 AI 인터뷰어 기능 고도화를 위해 현재 새 단장 중입니다.<br><br>곧 정식 오픈되오니 조금만 기다려 주세요!",
-          confirmButtonColor: "#8B4513"
-        });
+        boxPoem.classList.remove("active");
+        boxMemoir.classList.add("active");
+        if (badgeMemoir) badgeMemoir.style.background = "#0F766E";
+        if (titleMemoir) titleMemoir.style.color = "#0F766E";
+        if (formHeader) formHeader.innerHTML = "<span>📖</span> <span>온 세대 자서전 책 정보 입력</span>";
+        if (titleInput) titleInput.placeholder = "예: 나의 삶, 나의 노래 (또는 부모님 존함)";
+        if (subtitleInput) subtitleInput.placeholder = "예: 격동의 시대를 지나온 한 사람의 위대한 기록";
+        if (btnSubmit) btnSubmit.innerHTML = "<span>📖 온 세대 자서전 공방 열기</span>";
+      } else {
+        boxMemoir.classList.remove("active");
+        boxPoem.classList.add("active");
+        if (badgeMemoir) badgeMemoir.style.background = "#64748B";
+        if (titleMemoir) titleMemoir.style.color = "#475569";
+        if (formHeader) formHeader.innerHTML = "<span>🌸</span> <span>감성 시화집 책 정보 입력</span>";
+        if (titleInput) titleInput.placeholder = "예: 저녁 노을에 부치는 편지";
+        if (subtitleInput) subtitleInput.placeholder = "예: 삶의 궤적을 빚어낸 서정 시화집";
+        if (btnSubmit) btnSubmit.innerHTML = "<span>✍️ 감성 시화집 공방 열기</span>";
       }
     }
 
@@ -1474,15 +1506,19 @@
       const author = authorInput ? authorInput.value.trim() : "";
       const subtitle = subtitleInput ? subtitleInput.value.trim() : "";
 
+      const isMemoir = (selectedNewBookSot === 'memoir');
+      const bookTypeName = isMemoir ? "자서전" : "시집";
+      const targetSotUrl = isMemoir ? "/gieoksot" : "/geulsot";
+
       if (!title) {
-        Swal.fire({ icon: "warning", title: "시집 제목 입력", text: "시집 제목을 입력해 주세요." });
+        Swal.fire({ icon: "warning", title: `${bookTypeName} 제목 입력`, text: `${bookTypeName} 제목을 입력해 주세요.` });
         return;
       }
 
       const btn = document.getElementById("btnSubmitNewBook");
       const originalText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = "<span>시화집 공방 짓는 중...</span>";
+      btn.innerHTML = `<span>${bookTypeName} 공방 짓는 중...</span>`;
 
       try {
         const res = await fetch("/api/projects/create", {
@@ -1491,16 +1527,16 @@
           body: JSON.stringify({
             name: title,
             author: author || "기억의 작가",
-            subtitle: subtitle || "삶의 궤적을 빚어낸 서정 시화집",
-            target_count: 35,
-            book_type: "illustrated",
+            subtitle: subtitle || (isMemoir ? "격동의 시대를 지나온 한 사람의 위대한 기록" : "삶의 궤적을 빚어낸 서정 시화집"),
+            target_count: isMemoir ? 12 : 35,
+            book_type: isMemoir ? "standard" : "illustrated",
+            sot_type: isMemoir ? "gieoksot" : "geulsot",
             author_type: "single"
           })
         });
 
         const data = await res.json();
         if (res.ok && data.success) {
-          // 생성된 시집을 활성화하고 스튜디오로 즉시 직행
           await fetch("/api/projects/select", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1509,18 +1545,18 @@
 
           Swal.fire({
             icon: "success",
-            title: "시화집 개설 완료!",
-            text: `「${title}」 시화집 공방이 성공적으로 열렸습니다. 집필실로 입장합니다!`,
+            title: `${bookTypeName} 개설 완료!`,
+            text: `「${title}」 ${bookTypeName} 공방이 성공적으로 열렸습니다. 집필실로 입장합니다!`,
             timer: 1500,
             showConfirmButton: false
           }).then(() => {
-            window.location.href = "/studio";
+            window.location.href = targetSotUrl;
           });
         } else {
-          throw new Error(data.detail || "시집 개설 실패");
+          throw new Error(data.detail || `${bookTypeName} 개설 실패`);
         }
       } catch (err) {
-        Swal.fire({ icon: "error", title: "시집 개설 오류", text: err.message });
+        Swal.fire({ icon: "error", title: `${bookTypeName} 개설 오류`, text: err.message });
       } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;

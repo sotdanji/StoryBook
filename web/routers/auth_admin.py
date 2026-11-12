@@ -122,9 +122,9 @@ async def portal_home_page(request: Request):
         }
     )
 
-@router.get("/studio", response_class=HTMLResponse)
-async def studio_page(request: Request):
-    """스튜디오 메인 집필실 및 2-Layer 조판실 (로그인 확인 후 집필실 표시)"""
+@router.get("/geulsot", response_class=HTMLResponse)
+async def geulsot_studio_page(request: Request):
+    """제1솥: 글솥 (감성 시화집 스튜디오) 메인 집필실"""
     is_guest = request.query_params.get("guest") == "true"
     current_user = auth_manager.get_current_user()
 
@@ -141,7 +141,41 @@ async def studio_page(request: Request):
             "current_user": current_user,
             "is_guest": is_guest,
             "is_admin": auth_manager.is_current_user_admin(),
-            "active_project": active_info
+            "active_project": active_info,
+            "sot_name": "글솥",
+            "sot_type": "geulsot"
+        }
+    )
+
+@router.get("/studio", response_class=HTMLResponse)
+async def studio_page_redirect(request: Request):
+    """기존 /studio 링크 하위 호환을 위한 /geulsot 자동 리다이렉트"""
+    query = request.url.query
+    dest = f"/geulsot?{query}" if query else "/geulsot"
+    return RedirectResponse(url=dest, status_code=307)
+
+@router.get("/gieoksot", response_class=HTMLResponse)
+async def gieoksot_studio_page(request: Request):
+    """제2솥: 기억솥 (온 세대 자서전 스튜디오) 메인 집필실"""
+    is_guest = request.query_params.get("guest") == "true"
+    current_user = auth_manager.get_current_user()
+
+    if not current_user and not is_guest:
+        return RedirectResponse(url="/login")
+
+    from core.project_manager import project_manager
+    active_info = project_manager.get_active_project_info()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="gieoksot.html",
+        context={
+            "current_user": current_user,
+            "is_guest": is_guest,
+            "is_admin": auth_manager.is_current_user_admin(),
+            "active_project": active_info,
+            "sot_name": "기억솥",
+            "sot_type": "gieoksot"
         }
     )
 
