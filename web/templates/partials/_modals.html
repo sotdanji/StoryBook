@@ -1248,8 +1248,8 @@
   <!-- ========================================== -->
   <!-- 5. 1:1 비밀 상담 및 출판 코칭 상담실 모달 (Inquiry Modal) -->
   <!-- ========================================== -->
-  <div id="inquiryModal" class="modal" style="display: none;">
-    <div class="modal-dialog" style="max-width: 620px; border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px rgba(78, 59, 42, 0.22); border: 1.5px solid #D4A373;">
+  <div id="inquiryModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(30, 28, 26, 0.65); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;" onclick="if(event.target===this) closeInquiryModal()">
+    <div class="modal-dialog" style="max-width: 640px; width: 92%; max-height: 90vh; border-radius: 14px; overflow: hidden; box-shadow: 0 16px 45px rgba(0, 0, 0, 0.35); border: 2px solid #8C6A4F; background: #FCFAF6;" onclick="event.stopPropagation()">
       <div class="modal-content" style="background: #FCFAF6;">
         <div class="modal-header" style="background: #F4ECE1; border-bottom: 1.5px solid #E5D7C5; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 10px;">

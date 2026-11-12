@@ -36,6 +36,10 @@ export function initInquirySupport() {
             contentInput.value = `안녕하세요! 제가 빚어낸 시화집 '${shareProjName}' 갤러리를 소통방에 공유합니다.\n낭송과 노래도 들어보시고, 시어의 결이나 조판 여백에 대해 따뜻한 소감과 조언 부탁드립니다.\n\n🔗 갤러리 주소: ${shareGalleryUrl}`;
           }
         }
+        // URL에서 open_inquiry 파라미터 정리 (새로고침 시 자동 팝업 방지)
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) { }
       }, 500);
     }
   } catch (e) { }
