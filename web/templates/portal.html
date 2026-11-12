@@ -184,7 +184,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: 0 6px 18px rgba(92, 56, 30, 0.05);
+      box-shadow: 0 4px 14px rgba(92, 56, 30, 0.04);
       transition: all 0.25s ease;
       position: relative;
       overflow: hidden;
@@ -192,13 +192,8 @@
 
     .portal-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 12px 28px rgba(92, 56, 30, 0.12);
+      box-shadow: 0 12px 28px rgba(92, 56, 30, 0.1);
       border-color: #D4B99B;
-    }
-
-    .portal-card.highlight {
-      border: 2px solid var(--portal-primary);
-      background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF9 100%);
     }
 
     .portal-card-badge {
@@ -262,6 +257,13 @@
       gap: 6px;
     }
 
+    .portal-card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
     .portal-card-btn {
       display: block;
       text-align: center;
@@ -271,26 +273,72 @@
       font-weight: 700;
       font-size: 0.95rem;
       transition: all 0.2s ease;
+      box-sizing: border-box;
+      width: 100%;
     }
 
-    .portal-card-btn.primary {
+    .portal-card-btn.pot-brown {
       background: var(--portal-primary);
       color: #FFFFFF;
-      box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+      box-shadow: 0 4px 10px rgba(139, 69, 19, 0.25);
     }
 
-    .portal-card-btn.primary:hover {
+    .portal-card-btn.pot-brown:hover {
       background: var(--portal-primary-hover);
+      transform: translateY(-1px);
     }
 
-    .portal-card-btn.secondary {
-      background: #F3ECE1;
-      color: #643E19;
-      border: 1px solid #D8C7B5;
+    .portal-card-btn.pot-slate {
+      background: #475569;
+      color: #FFFFFF;
+      box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);
     }
 
-    .portal-card-btn.secondary:hover {
-      background: #E8DCCF;
+    .portal-card-btn.pot-slate:hover {
+      background: #334155;
+      transform: translateY(-1px);
+    }
+
+    .portal-card-btn.pot-teal {
+      background: #0F766E;
+      color: #FFFFFF;
+      box-shadow: 0 4px 10px rgba(15, 118, 110, 0.25);
+    }
+
+    .portal-card-btn.pot-teal:hover {
+      background: #115E59;
+      transform: translateY(-1px);
+    }
+
+    .portal-card-subbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-align: center;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      border: 1px solid #E2D5C3;
+      background: #FAF6EF;
+      color: #554436;
+      box-sizing: border-box;
+    }
+
+    .portal-card-subbtn:hover:not(.disabled) {
+      background: #EFE4D6;
+      border-color: #D4BFA7;
+      color: var(--portal-primary);
+    }
+
+    .portal-card-subbtn.disabled {
+      background: #F4EFEB;
+      color: #9A8A7C;
+      border-color: #E5DDD3;
+      cursor: default;
     }
 
     /* 자율 무료 선언 & 안심 배너 */
@@ -510,7 +558,7 @@
       </div>
       <nav class="portal-nav-links">
         <a href="/studio" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">✍️ 글솥 입장</a>
-        <a href="https://together-story.vercel.app" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">📖 기억솥 입장</a>
+        <a href="javascript:void(0);" onclick="alert('기억솥(온 세대 자서전)은 더 깊고 따뜻한 서비스 제공을 위해 현재 시스템 고도화 및 새 단장(리뉴얼) 중입니다.\n곧 정식 서비스로 찾아뵙겠습니다.');" class="portal-nav-btn" style="color:#64748B;">📖 기억솥 (리뉴얼 중)</a>
         <a href="/gallery" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 입장</a>
         <a href="https://cafe.naver.com/eduaihub" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">☕ 네이버 카페 입장</a>
       </nav>
@@ -534,8 +582,8 @@
   <section class="portal-grid">
 
     <!-- 카드 1: 감성 시화집 '글솥' -->
-    <div class="portal-card highlight">
-      <span class="portal-card-badge badge-primary">제1솥 · 감성 시화집</span>
+    <div class="portal-card">
+      <span class="portal-card-badge badge-primary">제1솥 · 상시 운영</span>
       <div>
         <div class="portal-card-icon">✍️</div>
         <h3 class="portal-card-title">감성 시화집 「글솥」</h3>
@@ -548,17 +596,15 @@
           <li>✓ 300 DPI 부크크(Bookk) 인쇄 완제본 PDF 자동 생성</li>
         </ul>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <a href="/studio" class="portal-card-btn primary" target="_blank" rel="noopener noreferrer">✍️ 글솥 집필실 입장하기</a>
-        <a href="/manual" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer" style="font-size:0.86rem; padding:8px 12px; display:flex; align-items:center; justify-content:center; gap:5px;">
-          📖 글솥 큰 글씨 사용설명서 보기
-        </a>
+      <div class="portal-card-actions">
+        <a href="/studio" class="portal-card-btn pot-brown" target="_blank" rel="noopener noreferrer">✍️ 글솥 집필실 입장하기</a>
+        <a href="/manual" class="portal-card-subbtn" target="_blank" rel="noopener noreferrer">📖 글솥 큰 글씨 사용설명서 보기</a>
       </div>
     </div>
 
     <!-- 카드 2: 온 세대 자서전 '기억솥' -->
     <div class="portal-card">
-      <span class="portal-card-badge badge-gray">제2솥 · 구술 자서전</span>
+      <span class="portal-card-badge badge-gray" style="background:#E2E8F0; color:#475569;">제2솥 · 새 단장 리뉴얼 중</span>
       <div>
         <div class="portal-card-icon">📖</div>
         <h3 class="portal-card-title">온 세대 자서전 「기억솥」</h3>
@@ -571,12 +617,15 @@
           <li>✓ 가문과 후손에게 전하는 영구 소장본 제본</li>
         </ul>
       </div>
-      <a href="https://together-story.vercel.app" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">📖 기억솥 공방 입장하기</a>
+      <div class="portal-card-actions">
+        <button type="button" class="portal-card-btn pot-slate" onclick="alert('기억솥(온 세대 자서전)은 더 깊고 따뜻한 서비스 제공을 위해 현재 시스템 고도화 및 새 단장(리뉴얼) 중입니다.\n곧 정식 서비스로 찾아뵙겠습니다.');" style="cursor:pointer; border:none;">🔄 기억솥 새 단장 중 (리뉴얼 안내)</button>
+        <span class="portal-card-subbtn disabled">📖 자서전 큰 글씨 설명서 (오픈 예정)</span>
+      </div>
     </div>
 
     <!-- 카드 3: 모둠솥 공용 서가 -->
     <div class="portal-card">
-      <span class="portal-card-badge badge-teal">제3솥 · 열린 문학관</span>
+      <span class="portal-card-badge badge-teal">제3솥 · 상시 개방</span>
       <div>
         <div class="portal-card-icon">🏛️</div>
         <h3 class="portal-card-title">열린 서가 갤러리 「모둠솥」</h3>
@@ -589,7 +638,10 @@
           <li>✓ 인터넷 링크로 자녀와 지인들에게 원클릭 자랑</li>
         </ul>
       </div>
-      <a href="/gallery" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 서가 입장하기</a>
+      <div class="portal-card-actions">
+        <a href="/gallery" class="portal-card-btn pot-teal" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 서가 입장하기</a>
+        <a href="/gallery" class="portal-card-subbtn" target="_blank" rel="noopener noreferrer">📖 모둠솥 서가 둘러보기 가이드</a>
+      </div>
     </div>
 
   </section>
@@ -611,18 +663,18 @@
   <section class="portal-support-section">
     <div class="portal-support-inner">
       <div class="support-header">
-        <span class="support-badge">📢 글솥 공지사항 &amp; 이용 안내</span>
-        <h2>어르신도, 초보자도 안심하는 글솥 3단계 창작 지원</h2>
-        <p>글솥에서 시화집을 지으시다가 막히거나 궁금한 점이 생겨도 걱정하지 마세요. 다정한 안전망이 준비되어 있습니다.</p>
+        <span class="support-badge">🤝 이야기솥 창작 동반 지원 센터</span>
+        <h2>어르신도, 초보자도 안심하는 이야기솥 3단계 동반 지원</h2>
+        <p>시화집을 짓거나 자서전을 기록하실 때, 막히거나 도움이 필요해도 걱정하지 마세요. 다정한 안전망이 준비되어 있습니다.</p>
       </div>
 
       <div class="support-grid">
         <!-- 1단계 -->
         <div class="support-card">
           <span class="support-step-num">1단계 : 혼자서 척척</span>
-          <h4>📖 글솥 큰 글씨 사용설명서 & FAQ</h4>
+          <h4>📖 온 세대 큰 글씨 설명서 &amp; FAQ</h4>
           <p>
-            눈이 침침한 어르신을 위해 돋보기처럼 시원하게 제작된 설명서와 13가지 자주 묻는 질문으로 궁금증을 90% 스스로 해결합니다.
+            눈이 침침한 어르신을 위해 돋보기처럼 시원하게 제작된 설명서와 13가지 자주 묻는 질문으로 궁금증을 스스로 해결합니다.
           </p>
           <div style="margin-top: 1rem;">
             <a href="/manual" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">글솥 설명서 보러가기 ➔</a>
@@ -632,9 +684,9 @@
         <!-- 2단계 -->
         <div class="support-card">
           <span class="support-step-num">2단계 : 함께 나누기</span>
-          <h4>☕ 전국 작가 네이버 카페</h4>
+          <h4>☕ 전국 작가 네이버 카페 (사랑방)</h4>
           <p>
-            먼저 책을 내신 선배 작가님들과 출판 노하우를 나누고, 완성된 종이책 인증샷과 갤러리 링크를 자랑하며 응원을 주고받는 사랑방입니다.
+            시화집과 자서전을 출판하신 선배 작가님들과 출판 노하우를 나누고, 완성된 종이책 인증샷과 갤러리 링크를 자랑하며 응원을 주고받는 사랑방입니다.
           </p>
           <div style="margin-top: 1rem;">
             <a href="https://cafe.naver.com/eduaihub" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">공식 카페 입장하기 ➔</a>
@@ -646,7 +698,7 @@
           <span class="support-step-num">3단계 : 기술 AS 우체통</span>
           <h4>💬 1인 공방 비동기 1:1 상담실</h4>
           <p>
-            조판 여백이 삐뚤어질 때 시집 데이터를 버튼 하나로 첨부해 질문하시면, 관리자가 정성껏 검토 후 차례대로 친절히 안내해 드립니다.
+            조판 여백이 맞지 않거나 시스템 이용 중 도움이 필요할 때 문의하시면, 관리자가 정성껏 검토 후 차례대로 친절히 안내해 드립니다.
           </p>
           <div style="margin-top: 1rem;">
             <span style="font-size:0.8rem; color:#8A7563;">※ 평일 기준 순차 회신</span>
@@ -659,8 +711,8 @@
         <div class="premium-text">
           <h3>👑 전문가의 깊은 손길이 필요하신가요? (프리미엄 1:1 맞춤 출판 코칭)</h3>
           <p>
-            <em>"혼자서 조판하기 눈이 침침하시거나, 완벽한 문학적 퇴고와 종이책 출판 등록 대행을 원하시는 작가님께"</em><br>
-            프로그램은 평생 무료이지만, 장인의 정성 어린 수작업 교정과 인쇄소 규격 완제본 대행은 1:1 밀착 유료 코칭으로 정성껏 모십니다.
+            <em>"혼자서 책을 엮기 눈이 침침하시거나, 완벽한 문학적 퇴고와 종이책 출판 등록 대행을 원하시는 작가님께"</em><br>
+            프로그램은 평생 무료이지만, 시화집과 자서전의 정성 어린 수작업 교정과 인쇄소 규격 완제본 대행은 1:1 밀착 유료 코칭으로 정성껏 모십니다.
           </p>
         </div>
         <a href="/studio?open_inquiry=true" class="premium-btn" target="_blank" rel="noopener noreferrer">
@@ -676,7 +728,7 @@
     <div class="portal-footer-links">
       <a href="/">홈(이야기솥 대문)</a>
       <a href="/studio" target="_blank" rel="noopener noreferrer">글솥 (감성 시화집)</a>
-      <a href="https://together-story.vercel.app" target="_blank" rel="noopener noreferrer">기억솥 (구술 자서전)</a>
+      <a href="javascript:void(0);" onclick="alert('기억솥(온 세대 자서전)은 현재 새 단장 리뉴얼 중입니다.');">기억솥 (구술 자서전)</a>
       <a href="/gallery" target="_blank" rel="noopener noreferrer">모둠솥 (열린 서가)</a>
       <a href="/manual" target="_blank" rel="noopener noreferrer">글솥 큰 글씨 설명서</a>
       <a href="https://cafe.naver.com/eduaihub" target="_blank" rel="noopener noreferrer">네이버 카페</a>
