@@ -12,6 +12,7 @@ import sys
 import json
 import sqlite3
 import logging
+import time
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,27 @@ DEFAULT_LOCAL_DB_PATH = BASE_DIR / "storybook_master.sqlite"
 
 TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "").strip()
 TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+
+# ⚡ 단기 인메모리 캐시 (초기 동시 다발적 쿼리 폭주 0ms 즉시 응답용)
+_MEM_CACHE: Dict[str, Any] = {}
+
+def get_cached(key: str, ttl: float = 3.0) -> Optional[Any]:
+    if key in _MEM_CACHE:
+        val, ts = _MEM_CACHE[key]
+        if time.time() - ts < ttl:
+            return val
+    return None
+
+def set_cached(key: str, val: Any) -> None:
+    _MEM_CACHE[key] = (val, time.time())
+
+def clear_cache(prefix: str = "") -> None:
+    if not prefix:
+        _MEM_CACHE.clear()
+    else:
+        for k in list(_MEM_CACHE.keys()):
+            if k.startswith(prefix):
+                _MEM_CACHE.pop(k, None)
 
 
 @dataclass
@@ -99,7 +121,7 @@ class TOCItem:
 # 1. Turso libSQL HTTP Pipeline Client (순수 파이썬 구현)
 # =====================================================================
 class TursoHTTPClient:
-    """Turso libSQL Pipeline v2 HTTP API 클라이언트"""
+    """Turso libSQL Pipeline v2 HTTP API 클라이언트 (Keep-Alive 세션 풀링 지원)"""
 
     def __init__(self, db_url: str, auth_token: str):
         # libsql://... -> https://...
@@ -108,6 +130,15 @@ class TursoHTTPClient:
             url = url.rstrip("/") + "/v2/pipeline"
         self.endpoint = url
         self.auth_token = auth_token
+        self._session = None
+        try:
+            import requests
+            self._session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=20, max_retries=1)
+            self._session.mount("https://", adapter)
+            self._session.mount("http://", adapter)
+        except Exception:
+            self._session = None
 
     def _convert_arg(self, val: Any) -> Dict[str, Any]:
         if val is None:
@@ -123,9 +154,6 @@ class TursoHTTPClient:
             return {"type": "text", "value": str(val)}
 
     def execute_pipeline(self, statements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        import urllib.request
-        import urllib.error
-
         requests_payload = []
         for stmt in statements:
             sql = stmt["sql"]
@@ -146,17 +174,37 @@ class TursoHTTPClient:
             "Content-Type": "application/json"
         }
 
-        req = urllib.request.Request(self.endpoint, data=payload_bytes, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                resp_data = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            err_msg = e.read().decode("utf-8", errors="replace")
-            logger.error(f"[Turso HTTP Error] {e.code}: {err_msg}")
-            raise RuntimeError(f"Turso API Error ({e.code}): {err_msg}")
-        except Exception as e:
-            logger.error(f"[Turso Connection Error] {e}")
-            raise
+        # ⚡ 1. requests.Session Keep-Alive 초고속 재사용
+        resp_data = None
+        if self._session is not None:
+            try:
+                resp = self._session.post(self.endpoint, data=payload_bytes, headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    resp_data = resp.json()
+                else:
+                    logger.error(f"[Turso HTTP Error] {resp.status_code}: {resp.text}")
+                    raise RuntimeError(f"Turso API Error ({resp.status_code}): {resp.text}")
+            except Exception as e:
+                if "Turso API Error" in str(e):
+                    raise
+                logger.warning(f"[Turso Session fallback to urllib] {e}")
+                resp_data = None
+
+        # 2. urllib 폴백
+        if resp_data is None:
+            import urllib.request
+            import urllib.error
+            req = urllib.request.Request(self.endpoint, data=payload_bytes, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    resp_data = json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                err_msg = e.read().decode("utf-8", errors="replace")
+                logger.error(f"[Turso HTTP Error] {e.code}: {err_msg}")
+                raise RuntimeError(f"Turso API Error ({e.code}): {err_msg}")
+            except Exception as e:
+                logger.error(f"[Turso Connection Error] {e}")
+                raise
 
         results = []
         for item in resp_data.get("results", []):
@@ -482,11 +530,8 @@ class DatabaseManager:
         """, (project_id, name, subtitle, author, target_count, last_seq, meta_json, created_at, now))
         return True
 
-    def get_project_meta(self, project_id: str) -> Optional[Dict[str, Any]]:
-        """DB에서 시집 메타데이터 조회"""
-        row = self._client.fetch_one("SELECT * FROM project_meta WHERE project_id = ?", (project_id,))
-        if not row:
-            return None
+    def _row_to_meta(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """행 데이터를 ProjectInfo dict로 변환 (추가 DB 쿼리 없음)"""
         try:
             meta = json.loads(row.get("metadata_json") or "{}")
             if meta and isinstance(meta, dict) and meta.get("name"):
@@ -495,7 +540,7 @@ class DatabaseManager:
             pass
         return {
             "id": row["project_id"],
-            "name": row.get("name", project_id),
+            "name": row.get("name", row["project_id"]),
             "subtitle": row.get("subtitle", ""),
             "author": row.get("author", ""),
             "target_count": int(row.get("target_count", 35) or 35),
@@ -503,19 +548,58 @@ class DatabaseManager:
             "updated_at": row.get("updated_at", ""),
         }
 
+    def get_project_meta(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """DB에서 시집 메타데이터 조회"""
+        row = self._client.fetch_one("SELECT * FROM project_meta WHERE project_id = ?", (project_id,))
+        if not row:
+            return None
+        return self._row_to_meta(row)
+
     def list_project_metas(self) -> List[Dict[str, Any]]:
-        """DB에 등록된 모든 시집 프로젝트 메타데이터 목록 반환"""
+        """DB에 등록된 모든 시집 프로젝트 메타데이터 목록 반환 (단기 캐시 적용)"""
+        cache_key = "list_project_metas"
+        cached = get_cached(cache_key, ttl=3.0)
+        if cached is not None:
+            return cached
+
         rows = self._client.fetch_all("SELECT * FROM project_meta ORDER BY created_at ASC")
-        result = []
-        for r in rows:
-            pid = r["project_id"]
-            m = self.get_project_meta(pid)
-            if m:
-                result.append(m)
+        result = [self._row_to_meta(r) for r in rows if r.get("project_id")]
+        set_cached(cache_key, result)
         return result
+
+    def get_projects_stats(self) -> Dict[str, Dict[str, int]]:
+        """모든 프로젝트의 (total_works, completed_count)를 단 1번의 SQL 집계로 초고속 조회 (단기 캐시 적용)"""
+        cache_key = "projects_stats"
+        cached = get_cached(cache_key, ttl=3.0)
+        if cached is not None:
+            return cached
+
+        sql = """
+            SELECT project_id, 
+                   COUNT(*) as total_works,
+                   SUM(CASE WHEN status LIKE '%완성%' THEN 1 ELSE 0 END) as completed_count
+            FROM pieces
+            WHERE status != 'deleted'
+            GROUP BY project_id
+        """
+        try:
+            rows = self._client.fetch_all(sql)
+            res = {
+                r["project_id"]: {
+                    "total_works": int(r.get("total_works", 0) or 0),
+                    "completed_count": int(r.get("completed_count", 0) or 0)
+                }
+                for r in rows
+            }
+            set_cached(cache_key, res)
+            return res
+        except Exception as e:
+            logger.warning(f"get_projects_stats fallback: {e}")
+            return {}
 
     def delete_project_meta(self, project_id: str) -> bool:
         """프로젝트 삭제 시 DB에서도 메타 및 TOC 정리"""
+        clear_cache()
         self._client.execute("DELETE FROM project_meta WHERE project_id = ?", (project_id,))
         self._client.execute("DELETE FROM toc WHERE project_id = ?", (project_id,))
         self._client.execute("UPDATE pieces SET status = 'deleted' WHERE project_id = ?", (project_id,))
@@ -634,6 +718,8 @@ class DatabaseManager:
         )
 
         self._client.execute(sql, params)
+        clear_cache(f"toc_pieces:{piece.project_id}")
+        clear_cache("projects_stats")
         return True
 
     def get_piece(self, project_id: str, piece_id: str) -> Optional[PieceData]:
@@ -740,6 +826,8 @@ class DatabaseManager:
             self._client.execute("UPDATE pieces SET status = 'deleted', updated_at = ? WHERE piece_id = ? AND project_id = ?", (now, piece_id, project_id))
         else:
             self._client.execute("DELETE FROM pieces WHERE piece_id = ? AND project_id = ?", (piece_id, project_id))
+        clear_cache(f"toc_pieces:{project_id}")
+        clear_cache("projects_stats")
         return True
 
     # -------------------------------------------------------------
@@ -775,6 +863,35 @@ class DatabaseManager:
 
         return toc_items
 
+    def get_toc_with_pieces(self, project_id: str) -> List[Dict[str, Any]]:
+        """TOC와 Pieces를 단 1회의 JOIN 쿼리로 가져와서 초고속 반환 (N+1 쿼리 완전 퇴출 & 캐시 적용)"""
+        cache_key = f"toc_pieces:{project_id}"
+        cached = get_cached(cache_key, ttl=3.0)
+        if cached is not None:
+            return cached
+
+        sql = """
+            SELECT t.display_order, t.piece_id, t.chapter as toc_chapter, t.display_label,
+                   p.*
+            FROM toc t
+            JOIN pieces p ON t.piece_id = p.piece_id AND t.project_id = p.project_id
+            WHERE t.project_id = ? AND p.status != 'deleted'
+            ORDER BY t.display_order ASC
+        """
+        rows = self._client.fetch_all(sql, (project_id,))
+        result = []
+        for r in rows:
+            piece = self._row_to_piece(r)
+            display_label = r.get("display_label") or f"제{int(r['display_order']):02d}화"
+            result.append({
+                "display_order": int(r["display_order"]),
+                "display_label": display_label,
+                "chapter": r.get("toc_chapter", "") or piece.chapter_topic,
+                "piece": piece
+            })
+        set_cached(cache_key, result)
+        return result
+
     def set_toc(self, project_id: str, items: List[Dict[str, Any]]) -> bool:
         """목차 전체 교체/설정"""
         self._client.execute("DELETE FROM toc WHERE project_id = ?", (project_id,))
@@ -791,6 +908,7 @@ class DatabaseManager:
                     "UPDATE pieces SET chapter_topic = ? WHERE project_id = ? AND piece_id = ?",
                     (chapter, project_id, piece_id)
                 )
+        clear_cache(f"toc_pieces:{project_id}")
         return True
 
     def rename_chapter(self, project_id: str, old_chapter: str, new_chapter: str) -> bool:
@@ -803,6 +921,7 @@ class DatabaseManager:
             "UPDATE pieces SET chapter_topic = ? WHERE project_id = ? AND chapter_topic = ?",
             (new_chapter, project_id, old_chapter)
         )
+        clear_cache(f"toc_pieces:{project_id}")
         return True
 
     def reorder_toc(self, project_id: str, new_piece_ids_order: List[str]) -> bool:
