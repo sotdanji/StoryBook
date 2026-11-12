@@ -1,9 +1,9 @@
 # =====================================================================
-# fly.toml — StoryBook Studio (Fly.io 서울 리전 상시대기 배포 설정)
+# fly.toml — 이야기솥(Story Sot) (Fly.io nrt 리전 상시대기 배포 설정)
 # 배포 명령어: fly deploy
 # =====================================================================
 
-app = "storybook-studio"
+app = "storysot"
 primary_region = "nrt" # 도쿄(나리타) 데이터센터 — Turso DB(ap-northeast-1)와 동일 리전(DB 지연시간 1ms)
 
 [build]
