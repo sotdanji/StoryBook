@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduAI Hub & 글솥(Story Book) | 기억 기반 시화집·자서전 통합 출판 포털</title>
+  <title>이야기솥(Story Sot) | 글솥 · 기억솥 · 모둠솥 - 삶의 기억을 책으로 빚는 이야기 공방</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -91,34 +91,26 @@
 
     .portal-nav-btn {
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       font-weight: 600;
-      padding: 7px 14px;
+      padding: 8px 15px;
       border-radius: 8px;
       transition: all 0.2s ease;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      color: #4A3525;
+      background: #FFFFFF;
+      border: 1px solid #E2D5C3;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
-    .portal-nav-btn.text {
-      color: #634B35;
-    }
-
-    .portal-nav-btn.text:hover {
+    .portal-nav-btn:hover {
       color: var(--portal-primary);
-      background: #F4ECE1;
-    }
-
-    .portal-nav-btn.primary {
-      background: var(--portal-primary);
-      color: #FFFFFF;
-      box-shadow: 0 2px 6px rgba(139, 69, 19, 0.25);
-    }
-
-    .portal-nav-btn.primary:hover {
-      background: var(--portal-primary-hover);
+      background: #F8F2EB;
+      border-color: #CDB79E;
       transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(139, 69, 19, 0.1);
     }
 
     /* 히어로 섹션 */
@@ -503,29 +495,29 @@
   <header class="portal-nav">
     <div class="portal-nav-inner">
       <div class="portal-brand">
-        <span class="portal-brand-logo">📖</span>
-        <span class="portal-brand-title">글솥 <span style="font-size:0.9rem; font-weight:400; color:#8C6D53;">Story Book</span></span>
+        <span class="portal-brand-logo">🍲</span>
+        <span class="portal-brand-title">이야기솥 <span style="font-size:0.9rem; font-weight:400; color:#8C6D53;">Story Sot</span></span>
         <span class="portal-brand-badge">EduAI Hub 공식</span>
       </div>
       <nav class="portal-nav-links">
-        <a href="/gallery" class="portal-nav-btn text" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 서가</a>
-        <a href="/manual" class="portal-nav-btn text" target="_blank" rel="noopener noreferrer">📖 큰 글씨 설명서</a>
-        <a href="https://cafe.naver.com/eduaihub" class="portal-nav-btn text" target="_blank" rel="noopener noreferrer">☕ 네이버 카페</a>
-        <a href="/studio" class="portal-nav-btn primary" target="_blank" rel="noopener noreferrer">✍️ 집필실 입장</a>
+        <a href="/studio" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">✍️ 글솥 입장</a>
+        <a href="https://together-story.vercel.app" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">📖 기억솥 입장</a>
+        <a href="/gallery" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 입장</a>
+        <a href="https://cafe.naver.com/eduaihub" class="portal-nav-btn" target="_blank" rel="noopener noreferrer">☕ 네이버 카페 입장</a>
       </nav>
     </div>
   </header>
 
   <!-- 2. 히어로 배너 -->
   <section class="portal-hero">
-    <div class="portal-hero-tag">🌸 기억 하나가 시와 노래, 아름다운 책이 되는 공방</div>
+    <div class="portal-hero-tag">🌸 기억을 푹 고아내고 정갈하게 뜸 들이는 이야기 3솥</div>
     <h1 class="portal-hero-title">
       삶의 고운 기억을<br>
-      <span>세상에 단 하나뿐인 책</span>으로 빚어냅니다
+      <span>이야기솥에서 단 하나뿐인 책</span>으로 빚어냅니다
     </h1>
     <p class="portal-hero-desc">
       컴퓨터가 낯설어도, 타자가 서툴러도 괜찮습니다.<br>
-      들려주신 옛이야기를 고운 서정시와 물빛 수채화, 맑은 노래로 빚어 진짜 종이책과 온라인 갤러리로 출판해 드립니다.
+      들려주신 옛이야기를 고운 서정시와 물빛 수채화, 맑은 노래, 그리고 한 편의 단단한 자서전으로 빚어 진짜 종이책과 온라인 갤러리로 출판해 드립니다.
     </p>
   </section>
 
@@ -534,7 +526,7 @@
 
     <!-- 카드 1: 감성 시화집 '글솥' -->
     <div class="portal-card highlight">
-      <span class="portal-card-badge badge-primary">대표 플래그십</span>
+      <span class="portal-card-badge badge-primary">제1솥 · 감성 시화집</span>
       <div>
         <div class="portal-card-icon">✍️</div>
         <h3 class="portal-card-title">감성 시화집 「글솥」</h3>
@@ -547,15 +539,20 @@
           <li>✓ 300 DPI 부크크(Bookk) 인쇄 완제본 PDF 자동 생성</li>
         </ul>
       </div>
-      <a href="/studio" class="portal-card-btn primary" target="_blank" rel="noopener noreferrer">✍️ 시화집 집필실 입장하기</a>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <a href="/studio" class="portal-card-btn primary" target="_blank" rel="noopener noreferrer">✍️ 글솥 집필실 입장하기</a>
+        <a href="/manual" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer" style="font-size:0.86rem; padding:8px 12px; display:flex; align-items:center; justify-content:center; gap:5px;">
+          📖 글솥 큰 글씨 사용설명서 보기
+        </a>
+      </div>
     </div>
 
-    <!-- 카드 2: 온 세대 자서전 'TogetherStory' -->
+    <!-- 카드 2: 온 세대 자서전 '기억솥' -->
     <div class="portal-card">
-      <span class="portal-card-badge badge-gray">연계 공방</span>
+      <span class="portal-card-badge badge-gray">제2솥 · 구술 자서전</span>
       <div>
         <div class="portal-card-icon">📖</div>
-        <h3 class="portal-card-title">온 세대 자서전</h3>
+        <h3 class="portal-card-title">온 세대 자서전 「기억솥」</h3>
         <p class="portal-card-desc">
           마이크에 대고 편안하게 들려주시는 음성을 바탕으로 부모님의 일대기와 가족의 역사를 한 편의 장엄한 자서전으로 기록합니다.
         </p>
@@ -565,17 +562,17 @@
           <li>✓ 가문과 후손에게 전하는 영구 소장본 제본</li>
         </ul>
       </div>
-      <a href="https://together-story.vercel.app" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">📖 자서전 공방 둘러보기</a>
+      <a href="https://together-story.vercel.app" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">📖 기억솥 공방 입장하기</a>
     </div>
 
     <!-- 카드 3: 모둠솥 공용 서가 -->
     <div class="portal-card">
-      <span class="portal-card-badge badge-teal">열린 문학관</span>
+      <span class="portal-card-badge badge-teal">제3솥 · 열린 문학관</span>
       <div>
         <div class="portal-card-icon">🏛️</div>
-        <h3 class="portal-card-title">모둠솥 공용 서가</h3>
+        <h3 class="portal-card-title">열린 서가 갤러리 「모둠솥」</h3>
         <p class="portal-card-desc">
-          전국의 작가님들이 마음을 다해 출품하신 시화집들을 사르륵 넘어가는 3D 전자책 뷰어로 함께 읽고 온기를 나누는 온라인 문학관.
+          전국의 작가님들이 글솥과 기억솥에서 마음을 다해 출품하신 시화집과 자서전들을 3D 전자책 뷰어로 함께 읽고 온기를 나누는 온라인 문학관.
         </p>
         <ul class="portal-card-features">
           <li>✓ 실제 책장을 넘기듯 읽는 3D 인터랙티브 뷰어</li>
@@ -583,7 +580,7 @@
           <li>✓ 인터넷 링크로 자녀와 지인들에게 원클릭 자랑</li>
         </ul>
       </div>
-      <a href="/gallery" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 서가 구경하기</a>
+      <a href="/gallery" class="portal-card-btn secondary" target="_blank" rel="noopener noreferrer">🏛️ 모둠솥 서가 입장하기</a>
     </div>
 
   </section>
@@ -616,12 +613,12 @@
         <!-- 1단계 -->
         <div class="support-card">
           <span class="support-step-num">1단계 : 혼자서 척척</span>
-          <h4>📖 큰 글씨 사용설명서 & FAQ</h4>
+          <h4>📖 글솥 큰 글씨 사용설명서 & FAQ</h4>
           <p>
             눈이 침침한 어르신을 위해 돋보기처럼 시원하게 제작된 설명서와 13가지 자주 묻는 질문으로 궁금증을 90% 스스로 해결합니다.
           </p>
           <div style="margin-top: 1rem;">
-            <a href="/manual" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">설명서 보러가기 ➔</a>
+            <a href="/manual" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; font-weight:700; color:#8B4513; text-decoration:none;">글솥 설명서 보러가기 ➔</a>
           </div>
         </div>
 
@@ -670,16 +667,16 @@
   <!-- 6. 푸터 -->
   <footer class="portal-footer">
     <div class="portal-footer-links">
-      <a href="/">홈(대문)</a>
-      <a href="/studio" target="_blank" rel="noopener noreferrer">시화집 공방</a>
-      <a href="https://together-story.vercel.app" target="_blank" rel="noopener noreferrer">온 세대 자서전</a>
-      <a href="/gallery" target="_blank" rel="noopener noreferrer">모둠솥 공용 서가</a>
-      <a href="/manual" target="_blank" rel="noopener noreferrer">사용 설명서</a>
+      <a href="/">홈(이야기솥 대문)</a>
+      <a href="/studio" target="_blank" rel="noopener noreferrer">글솥 (감성 시화집)</a>
+      <a href="https://together-story.vercel.app" target="_blank" rel="noopener noreferrer">기억솥 (구술 자서전)</a>
+      <a href="/gallery" target="_blank" rel="noopener noreferrer">모둠솥 (열린 서가)</a>
+      <a href="/manual" target="_blank" rel="noopener noreferrer">글솥 큰 글씨 설명서</a>
       <a href="https://cafe.naver.com/eduaihub" target="_blank" rel="noopener noreferrer">네이버 카페</a>
       <a href="/admin" target="_blank" rel="noopener noreferrer">관리자 센터</a>
     </div>
     <p style="margin: 0; color: #8C7867;">
-      &copy; 2026 EduAI Hub &amp; 글솥(Story Book) Studio. All rights reserved.<br>
+      &copy; 2026 EduAI Hub &amp; 이야기솥(Story Sot). All rights reserved.<br>
       배움과 창작의 갈증을 가진 모든 이에게 꿈을 드립니다.
     </p>
   </footer>
