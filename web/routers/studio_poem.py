@@ -22,7 +22,8 @@ try:
 except ImportError:
     genai = None
 
-from core.config import GEMINI_API_KEY
+from core.config import GEMINI_API_KEY, get_gemini_api_key
+from core.gemini_guard import call_gemini_with_cascading, GeminiQuotaExhaustedError
 from core.manuscript import PoemWork
 from core.project_manager import project_manager
 from core.csv_builder import build_canva_csv
@@ -120,11 +121,10 @@ async def get_deep_interview_questions(req: DeepInterviewRequest):
         raise HTTPException(status_code=400, detail="적어도 하나의 기억 실마리를 먼저 입력해주세요.")
 
     # 1. Gemini API 키가 활성화되어 있으면 최신 Gemini 모델이 맥락을 분석하여 초고품격 꼬리 질문 생성
-    from core.config import GEMINI_API_KEY
-    if GEMINI_API_KEY:
+    active_key = get_gemini_api_key() or GEMINI_API_KEY
+    if active_key and genai:
         try:
-            from google import genai
-            client = genai.Client(api_key=GEMINI_API_KEY)
+            client = genai.Client(api_key=active_key)
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
             sys_prompt = (
                 "당신은 창작자의 숨겨진 기억과 감각을 깨워내는 전문 시 창작 인터뷰어(문학 프로파일러)입니다.\n"
@@ -138,9 +138,10 @@ async def get_deep_interview_questions(req: DeepInterviewRequest):
                 '{"summary": "...", "questions": [{"id": "q1", "category": "소리와 감각", "icon": "👂", "question": "..."}, {"id": "q2", "category": "시선의 머무름", "icon": "👁️", "question": "..."}, {"id": "q3", "category": "마음의 결", "icon": "❤️", "question": "..."}]}'
             )
             user_msg = f"기억의 시간/장소/사람: {core}\n눈에 밟히는 사물과 행동: {sensory}\n가슴에 남은 말: {spoken}"
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_msg,
+                preferred_model=active_model,
                 config={
                     "system_instruction": sys_prompt,
                     "response_mime_type": "application/json",
@@ -156,8 +157,8 @@ async def get_deep_interview_questions(req: DeepInterviewRequest):
                 "questions": [q.get("question", str(q)) if isinstance(q, dict) else str(q) for q in data.get("questions", [])],
                 "data": data
             }
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[인터뷰 질문 Gemini 생성 예외]: {e}")
 
     # 2. 로컬 엔진 폴백
     data = poetic_engine.generate_deep_interview_questions(core, sensory, spoken)
@@ -200,12 +201,11 @@ async def generate_drafts(req: DraftRequest):
     card_a = f"{anchor}에서 포착한 빛과 사물의 조화"
     card_b = f"{sensory_details}에 집중한 서정적 여백의 구도" if sensory_details else f"{anchor}의 깊은 여운을 담은 서정적 구도"
 
-    # 1. Gemini API 키가 있으면 Gemini 2.5 Flash 호출 (상투성 타파 메가 프롬프트)
-    from core.config import GEMINI_API_KEY
-    if GEMINI_API_KEY:
+    # 1. Gemini API 키가 있으면 Gemini 최신 모델 캐스케이딩 호출 (상투성 타파 메가 프롬프트)
+    active_key = get_gemini_api_key() or GEMINI_API_KEY
+    if active_key and genai:
         try:
-            from google import genai
-            client = genai.Client(api_key=GEMINI_API_KEY)
+            client = genai.Client(api_key=active_key)
             
             system_instruction = (
                 f"당신은 백석, 정지용, 기형도의 문학적 계보를 잇는 최고 수준의 한국 현대 서정시인입니다. 시집: 「{info.name}」\n"
@@ -228,9 +228,10 @@ async def generate_drafts(req: DraftRequest):
             )
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=prompt,
+                preferred_model=active_model,
                 config={
                     "system_instruction": system_instruction,
                     "response_mime_type": "application/json",
@@ -249,8 +250,32 @@ async def generate_drafts(req: DraftRequest):
                 "image_prompt": img_prompt,
                 "suggested_image_file": f"images/{img_filename}"
             }
-        except Exception:
-            pass
+        except GeminiQuotaExhaustedError as q_err:
+            # [★ 3중 방어막 ★] 429 한도 초과 시 조악한 룰베이스 더미로 추락시키지 않고 품격 있는 상태 안내 제공
+            return {
+                "success": True,
+                "source": "quota_guard",
+                "is_quota_error": True,
+                "draft_a": {
+                    "title": "[알림] Google AI 분당 한도 일시 초과",
+                    "body": (
+                        "Google 무료 AI의 일시적 분당 호출 한도(15회)에 도달했습니다.\n\n"
+                        "시의 높은 문학적 품격을 지키기 위해, 엉터리 기계 문장으로 대체하지 않고 안전하게 멈추었습니다.\n\n"
+                        "약 15~30초만 잠시 숨을 고르신 후 다시 [🌸 AI와 함께 시 짓기]를 눌러주시면,\n"
+                        "AI가 빚어내는 고품격 서정시를 그대로 만나보실 수 있습니다."
+                    )
+                },
+                "draft_b": {
+                    "title": "[안내] 15~30초 후 다시 시도해 주세요",
+                    "body": "무료 티어는 분당 요청 수가 제한되어 있습니다. 잠시 후 다시 시도하시면 정상 작동합니다."
+                },
+                "card_a": card_a,
+                "card_b": card_b,
+                "image_prompt": img_prompt,
+                "suggested_image_file": f"images/{img_filename}"
+            }
+        except Exception as e:
+            print(f"[Gemini 시 초안 생성 오류, 키리스 룰베이스 전환]: {e}")
 
     # 2. 키리스 모드: 업그레이드된 지능형 서정 작시 엔진 (API 키 불필요, 시적 분절 및 심층 답변 융합)
     engine_drafts = poetic_engine.compose_dual_drafts(

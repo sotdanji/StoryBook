@@ -20,6 +20,7 @@ from core.skill_pack import (
     ART_STYLE_COMMON_RULES,
     MUSIC_COMMON_RULES
 )
+from core.gemini_guard import call_gemini_with_cascading, GeminiQuotaExhaustedError
 
 
 class PoeticEngine:
@@ -565,9 +566,10 @@ class PoeticEngine:
                     print(f"[참조 이미지 로드 실패, 텍스트 전용으로 진행]: {img_err}")
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
-                contents=content_payload
+            response = call_gemini_with_cascading(
+                client=client,
+                contents=content_payload,
+                preferred_model=active_model
             )
 
             if response and response.text:
@@ -692,9 +694,10 @@ class PoeticEngine:
                     "3. 오직 1~2문장의 간결하고 아름다운 한국어 연출 지시문만 출력하세요 (설명이나 따옴표 없이)."
                 )
                 user_msg = f"시 제목: {title}\n시 본문:\n{poem_body}\n기억: {core_memory}\n화풍: {chosen_style}\n추가연출: {custom_guide or '없음'}"
-                res = client.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-                    contents=[prompt_sys, user_msg]
+                res = call_gemini_with_cascading(
+                    client=client,
+                    contents=[prompt_sys, user_msg],
+                    preferred_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
                 )
                 if res and res.text:
                     out = res.text.strip().strip('"').strip("'")
@@ -949,9 +952,10 @@ class PoeticEngine:
             )
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_prompt,
+                preferred_model=active_model,
                 config={"system_instruction": SKILL_POETIC_INTERVIEW}
             )
             return response.text.strip() if response and response.text else "그때의 정경을 조금 더 자세히 들려주시겠어요?"
@@ -990,9 +994,10 @@ class PoeticEngine:
             )
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_prompt,
+                preferred_model=active_model,
                 config={"system_instruction": SKILL_POETIC_COMPOSITION}
             )
 
@@ -1010,6 +1015,19 @@ class PoeticEngine:
 
             body = "\n".join(body_lines).strip()
             return {"title": title, "body": body, "notes": "Gemini 서정 작시 스킬 기반 창작"}
+        except GeminiQuotaExhaustedError as q_err:
+            # [★ 3중 방어막 ★] 429 한도 초과 시 조악한 룰베이스 더미로 추락시키지 않고 품격 있는 상태 안내 제공
+            return {
+                "title": "[알림] Google AI 분당 한도 일시 초과",
+                "body": (
+                    "Google 무료 AI의 일시적 분당 호출 한도(15회)에 도달했습니다.\n\n"
+                    "시의 높은 예술적 품격을 지키기 위해, 엉터리 기계 문장으로 대체하지 않고 안전하게 멈추었습니다.\n\n"
+                    "약 15~30초만 잠시 숨을 고르신 후 다시 [🌸 AI와 함께 시 짓기]를 눌러주시면,\n"
+                    "AI가 빚어내는 고품격 서정시를 그대로 만나보실 수 있습니다."
+                ),
+                "notes": "429_QUOTA_EXHAUSTED",
+                "is_quota_error": True
+            }
         except Exception as e:
             drafts = self.compose_dual_drafts(core_memory, sensory_details, spoken_words)
             draft = drafts.get("draft_a", {"title": "기억의 한 켠", "body": ""})
@@ -1064,9 +1082,10 @@ class PoeticEngine:
             )
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_prompt,
+                preferred_model=active_model,
                 config={"system_instruction": SKILL_POETIC_REFINEMENT}
             )
 
@@ -1079,6 +1098,13 @@ class PoeticEngine:
                 "title": title,
                 "refined_body": refined_part or poem_body,
                 "commentary": commentary
+            }
+        except GeminiQuotaExhaustedError as q_err:
+            return {
+                "title": title,
+                "refined_body": poem_body,
+                "commentary": "Google 무료 AI의 일시적 분당 한도(15회)에 도달하여 원본 시를 안전하게 보존했습니다. 약 15~30초 후 다시 퇴고를 눌러주세요.",
+                "is_quota_error": True
             }
         except Exception as e:
             refined = self.refine_poem(poem_body)
@@ -1137,9 +1163,10 @@ class PoeticEngine:
             )
 
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_prompt,
+                preferred_model=active_model,
                 config={"system_instruction": system_instruction}
             )
 

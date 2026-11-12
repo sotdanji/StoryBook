@@ -15,6 +15,7 @@ from pathlib import Path
 
 from core.config import BASE_DIR, get_gemini_api_key
 from core.project_manager import project_manager
+from core.gemini_guard import call_gemini_with_cascading, GeminiQuotaExhaustedError
 
 logger = logging.getLogger("ai_coach")
 
@@ -162,9 +163,10 @@ class AICoachingDirector:
             client = genai.Client(api_key=api_key)
             active_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
-            response = client.models.generate_content(
-                model=active_model,
+            response = call_gemini_with_cascading(
+                client=client,
                 contents=user_prompt,
+                preferred_model=active_model,
                 config={
                     "system_instruction": system_instruction,
                     "temperature": 0.6,
@@ -179,6 +181,21 @@ class AICoachingDirector:
                 "success": True,
                 "coach_name": "AI 안실장",
                 "reply": reply_text,
+                "project_context": ctx,
+                "can_escalate": True
+            }
+
+        except GeminiQuotaExhaustedError as q_err:
+            logger.warning(f"AI 코칭 Quota 초과: {q_err}")
+            return {
+                "success": True,
+                "coach_name": "AI 안실장",
+                "reply": (
+                    f"{author_name} 작가님, 안녕하세요! AI 안실장입니다. 😊\n\n"
+                    "현재 Google 무료 AI의 일시적 분당 한도(15회)에 도달하여 잠시 숨을 고르고 있습니다.\n\n"
+                    "약 15~30초 후 다시 [AI 안실장에게 코칭 받기]를 눌러주시면 즉시 정밀한 맞춤 처방을 드리겠습니다. "
+                    "급하신 문의사항은 아래 **[대표님께 직접 검토 요청하기]** 버튼을 눌러주시면 대표님께서 직접 확인 후 답변해 드립니다!"
+                ),
                 "project_context": ctx,
                 "can_escalate": True
             }
