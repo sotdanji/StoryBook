@@ -72,53 +72,51 @@
 
       <!-- 2. [사이드바 상단] 로그인 정보 & 집필 도서 선택 및 통합 설정 카드 -->
       <div class="sidebar-section project-manager-card">
-        <!-- 1) 로그인 정보 바 -->
-        {% if current_user %}
-        <div class="sidebar-user-bar"
-          style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #FFF9F2; border: 1px solid #EBD5C2; border-radius: 6px; margin-bottom: 8px; font-size: 0.82rem;">
-          <span style="color: #643E19; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            👤 <strong>{{ current_user.display_name }}</strong> 작가님
+        <!-- 1) 상단 서재 이동 및 작가 명패 바 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <a href="/" target="_self"
+            style="text-decoration: none; font-size: 0.82rem; font-weight: 700; color: #8B4513; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: #FAF5ED; border: 1px solid #E6D4BE; transition: all 0.2s;"
+            title="이야기솥 포털 대문 및 내 서재로 이동하여 다른 책을 열거나 새 책을 짓습니다.">
+            <span>🏠</span> <span>서재로 나가기</span>
+          </a>
+          <span style="font-size: 0.8rem; color: #7A695A; font-weight: 600;">
+            👤 {{ current_user.display_name if current_user else '작가' }}님
           </span>
-          <button type="button" onclick="handleLogout()"
-            style="background: none; border: none; color: #8B4513; font-size: 0.76rem; cursor: pointer; text-decoration: underline; white-space: nowrap;"
-            title="로그아웃">로그아웃</button>
-        </div>
-        {% elif is_guest %}
-        <div class="sidebar-user-bar"
-          style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #FFF9F2; border: 1px solid #EBD5C2; border-radius: 6px; margin-bottom: 8px; font-size: 0.82rem;">
-          <span style="color: #8B4513; font-size: 0.78rem;">게스트 모드</span>
-          <a href="/login" style="color: #643E19; font-size: 0.78rem; font-weight: 700; text-decoration: underline;">회원 로그인</a>
-        </div>
-        {% endif %}
-
-        <!-- 2) 집필 중인 책 제목 & 책 목록 상자 -->
-        <div class="sidebar-section-title" style="margin-bottom: 4px;">
-          <svg class="svg-icon" viewBox="0 0 24 24">
-            <path d="m16 6 4 14" />
-            <path d="M12 6v14" />
-            <path d="M8 8v12" />
-            <path d="M4 4v16" />
-          </svg>
-          <span>집필 중인 책</span>
-        </div>
-        <div class="project-selector-wrapper" style="margin-bottom: 6px;">
-          <select id="selectProjectDropdown" class="project-select" onchange="onProjectSelectChange(this.value)">
-            <!-- 동적으로 도서 옵션 추가됨 -->
-          </select>
         </div>
 
-        <!-- 3) 2-버튼 툴바 (새 책 추가 + 설정/관리) -->
+        <!-- 2) 현재 집필 시화집 명패 & 빠른 도서 전환 -->
+        <div style="background: #FFFFFF; border: 1.5px solid #D5B895; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 0.72rem; font-weight: 700; background: #F3EAE0; color: #7A4B23; padding: 1px 6px; border-radius: 6px;">
+              ✍️ 감성 시화집
+            </span>
+            <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">
+              ● 집필 중
+            </span>
+          </div>
+          <div style="margin-bottom: 6px;">
+            <select id="selectProjectDropdown" class="project-select" onchange="onProjectSelectChange(this.value)"
+              style="width: 100%; font-size: 0.88rem; font-weight: 700; color: #4A2E13; background: #FFFDF9; border: 1px solid #D5B895; border-radius: 5px; padding: 4px 6px;">
+              <!-- 동적으로 도서 옵션 추가됨 -->
+            </select>
+          </div>
+          <div style="font-size: 0.78rem; color: #7A624E;">
+            시인: <strong>{{ active_project.author if (active_project and active_project.author) else "저자 지음" }}</strong>
+          </div>
+        </div>
+
+        <!-- 3) 이 책 전용 슬림 2-액션 툴바 (책 정보 수정 + 시집 백업) -->
         <div class="project-btn-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-          <button type="button" class="btn-new-project" id="btnOpenNewProjectModal" onclick="openNewProjectModal()"
-            style="padding: 7px 8px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px;"
-            title="[새 책 추가] 새로운 제목, 부제, 저자명으로 독립출판 책 프로젝트를 새로 개설합니다.">
-            <span>➕</span> <span>새 책 추가</span>
+          <button type="button" class="btn-sidebar-setting" id="btnOpenEditProjectModal" onclick="openEditProjectModal()"
+            style="padding: 7px 6px; font-size: 0.78rem; font-weight: 700; background: #FFFDF9; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s;"
+            title="현재 시집의 제목, 부제, 저자명, 목표 편수를 수정합니다.">
+            <span>📖</span> <span>책 정보 수정</span>
           </button>
-          <button type="button" class="btn-sidebar-setting" id="btnOpenSettingsManageModal" onclick="openSettingsManageModal()"
-            style="padding: 7px 8px; font-size: 0.78rem; font-weight: 700; background: #FFFDF9; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s;"
-            title="[설정 / 관리] AI 키 설정, 도서 정보 수정, 원고 일괄 불러오기, ZIP 백업 및 관리자 대시보드를 통합 관리합니다.">
-            <span>⚙️</span> <span>설정 / 관리</span>
-          </button>
+          <a href="/api/projects/export_zip"
+            style="padding: 7px 6px; font-size: 0.78rem; font-weight: 700; background: #FAF5ED; border: 1.5px solid #D5B895; color: #643E19; border-radius: 6px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s;"
+            title="[전체 ZIP 백업] 현재 시집의 모든 원고(마크다운), 삽화, 조판 데이터를 하나의 압축파일로 다운로드합니다.">
+            <span>📦</span> <span>시집 백업</span>
+          </a>
         </div>
 
         <!-- JS 호환용 숨겨진 책 정보 홀더 -->

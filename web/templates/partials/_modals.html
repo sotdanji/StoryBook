@@ -327,7 +327,7 @@
   </div>
 
   <!-- 시집 정보 수정 모달 -->
-  <div class="modal-overlay" id="editProjectModal" style="display: none;" onclick="onModalOverlayClick(event)">
+  <div class="modal-overlay" id="editProjectModal" style="display: none; position: fixed; inset: 0; z-index: 9999;" onclick="onModalOverlayClick(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 class="modal-title">⚙️ 시집 정보 및 설정 수정</h3>
@@ -1445,7 +1445,7 @@
   <!-- ========================================================
        통합 도서 설정 및 시스템 관리 모달 (Settings & Project Management Modal)
        ======================================================== -->
-  <div class="modal-overlay" id="modalSettingsManage" style="display: none;" onclick="if(event.target===this) closeSettingsManageModal()">
+  <div class="modal-overlay" id="modalSettingsManage" style="display: none; position: fixed; inset: 0; z-index: 9999;" onclick="if(event.target===this) closeSettingsManageModal()">
     <div class="modal-card" style="max-width: 520px; width: 92%; background: #FFFDF9; border: 2px solid #D4A373; border-radius: 14px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
       
       <!-- 모달 헤더 -->

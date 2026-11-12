@@ -1199,4 +1199,16 @@ async function saveTocAndOrder() {
   }
 }
 
+// 전역 window 바인딩 (인라인 HTML onclick 이벤트 안전 보장)
+window.openEditProjectModal = openEditProjectModal;
+window.closeEditProjectModal = closeEditProjectModal;
+window.onCreateNewProject = onCreateNewProject;
+window.onUpdateProject = onUpdateProject;
+window.onDeleteCurrentProject = onDeleteCurrentProject;
+window.openTocEditorModal = openTocEditorModal;
+window.closeTocEditorModal = closeTocEditorModal;
+window.submitTocEditor = submitTocEditor;
+window.onModalOverlayClick = onModalOverlayClick;
+
+
 
