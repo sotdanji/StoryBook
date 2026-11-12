@@ -239,6 +239,13 @@
           title="[1:1 비밀 상담실] 시화집 조판 코칭, 윤문 지도, 기술 AS 및 부크크 출판 대행 문의를 1:1로 신청합니다.">
           <span>💬 1:1 비밀 상담실 (편집 코칭)</span>
         </button>
+        {% if is_admin %}
+        <button type="button" class="btn-sidebar-gallery" onclick="window.open('/admin', '_blank')"
+          style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1.5px solid #F59E0B; color: #FCD34D; font-weight: 700; box-shadow: 0 2px 6px rgba(15,23,42,0.4);"
+          title="[관리자 전용] 스튜디오 전체 관제 및 1:1 상담 접수 대시보드로 이동합니다.">
+          <span>👑 관리자 관제 대시보드 (/admin)</span>
+        </button>
+        {% endif %}
       </div>
     </aside>
 
@@ -3185,12 +3192,7 @@
     </div>
   </div>
 
-  <!-- 우측 하단 고정: 1:1 비밀 상담 & 편집 요청 플로팅 버튼 -->
-  <button type="button" id="floatingInquiryBtn" class="floating-inquiry-btn" onclick="openInquiryModal()"
-    title="[1:1 비밀 상담] 시화집 조판 코칭 도움 요청 및 버그 제보">
-    <span class="inquiry-icon">💬</span>
-    <span class="inquiry-text"><strong>1:1 상담실</strong> <small>(편집 코칭)</small></span>
-  </button>
+
 
   <!-- ========================================================
        🔖 외부 찬조글 & 옵션 부속지 (추천사 / 작품 해설) 설정 모달
